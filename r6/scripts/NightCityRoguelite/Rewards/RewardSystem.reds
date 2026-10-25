@@ -64,13 +64,12 @@ public abstract class RLRewards {
     while ArraySize(offers) < count && guard < 40 {
       guard += 1;
       let kind = RLRewards.RollKind(run, pools);
-      if ArrayContains(usedKinds, kind) {
-        continue;
-      }
-      let offer = RLRewards.Build(player, pools, run, kind);
-      if IsDefined(offer) {
-        ArrayPush(offers, offer);
-        ArrayPush(usedKinds, kind);
+      if !ArrayContains(usedKinds, kind) {
+        let offer = RLRewards.Build(player, pools, run, kind);
+        if IsDefined(offer) {
+          ArrayPush(offers, offer);
+          ArrayPush(usedKinds, kind);
+        }
       }
     }
     return offers;

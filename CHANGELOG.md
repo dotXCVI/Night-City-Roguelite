@@ -3,6 +3,14 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.4 - Compiles cleanly on 2.5 (2026-10-25)
+
+Originally released as v0.4.0.
+
+- Compiles cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0 and TweakXL 1.12.0.
+- Arena walls: a solid ring around each arena that lights up as red NCPD holo-tape as V gets close.
+- Untested in game.
+
 ## v0.0.3 - First complete build (2026-10-25)
 
 Originally released as v0.3.0 (builds before v0.0.8 used v0.X numbering; same series).

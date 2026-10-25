@@ -55,6 +55,13 @@ public abstract class RLConfig {
   // Arena list, radii and start points: Combat/Arenas.reds.
   // Dropping this far below the arena start counts as leaving the arena.
   public static func ArenaFloorDrop() -> Float = 12.0
+  // Arena walls: approximate width of one wall segment (holo-tape panel).
+  public static func WallSegmentLength() -> Float = 8.5
+  // Walls are invisible beyond this distance and fully lit at arm's length.
+  public static func WallRevealDistance() -> Float = 10.0
+  // Safety net behind the collision walls: past the wall by this much, V is
+  // put back inside.
+  public static func WallBackstopMargin() -> Float = 1.5
   // Distance band (from arena center) where enemies spawn.
   public static func SpawnMinDistance() -> Float = 16.0
   public static func SpawnMaxDistance() -> Float = 30.0

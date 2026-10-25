@@ -153,7 +153,7 @@ public class RogueliteSystem extends ScriptableSystem {
   public func OnSessionEnding() {
     this.CancelTimer();
     this.m_spawner.Abort();
-    this.m_arenas.StopWalls();
+    this.m_arenas.OnSessionEnd();
     this.m_apartment.OnSessionEnd();
     this.m_hud.Release();
     // A run in progress keeps its token: the next load scores it as abandoned.
@@ -176,9 +176,18 @@ public class RogueliteSystem extends ScriptableSystem {
     this.UntrackQuest();
   }
 
+  // Hides the story from the journal once V has been taken over (the opening
+  // is left alone so it can hand control to the player).
   private func UntrackQuest() {
-    GameInstance.GetJournalManager(this.GetGameInstance()).UntrackEntry();
+    let game = this.GetGameInstance();
+    if this.m_takeoverDone {
+      RLStory.DeactivateQuests(game);
+    } else {
+      GameInstance.GetJournalManager(game).UntrackEntry();
+    }
   }
+
+  public func SilencesStory() -> Bool = this.m_isRoguelite && this.m_takeoverDone
 
   // --- Timers --------------------------------------------------------------------------
 

@@ -83,7 +83,7 @@ public class RLRewardPopup extends InGamePopup {
     card.SetWidth(width);
     card.Reparent(parent);
 
-    let subtitle = RLUI.Text(offer.subtitle, 26, offer.kind == RLOfferKind.Iconic ? n"MainColors.ActiveYellow" : n"MainColors.Blue");
+    let subtitle = RLUI.Text(offer.subtitle, 26, Equals(offer.kind, RLOfferKind.Iconic) ? n"MainColors.ActiveYellow" : n"MainColors.Blue");
     subtitle.SetLetterCase(textLetterCase.UpperCase);
     subtitle.Reparent(card);
 

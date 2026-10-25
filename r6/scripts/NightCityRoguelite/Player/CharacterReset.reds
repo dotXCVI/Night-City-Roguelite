@@ -85,10 +85,7 @@ public abstract class RLCharacterReset {
     GameInstance.GetTransactionSystem(game).GetItemList(player, items);
     for item in items {
       let itemID = item.GetID();
-      if !RLCharacterReset.ShouldRemove(item) {
-        continue;
-      }
-      if IsDefined(equipmentData) && equipmentData.IsEquipped(itemID) {
+      if RLCharacterReset.ShouldRemove(item) && IsDefined(equipmentData) && equipmentData.IsEquipped(itemID) {
         let request = new UnequipRequest();
         request.owner = player;
         request.areaType = EquipmentSystem.GetEquipAreaType(itemID);

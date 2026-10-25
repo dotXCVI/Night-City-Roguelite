@@ -87,51 +87,21 @@ public class RLTweakPools {
     for record in TweakDBInterface.GetRecords(n"Character") {
       scanned += 1;
       let character = record as Character_Record;
-      if !IsDefined(character) || ArrayContains(blocklist, character.GetID()) {
-        continue;
+      let tier = RLTweakPools.EnemyTier(character, blocklist);
+      if tier >= 0 {
+        let pool = this.GetOrAddFaction(character.Affiliation().Type());
+        switch tier {
+          case 0:
+            ArrayPush(pool.tier0, character.GetID());
+            break;
+          case 1:
+            ArrayPush(pool.tier1, character.GetID());
+            break;
+          default:
+            ArrayPush(pool.tier2, character.GetID());
+        }
+        accepted += 1;
       }
-      if character.IsCrowd() || character.IsChild() {
-        continue;
-      }
-      let npcType = character.CharacterType();
-      if !IsDefined(npcType) {
-        continue;
-      }
-      let kind = npcType.Type();
-      if NotEquals(kind, gamedataNPCType.Human) && NotEquals(kind, gamedataNPCType.Android) {
-        continue;
-      }
-      let quest = character.Quest();
-      if IsDefined(quest) && NotEquals(quest.Type(), gamedataNPCQuestAffiliation.General) {
-        continue;
-      }
-      let affiliation = character.Affiliation();
-      if !IsDefined(affiliation) || !RLTweakPools.IsHostileFaction(affiliation.Type()) {
-        continue;
-      }
-      if !IsDefined(character.PrimaryEquipment()) {
-        continue;
-      }
-      let rarity = character.Rarity();
-      if !IsDefined(rarity) {
-        continue;
-      }
-      let tier = RLTweakPools.TierOf(rarity.Type());
-      if tier < 0 {
-        continue;
-      }
-      let pool = this.GetOrAddFaction(affiliation.Type());
-      switch tier {
-        case 0:
-          ArrayPush(pool.tier0, character.GetID());
-          break;
-        case 1:
-          ArrayPush(pool.tier1, character.GetID());
-          break;
-        default:
-          ArrayPush(pool.tier2, character.GetID());
-      }
-      accepted += 1;
     }
     // Drop factions that can't fill a wave.
     let usable: array<ref<RLFactionPool>>;
@@ -143,6 +113,42 @@ public class RLTweakPools {
     }
     this.m_factions = usable;
     RLLog(s"Enemy scan: \(scanned) character records, \(accepted) accepted.");
+  }
+
+  // Tier (0-2) of a usable enemy record, or -1 when the record doesn't qualify:
+  // a combat-capable human/android of a hostile faction, general affiliation,
+  // with a primary weapon.
+  public static func EnemyTier(character: ref<Character_Record>, blocklist: array<TweakDBID>) -> Int32 {
+    if !IsDefined(character) || ArrayContains(blocklist, character.GetID()) {
+      return -1;
+    }
+    if character.IsCrowd() || character.IsChild() {
+      return -1;
+    }
+    let npcType = character.CharacterType();
+    if !IsDefined(npcType) {
+      return -1;
+    }
+    let kind = npcType.Type();
+    if NotEquals(kind, gamedataNPCType.Human) && NotEquals(kind, gamedataNPCType.Android) {
+      return -1;
+    }
+    let quest = character.Quest();
+    if IsDefined(quest) && NotEquals(quest.Type(), gamedataNPCQuestAffiliation.General) {
+      return -1;
+    }
+    let affiliation = character.Affiliation();
+    if !IsDefined(affiliation) || !RLTweakPools.IsHostileFaction(affiliation.Type()) {
+      return -1;
+    }
+    if !IsDefined(character.PrimaryEquipment()) {
+      return -1;
+    }
+    let rarity = character.Rarity();
+    if !IsDefined(rarity) {
+      return -1;
+    }
+    return RLTweakPools.TierOf(rarity.Type());
   }
 
   private func GetOrAddFaction(faction: gamedataAffiliation) -> ref<RLFactionPool> {
@@ -399,16 +405,9 @@ public class RLTweakPools {
     while distance <= 4 {
       let matches: array<TweakDBID>;
       for entry in this.m_cyberware {
-        if requireDeck && !entry.cyberdeck {
-          continue;
-        }
-        if NotEquals(itemType, gamedataItemType.Invalid) && NotEquals(entry.itemType, itemType) {
-          continue;
-        }
-        if ArrayContains(excludeIDs, entry.id) {
-          continue;
-        }
-        if Abs(entry.band - band) == distance {
+        let deckOk = !requireDeck || entry.cyberdeck;
+        let typeOk = Equals(itemType, gamedataItemType.Invalid) || Equals(entry.itemType, itemType);
+        if deckOk && typeOk && !ArrayContains(excludeIDs, entry.id) && Abs(entry.band - band) == distance {
           ArrayPush(matches, entry.id);
         }
       }

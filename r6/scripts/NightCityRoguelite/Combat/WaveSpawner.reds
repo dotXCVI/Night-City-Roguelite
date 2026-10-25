@@ -254,56 +254,8 @@ public class RLWaveSpawner extends IScriptable {
     let changed = false;
 
     for enemy in this.m_tracked {
-      if enemy.done {
-        continue;
-      }
-      let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
-      if !IsDefined(puppet) {
-        if !enemy.seen && this.m_time - enemy.spawnTime > RLConfig.SpawnTimeout() {
-          RLDebug(s"Enemy never spawned, dropping: \(TDBID.ToStringDEBUG(enemy.record))");
-          enemy.done = true;
-          entities.DeleteEntity(enemy.id);
-          changed = true;
-        } else if enemy.seen {
-          // Spawned once, now gone (despawned or deleted by the game).
-          enemy.done = true;
-          changed = true;
-        }
-        continue;
-      }
-      enemy.seen = true;
-
-      if puppet.IsDead() || ScriptedPuppet.IsDefeated(puppet) {
-        enemy.done = true;
+      if !enemy.done && this.UpdateEnemy(enemy, player, entities) {
         changed = true;
-        if IsDefined(this.m_system) {
-          this.m_system.OnEnemyKilled(enemy.isBoss);
-        }
-        continue;
-      }
-
-      if !IsDefined(player) {
-        continue;
-      }
-      if !enemy.hostile {
-        RLWaveSpawner.MakeHostile(puppet, player);
-        enemy.hostile = true;
-        enemy.lastThreat = this.m_time;
-      } else if this.m_time - enemy.lastThreat >= RLConfig.ThreatRefreshSeconds() {
-        TargetTrackingExtension.InjectThreat(puppet, player);
-        enemy.lastThreat = this.m_time;
-      }
-
-      if Vector4.Distance(puppet.GetWorldPosition(), player.GetWorldPosition()) > RLConfig.StrayDistance() {
-        enemy.strayTime += 1.0;
-        if enemy.strayTime >= RLConfig.StrayTimeout() {
-          RLDebug("Removing stray enemy.");
-          enemy.done = true;
-          entities.DeleteEntity(enemy.id);
-          changed = true;
-        }
-      } else {
-        enemy.strayTime = 0.0;
       }
     }
 
@@ -321,6 +273,59 @@ public class RLWaveSpawner extends IScriptable {
         }
       }
     }
+  }
+
+  // Updates one tracked enemy; returns true when it stopped counting as alive.
+  private func UpdateEnemy(enemy: ref<RLTrackedEnemy>, player: ref<PlayerPuppet>, entities: ref<DynamicEntitySystem>) -> Bool {
+    let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
+    if !IsDefined(puppet) {
+      if !enemy.seen && this.m_time - enemy.spawnTime > RLConfig.SpawnTimeout() {
+        RLDebug(s"Enemy never spawned, dropping: \(TDBID.ToStringDEBUG(enemy.record))");
+        enemy.done = true;
+        entities.DeleteEntity(enemy.id);
+        return true;
+      }
+      if enemy.seen {
+        // Spawned once, now gone (despawned or deleted by the game).
+        enemy.done = true;
+        return true;
+      }
+      return false;
+    }
+    enemy.seen = true;
+
+    if puppet.IsDead() || ScriptedPuppet.IsDefeated(puppet) {
+      enemy.done = true;
+      if IsDefined(this.m_system) {
+        this.m_system.OnEnemyKilled(enemy.isBoss);
+      }
+      return true;
+    }
+
+    if !IsDefined(player) {
+      return false;
+    }
+    if !enemy.hostile {
+      RLWaveSpawner.MakeHostile(puppet, player);
+      enemy.hostile = true;
+      enemy.lastThreat = this.m_time;
+    } else if this.m_time - enemy.lastThreat >= RLConfig.ThreatRefreshSeconds() {
+      TargetTrackingExtension.InjectThreat(puppet, player);
+      enemy.lastThreat = this.m_time;
+    }
+
+    if Vector4.Distance(puppet.GetWorldPosition(), player.GetWorldPosition()) > RLConfig.StrayDistance() {
+      enemy.strayTime += 1.0;
+      if enemy.strayTime >= RLConfig.StrayTimeout() {
+        RLDebug("Removing stray enemy.");
+        enemy.done = true;
+        entities.DeleteEntity(enemy.id);
+        return true;
+      }
+    } else {
+      enemy.strayTime = 0.0;
+    }
+    return false;
   }
 
   public static func MakeHostile(puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>) {

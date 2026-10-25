@@ -1,0 +1,477 @@
+// -----------------------------------------------------------------------------
+// Night City Roguelite - runtime content pools
+// -----------------------------------------------------------------------------
+// Builds enemy and item pools straight from TweakDB (via TweakXL's record
+// enumeration) the first time a run starts. Nothing is hardcoded except a few
+// boss records the game scripts reference directly, so new patch content shows
+// up automatically.
+//
+// Enemies: Character records filtered to combat-capable humans/androids of a
+//          hostile faction, general (non-quest) affiliation, with a primary
+//          weapon. Bucketed per faction into three tiers by NPC rarity.
+// Items:   everything any vendor in the game stocks (VendorItem records),
+//          which is a reliable "player-usable" filter, plus iconic weapons.
+// -----------------------------------------------------------------------------
+
+module NightCityRoguelite
+
+public class RLFactionPool {
+  public let faction: gamedataAffiliation;
+  public let tier0: array<TweakDBID>; // Trash, Weak
+  public let tier1: array<TweakDBID>; // Normal, Rare
+  public let tier2: array<TweakDBID>; // Officer, Elite
+
+  public func IsUsable() -> Bool {
+    return ArraySize(this.tier0) + ArraySize(this.tier1) >= 3;
+  }
+
+  public func Total() -> Int32 {
+    return ArraySize(this.tier0) + ArraySize(this.tier1) + ArraySize(this.tier2);
+  }
+
+  public func Pick(tier: Int32) -> TweakDBID {
+    // Fall back to neighbouring tiers when a faction lacks one.
+    if tier >= 2 && ArraySize(this.tier2) > 0 {
+      return this.tier2[RandRange(0, ArraySize(this.tier2))];
+    }
+    if tier >= 1 && ArraySize(this.tier1) > 0 {
+      return this.tier1[RandRange(0, ArraySize(this.tier1))];
+    }
+    if ArraySize(this.tier0) > 0 {
+      return this.tier0[RandRange(0, ArraySize(this.tier0))];
+    }
+    if ArraySize(this.tier1) > 0 {
+      return this.tier1[RandRange(0, ArraySize(this.tier1))];
+    }
+    return this.tier2[RandRange(0, ArraySize(this.tier2))];
+  }
+}
+
+public class RLItemEntry {
+  public let id: TweakDBID;
+  public let itemType: gamedataItemType;
+  public let area: gamedataEquipmentArea;
+  // 0 Common, 1 Uncommon, 2 Rare, 3 Epic, 4 Legendary (Plus variants share a band)
+  public let band: Int32;
+  public let iconic: Bool;
+  public let cyberdeck: Bool;
+}
+
+public class RLTweakPools {
+  private let m_built: Bool;
+  private let m_factions: array<ref<RLFactionPool>>;
+  private let m_weapons: array<ref<RLItemEntry>>;
+  private let m_iconics: array<ref<RLItemEntry>>;
+  private let m_cyberware: array<ref<RLItemEntry>>;
+  private let m_quickhacks: array<ref<RLItemEntry>>;
+  private let m_grenades: array<ref<RLItemEntry>>;
+  private let m_healing: array<ref<RLItemEntry>>;
+  private let m_seen: array<TweakDBID>;
+
+  // --- Build ----------------------------------------------------------------------
+
+  public func EnsureBuilt() {
+    if this.m_built {
+      return;
+    }
+    this.m_built = true;
+    this.BuildEnemies();
+    this.BuildItems();
+    RLLog(s"Pools built: \(ArraySize(this.m_factions)) factions, \(ArraySize(this.m_weapons)) weapons, \(ArraySize(this.m_iconics)) iconics, \(ArraySize(this.m_cyberware)) cyberware, \(ArraySize(this.m_quickhacks)) quickhacks.");
+  }
+
+  private func BuildEnemies() {
+    let blocklist = RLConfig.EnemyBlocklist();
+    let scanned = 0;
+    let accepted = 0;
+    for record in TweakDBInterface.GetRecords(n"Character") {
+      scanned += 1;
+      let character = record as Character_Record;
+      if !IsDefined(character) || ArrayContains(blocklist, character.GetID()) {
+        continue;
+      }
+      if character.IsCrowd() || character.IsChild() {
+        continue;
+      }
+      let npcType = character.CharacterType();
+      if !IsDefined(npcType) {
+        continue;
+      }
+      let kind = npcType.Type();
+      if NotEquals(kind, gamedataNPCType.Human) && NotEquals(kind, gamedataNPCType.Android) {
+        continue;
+      }
+      let quest = character.Quest();
+      if IsDefined(quest) && NotEquals(quest.Type(), gamedataNPCQuestAffiliation.General) {
+        continue;
+      }
+      let affiliation = character.Affiliation();
+      if !IsDefined(affiliation) || !RLTweakPools.IsHostileFaction(affiliation.Type()) {
+        continue;
+      }
+      if !IsDefined(character.PrimaryEquipment()) {
+        continue;
+      }
+      let rarity = character.Rarity();
+      if !IsDefined(rarity) {
+        continue;
+      }
+      let tier = RLTweakPools.TierOf(rarity.Type());
+      if tier < 0 {
+        continue;
+      }
+      let pool = this.GetOrAddFaction(affiliation.Type());
+      switch tier {
+        case 0:
+          ArrayPush(pool.tier0, character.GetID());
+          break;
+        case 1:
+          ArrayPush(pool.tier1, character.GetID());
+          break;
+        default:
+          ArrayPush(pool.tier2, character.GetID());
+      }
+      accepted += 1;
+    }
+    // Drop factions that can't fill a wave.
+    let usable: array<ref<RLFactionPool>>;
+    for pool in this.m_factions {
+      if pool.IsUsable() {
+        ArrayPush(usable, pool);
+        RLDebug(s"Faction \(EnumValueToString("gamedataAffiliation", Cast<Int64>(EnumInt(pool.faction)))): \(ArraySize(pool.tier0))/\(ArraySize(pool.tier1))/\(ArraySize(pool.tier2))");
+      }
+    }
+    this.m_factions = usable;
+    RLLog(s"Enemy scan: \(scanned) character records, \(accepted) accepted.");
+  }
+
+  private func GetOrAddFaction(faction: gamedataAffiliation) -> ref<RLFactionPool> {
+    for pool in this.m_factions {
+      if Equals(pool.faction, faction) {
+        return pool;
+      }
+    }
+    let pool = new RLFactionPool();
+    pool.faction = faction;
+    ArrayPush(this.m_factions, pool);
+    return pool;
+  }
+
+  private func BuildItems() {
+    for record in TweakDBInterface.GetRecords(n"VendorItem") {
+      let vendorItem = record as VendorItem_Record;
+      if IsDefined(vendorItem) {
+        let item = vendorItem.Item();
+        if IsDefined(item) {
+          this.Classify(item, false);
+        }
+      }
+    }
+    for record in TweakDBInterface.GetRecords(n"WeaponItem") {
+      let weapon = record as WeaponItem_Record;
+      if IsDefined(weapon) && weapon.TagsContains(n"IconicWeapon") && IsDefined(weapon.Icon()) {
+        this.Classify(weapon, true);
+      }
+    }
+  }
+
+  private func Classify(item: ref<Item_Record>, iconic: Bool) {
+    let id = item.GetID();
+    let blocklist = RLConfig.ItemBlocklist();
+    if ArrayContains(this.m_seen, id) || ArrayContains(blocklist, id) {
+      return;
+    }
+    ArrayPush(this.m_seen, id);
+    if !IsDefined(item.ItemType()) || !IsDefined(item.ItemCategory()) {
+      return;
+    }
+    let itemType = item.ItemType().Type();
+    let category = item.ItemCategory().Type();
+    let entry = new RLItemEntry();
+    entry.id = id;
+    entry.itemType = itemType;
+    entry.area = IsDefined(item.EquipArea()) ? item.EquipArea().Type() : gamedataEquipmentArea.Invalid;
+    entry.band = IsDefined(item.Quality()) ? RLTweakPools.BandOf(item.Quality().Type()) : 0;
+    entry.iconic = iconic || item.TagsContains(n"IconicWeapon");
+    entry.cyberdeck = item.TagsContains(n"Cyberdeck");
+
+    if Equals(category, gamedataItemCategory.Weapon) && RLTweakPools.IsPlayerWeaponType(itemType) {
+      if entry.iconic {
+        ArrayPush(this.m_iconics, entry);
+      } else {
+        ArrayPush(this.m_weapons, entry);
+      }
+      return;
+    }
+    if Equals(category, gamedataItemCategory.Cyberware) && RLTweakPools.IsCyberwareArea(entry.area) {
+      ArrayPush(this.m_cyberware, entry);
+      return;
+    }
+    if Equals(itemType, gamedataItemType.Prt_Program) {
+      ArrayPush(this.m_quickhacks, entry);
+      return;
+    }
+    if Equals(itemType, gamedataItemType.Gad_Grenade) {
+      ArrayPush(this.m_grenades, entry);
+      return;
+    }
+    if Equals(itemType, gamedataItemType.Con_Inhaler) || Equals(itemType, gamedataItemType.Con_Injector) {
+      ArrayPush(this.m_healing, entry);
+    }
+  }
+
+  // --- Classification helpers --------------------------------------------------
+
+  public static func IsHostileFaction(faction: gamedataAffiliation) -> Bool {
+    switch faction {
+      case gamedataAffiliation.Animals:
+      case gamedataAffiliation.Maelstrom:
+      case gamedataAffiliation.Scavengers:
+      case gamedataAffiliation.SixthStreet:
+      case gamedataAffiliation.TygerClaws:
+      case gamedataAffiliation.Valentinos:
+      case gamedataAffiliation.VoodooBoys:
+      case gamedataAffiliation.Wraiths:
+      case gamedataAffiliation.Barghest:
+      case gamedataAffiliation.Arasaka:
+      case gamedataAffiliation.Militech:
+      case gamedataAffiliation.KangTao:
+        return true;
+    }
+    return false;
+  }
+
+  public static func IsCorpFaction(faction: gamedataAffiliation) -> Bool {
+    switch faction {
+      case gamedataAffiliation.Barghest:
+      case gamedataAffiliation.Arasaka:
+      case gamedataAffiliation.Militech:
+      case gamedataAffiliation.KangTao:
+        return true;
+    }
+    return false;
+  }
+
+  public static func TierOf(rarity: gamedataNPCRarity) -> Int32 {
+    switch rarity {
+      case gamedataNPCRarity.Trash:
+      case gamedataNPCRarity.Weak:
+        return 0;
+      case gamedataNPCRarity.Normal:
+      case gamedataNPCRarity.Rare:
+        return 1;
+      case gamedataNPCRarity.Officer:
+      case gamedataNPCRarity.Elite:
+        return 2;
+    }
+    return -1;
+  }
+
+  public static func BandOf(quality: gamedataQuality) -> Int32 {
+    switch quality {
+      case gamedataQuality.Uncommon:
+      case gamedataQuality.UncommonPlus:
+        return 1;
+      case gamedataQuality.Rare:
+      case gamedataQuality.RarePlus:
+        return 2;
+      case gamedataQuality.Epic:
+      case gamedataQuality.EpicPlus:
+        return 3;
+      case gamedataQuality.Legendary:
+      case gamedataQuality.LegendaryPlus:
+      case gamedataQuality.LegendaryPlusPlus:
+      case gamedataQuality.Iconic:
+        return 4;
+    }
+    return 0;
+  }
+
+  public static func IsPlayerWeaponType(itemType: gamedataItemType) -> Bool {
+    switch itemType {
+      case gamedataItemType.Wea_AssaultRifle:
+      case gamedataItemType.Wea_Axe:
+      case gamedataItemType.Wea_Chainsword:
+      case gamedataItemType.Wea_Hammer:
+      case gamedataItemType.Wea_Handgun:
+      case gamedataItemType.Wea_Katana:
+      case gamedataItemType.Wea_Knife:
+      case gamedataItemType.Wea_LightMachineGun:
+      case gamedataItemType.Wea_LongBlade:
+      case gamedataItemType.Wea_Machete:
+      case gamedataItemType.Wea_OneHandedClub:
+      case gamedataItemType.Wea_PrecisionRifle:
+      case gamedataItemType.Wea_Revolver:
+      case gamedataItemType.Wea_Rifle:
+      case gamedataItemType.Wea_ShortBlade:
+      case gamedataItemType.Wea_Shotgun:
+      case gamedataItemType.Wea_ShotgunDual:
+      case gamedataItemType.Wea_SniperRifle:
+      case gamedataItemType.Wea_SubmachineGun:
+      case gamedataItemType.Wea_Sword:
+      case gamedataItemType.Wea_TwoHandedClub:
+        return true;
+    }
+    return false;
+  }
+
+  public static func IsCyberwareArea(area: gamedataEquipmentArea) -> Bool {
+    switch area {
+      case gamedataEquipmentArea.ArmsCW:
+      case gamedataEquipmentArea.CardiovascularSystemCW:
+      case gamedataEquipmentArea.EyesCW:
+      case gamedataEquipmentArea.FrontalCortexCW:
+      case gamedataEquipmentArea.HandsCW:
+      case gamedataEquipmentArea.ImmuneSystemCW:
+      case gamedataEquipmentArea.IntegumentarySystemCW:
+      case gamedataEquipmentArea.LegsCW:
+      case gamedataEquipmentArea.MusculoskeletalSystemCW:
+      case gamedataEquipmentArea.NervousSystemCW:
+      case gamedataEquipmentArea.SystemReplacementCW:
+      case gamedataEquipmentArea.FaceCW:
+        return true;
+    }
+    return false;
+  }
+
+  // --- Queries ----------------------------------------------------------------------
+
+  public func GetFactions() -> array<ref<RLFactionPool>> = this.m_factions
+
+  public func PickFaction(preferCorp: Bool) -> ref<RLFactionPool> {
+    let count = ArraySize(this.m_factions);
+    if count == 0 {
+      return null;
+    }
+    if preferCorp {
+      let corps: array<ref<RLFactionPool>>;
+      for pool in this.m_factions {
+        if RLTweakPools.IsCorpFaction(pool.faction) {
+          ArrayPush(corps, pool);
+        }
+      }
+      if ArraySize(corps) > 0 && RandF() < 0.6 {
+        return corps[RandRange(0, ArraySize(corps))];
+      }
+    }
+    return this.m_factions[RandRange(0, count)];
+  }
+
+  // Picks one of the preferred factions when the installed game has it,
+  // otherwise falls back to PickFaction.
+  public func PickFactionPreferred(preferred: array<gamedataAffiliation>, preferCorp: Bool) -> ref<RLFactionPool> {
+    let matches: array<ref<RLFactionPool>>;
+    for pool in this.m_factions {
+      if ArrayContains(preferred, pool.faction) {
+        ArrayPush(matches, pool);
+      }
+    }
+    if ArraySize(matches) > 0 {
+      return matches[RandRange(0, ArraySize(matches))];
+    }
+    return this.PickFaction(preferCorp);
+  }
+
+  public func PickWeapon(itemTypes: array<gamedataItemType>) -> TweakDBID {
+    let matches: array<TweakDBID>;
+    for entry in this.m_weapons {
+      if ArraySize(itemTypes) == 0 || ArrayContains(itemTypes, entry.itemType) {
+        ArrayPush(matches, entry.id);
+      }
+    }
+    if ArraySize(matches) == 0 {
+      return TDBID.None();
+    }
+    return matches[RandRange(0, ArraySize(matches))];
+  }
+
+  public func PickIconic() -> TweakDBID {
+    if ArraySize(this.m_iconics) == 0 {
+      return TDBID.None();
+    }
+    return this.m_iconics[RandRange(0, ArraySize(this.m_iconics))].id;
+  }
+
+  // Picks cyberware close to the wanted quality band; `requireDeck` limits the
+  // pick to cyberdecks, `excludeAreas` skips areas (e.g. already offered).
+  public func PickCyberware(band: Int32, requireDeck: Bool, itemType: gamedataItemType, excludeIDs: array<TweakDBID>) -> TweakDBID {
+    let distance = 0;
+    while distance <= 4 {
+      let matches: array<TweakDBID>;
+      for entry in this.m_cyberware {
+        if requireDeck && !entry.cyberdeck {
+          continue;
+        }
+        if NotEquals(itemType, gamedataItemType.Invalid) && NotEquals(entry.itemType, itemType) {
+          continue;
+        }
+        if ArrayContains(excludeIDs, entry.id) {
+          continue;
+        }
+        if Abs(entry.band - band) == distance {
+          ArrayPush(matches, entry.id);
+        }
+      }
+      if ArraySize(matches) > 0 {
+        return matches[RandRange(0, ArraySize(matches))];
+      }
+      distance += 1;
+    }
+    return TDBID.None();
+  }
+
+  public func PickQuickhack(band: Int32, excludeIDs: array<TweakDBID>) -> TweakDBID {
+    let distance = 0;
+    while distance <= 4 {
+      let matches: array<TweakDBID>;
+      for entry in this.m_quickhacks {
+        if !ArrayContains(excludeIDs, entry.id) && Abs(entry.band - band) == distance {
+          ArrayPush(matches, entry.id);
+        }
+      }
+      if ArraySize(matches) > 0 {
+        return matches[RandRange(0, ArraySize(matches))];
+      }
+      distance += 1;
+    }
+    return TDBID.None();
+  }
+
+  public func PickGrenade() -> TweakDBID {
+    if ArraySize(this.m_grenades) == 0 {
+      return TDBID.None();
+    }
+    return this.m_grenades[RandRange(0, ArraySize(this.m_grenades))].id;
+  }
+
+  public func PickHealing() -> TweakDBID {
+    if ArraySize(this.m_healing) == 0 {
+      return TDBID.None();
+    }
+    return this.m_healing[RandRange(0, ArraySize(this.m_healing))].id;
+  }
+
+  public func HasQuickhacks() -> Bool = ArraySize(this.m_quickhacks) > 0
+}
+
+// Boss records referenced directly by the game's own scripts (so they exist in
+// 2.5). Each is validated at runtime before use.
+public abstract class RLBosses {
+  public static func Cyberpsychos() -> array<TweakDBID> {
+    return [t"Character.ma_bls_ina_se1_07_cyberpsycho_1", t"Character.ma_std_rcr_11_cyberpsycho"];
+  }
+
+  public static func MaxTac() -> array<TweakDBID> {
+    return [
+      t"Character.maxtac_av_riffle_ma",
+      t"Character.maxtac_av_LMG_mb",
+      t"Character.maxtac_av_mantis_wa",
+      t"Character.maxtac_av_netrunner_ma",
+      t"Character.maxtac_av_sniper_wa_elite"
+    ];
+  }
+
+  public static func Exists(id: TweakDBID) -> Bool {
+    return IsDefined(TweakDBInterface.GetCharacterRecord(id));
+  }
+}

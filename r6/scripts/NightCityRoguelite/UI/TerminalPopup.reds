@@ -2,7 +2,8 @@
 // Night City Roguelite - terminal
 // -----------------------------------------------------------------------------
 // One popup, three views:
-//   Hub         (home, no run): stats, kit cards, START RUN, mode, unlocks.
+//   Hub         (home, no run): stats, kit cards (locked ones are bought by
+//               clicking them), START RUN, unlocks.
 //   DoorPicker  (home, run active): one card per door - pick the next fight
 //               by its reward, or abandon.
 //   InArena     (in an arena): run status, abandon.
@@ -221,58 +222,69 @@ public class RLTerminalPopup extends InGamePopup {
     RLUI.StatTile("RUNS", IntToString(service.GetRunsStarted()), n"MainColors.Blue").Reparent(stats);
     RLUI.StatTile("WINS", IntToString(service.GetVictories()), n"MainColors.Blue").Reparent(stats);
     RLUI.StatTile("BEST FLOOR", IntToString(service.GetBestDepth()), n"MainColors.Blue").Reparent(stats);
-    RLUI.StatTile("MODE", service.IsRoguelikeMode() ? "ROGUELIKE" : "ROGUELITE", n"MainColors.Red").Reparent(stats);
+    RLUI.StatTile("TOTAL KILLS", IntToString(service.GetTotalKills()), n"MainColors.Red").Reparent(stats);
 
-    // Kits
+    // Kits: locked kits are bought right here.
     RLUI.SectionLabel("STARTING KIT").Reparent(body);
     let kits = RLUI.HPanel(10.0);
     kits.Reparent(body);
     for kit in RLMeta.Kits() {
       let available = RLMeta.IsKitAvailable(service, kit);
       let selected = Equals(service.GetSelectedKit(), kit);
-      let card = RLCard.Create(StringToName("kit_" + NameToString(kit)), 392.0, 256.0, selected ? n"MainColors.ActiveYellow" : n"MainColors.Blue");
+      let unlock = RLMeta.Get(StringToName("kit." + NameToString(kit)));
+      let affordable = IsDefined(unlock) && RLMeta.CanBuy(service, unlock);
+      let accent = selected ? n"MainColors.ActiveYellow" : (available ? n"MainColors.Blue" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
+      let card = RLCard.Create(StringToName("kit_" + NameToString(kit)), 392.0, 256.0, accent);
       card.SetCompact();
       card.SetAtlasIcon(RLIcons.CommonAtlas(), RLIcons.KitPart(kit), 64.0);
-      card.SetKicker(selected ? "SELECTED" : (available ? "KIT" : "LOCKED"));
+      if selected {
+        card.SetKicker("SELECTED");
+      } else if available {
+        card.SetKicker("KIT");
+      } else if IsDefined(unlock) {
+        card.SetKicker(affordable ? s"BUY - \(unlock.cost) CRED" : s"LOCKED - \(unlock.cost) CRED");
+      } else {
+        card.SetKicker("LOCKED");
+      }
       card.SetTitle(RLMeta.KitName(kit));
       card.SetTitleSize(36);
       card.AddLine(RLMeta.KitDescription(kit), n"MainColors.Grey", 24);
       card.SetSelected(selected);
-      card.SetDisabled(!available);
+      card.SetDisabled(!available && !affordable);
       this.Hook(card, kits);
     }
 
-    // Main actions
+    // Start
     let actions = RLUI.HPanel(10.0);
     actions.SetMargin(inkMargin(0.0, 14.0, 0.0, 4.0));
     actions.Reparent(body);
     let start = this.AddActionCard(actions, n"start", "START RUN", "Kit: " + RLMeta.KitName(service.GetSelectedKit()), n"MainColors.Red");
     start.SetTitleSize(48);
-    this.AddActionCard(actions, n"mode", service.IsRoguelikeMode() ? "SWITCH TO ROGUELITE" : "SWITCH TO ROGUELIKE",
-      service.IsRoguelikeMode() ? "Now: no unlock perks, +50% Cred" : "Now: unlock perks active", n"MainColors.Blue");
 
-    // Unlocks: a grid of compact cards
+    // Unlocks (kits are bought from the kit row): a 4-column grid.
     RLUI.SectionLabel("UNLOCKS").Reparent(body);
     let grid = RLUI.VPanel(5.0);
     grid.Reparent(body);
     let row: ref<inkHorizontalPanel>;
     let i = 0;
     for def in RLMeta.Unlocks() {
-      if i % 3 == 0 {
-        row = RLUI.HPanel(10.0);
-        row.Reparent(grid);
+      if !StrBeginsWith(NameToString(def.id), "kit.") {
+        if i % 4 == 0 {
+          row = RLUI.HPanel(10.0);
+          row.Reparent(grid);
+        }
+        let owned = service.HasUnlock(def.id);
+        let affordable = RLMeta.CanBuy(service, def);
+        let card = RLCard.Create(StringToName("buy_" + NameToString(def.id)), 495.0, 140.0, owned ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
+        card.SetCompact();
+        card.SetKicker(owned ? "OWNED" : s"\(def.cost) CRED");
+        card.SetTitle(def.name);
+        card.SetTitleSize(32);
+        card.AddLine(def.description, n"MainColors.Grey", 22);
+        card.SetDisabled(owned || !affordable);
+        this.Hook(card, row);
+        i += 1;
       }
-      let owned = service.HasUnlock(def.id);
-      let affordable = RLMeta.CanBuy(service, def);
-      let card = RLCard.Create(StringToName("buy_" + NameToString(def.id)), 660.0, 140.0, owned ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
-      card.SetCompact();
-      card.SetKicker(owned ? "OWNED" : s"\(def.cost) CRED");
-      card.SetTitle(def.name);
-      card.SetTitleSize(32);
-      card.AddLine(def.description, n"MainColors.Grey", 22);
-      card.SetDisabled(owned || !affordable);
-      this.Hook(card, row);
-      i += 1;
     }
   }
 
@@ -311,7 +323,14 @@ public class RLTerminalPopup extends InGamePopup {
       service.SetRoguelikeMode(!service.IsRoguelikeMode());
       this.Rebuild();
     } else if StrBeginsWith(name, "kit_") {
-      service.SetSelectedKit(StringToName(StrAfterFirst(name, "_")));
+      let kit = StringToName(StrAfterFirst(name, "_"));
+      if !RLMeta.IsKitAvailable(service, kit) {
+        if !RLMeta.TryBuy(service, StringToName("kit." + NameToString(kit))) {
+          return false;
+        }
+        this.PlaySound(n"Item", n"OnBuy");
+      }
+      service.SetSelectedKit(kit);
       this.Rebuild();
     } else if StrBeginsWith(name, "buy_") {
       if RLMeta.TryBuy(service, StringToName(StrAfterFirst(name, "_"))) {

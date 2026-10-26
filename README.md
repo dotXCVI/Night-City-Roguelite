@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.0.9)
+# Night City Roguelite (v0.0.10)
 
 > **Versions:** alpha builds are v0.0.X. v0.X.X starts once the foundation is
 > solid, v1.0.0 is the finished mod. (Builds before v0.0.8 were numbered
@@ -49,8 +49,8 @@ works: it just waits for the opening call to end before taking over.
    level 1 (clothes kept) and moves V into **V's apartment in Megabuilding
    H10**, then fades in with V standing inside. The front door is sealed.
 3. Use **V's computer** (prompt: "Roguelite Terminal") or press **F7** for the
-   terminal: pick a kit, switch roguelite/roguelike mode, buy unlocks, then
-   **START RUN**.
+   terminal: pick a kit (locked kits are bought by clicking them), buy
+   unlocks, then **START RUN**.
 4. The first fight is a light Training fight in a random arena. You arrive with full ammo and full health
    and grenade charges; the first wave comes after a 5-second countdown. The
    arena is ringed by a solid wall: invisible from a distance, it lights up as
@@ -74,16 +74,21 @@ works: it just waits for the opening call to end before taking over.
    waves, more elites, an extra wave and enemies a level above V, and pay out
    better quality. Before a boss floor there is a single boss door.
 7. When health hits zero the run ends: enemies vanish, a 5-second countdown runs,
-   and you're sent home with your Cred. Quitting or crashing mid-run counts as a
-   flatline too.
+   and you're sent home. Quitting or crashing mid-run counts as a flatline too.
+
+Cred is earned for every arena you clear (never for a lost one), plus a bonus
+for completing a run. Experience comes only from rewards: kills and skill use
+give none. Trips between home and arenas use the game's glitch transition.
 
 | Computer or F7 at home | F7 in an arena | F7 after clearing |
 | --- | --- | --- |
 | Terminal (kit, run start, rewards, next fight) | Run status, abandon | Go home now |
 
 Saving works only between runs. Normal story saves are never touched. For
-roguelite characters NCPD is switched off and the story quest is hidden from
-the HUD. The Phantom Liberty opening is skipped by the quest patch in the
+roguelite characters NCPD is switched off and there is no story at all: the
+base-game quests never start (no calls, texts or side jobs), and the journal
+is kept empty (`SilenceStory()` in `Config.reds`; applies to characters
+created afterwards). The Phantom Liberty opening is skipped by the quest patch in the
 archive. If the story ever starts a call or conversation anyway, teleports,
 the terminal and the reward screen wait until it's over (looking at something
 with a prompt doesn't count).

@@ -97,7 +97,11 @@ public class RogueliteService extends ScriptableService {
     if event.IsPreGame() || event.IsRestored() || !this.m_pendingStart {
       return;
     }
-    GameInstance.GetQuestsSystem(GetGameInstance()).SetFact(n"nc_roguelite_start", 1);
+    let quests = GameInstance.GetQuestsSystem(GetGameInstance());
+    quests.SetFact(n"nc_roguelite_start", 1);
+    if RLConfig.SilenceStory() {
+      quests.SetFact(n"nc_roguelite_quiet_world", 1);
+    }
     RLLog("Roguelite start flagged for the quest patch.");
   }
 
@@ -224,10 +228,12 @@ public class RogueliteService extends ScriptableService {
     return count;
   }
 
-  public func IsRoguelikeMode() -> Bool = this.m_roguelikeMode
+  // Roguelike mode (no unlock perks) is retired for now: every run is a
+  // roguelite run.
+  public func IsRoguelikeMode() -> Bool = false
 
   public func SetRoguelikeMode(value: Bool) {
-    this.m_roguelikeMode = value;
+    this.m_roguelikeMode = false;
   }
 
   public func GetSelectedKit() -> CName = this.m_selectedKit
@@ -263,8 +269,8 @@ public class RogueliteService extends ScriptableService {
     if this.m_activeRunToken == 0 {
       return 0;
     }
-    let payout = RLMeta.Payout(this.m_activeRunFloors, this.m_activeRunKills, this.m_activeRunBosses, false, this.m_activeRunRoguelike);
-    this.AddCred(payout);
+    // Cred is banked per cleared arena, so an abandoned run pays nothing more.
+    let payout = 0;
     this.RecordRunEnd(this.m_activeRunFloors, this.m_activeRunKills, false);
     this.ClearRunToken();
     return payout;

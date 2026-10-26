@@ -66,6 +66,7 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_takeoverElapsed: Float;
   private let m_readyElapsed: Float;
   private let m_openWaits: Int32;
+  private let m_journalGuard: ref<RLJournalGuard>;
   private let m_timerID: DelayID;
   private let m_hasTimer: Bool;
   private let m_countdown: Int32;
@@ -121,6 +122,26 @@ public class RogueliteSystem extends ScriptableSystem {
 
   // The game's difficulty is the mod's: the selector is skipped for roguelite
   // characters and this is applied on every session.
+  private func QuietJournal() {
+    if !RLConfig.SilenceStory() {
+      return;
+    }
+    if !IsDefined(this.m_journalGuard) {
+      this.m_journalGuard = new RLJournalGuard();
+    }
+    this.m_journalGuard.Start(this.GetGameInstance());
+  }
+
+  // The game's own glitch transition (the one scenes use when skipping
+  // ahead) over every trip between home and an arena.
+  private func Glitch(player: ref<PlayerPuppet>) {
+    if !IsDefined(player) {
+      return;
+    }
+    GameObjectEffectHelper.StartEffectEvent(player, n"transition_glitch_loop", false);
+    this.After(n"glitchOff", 1.6);
+  }
+
   private func ApplyDifficulty() {
     let stats = GameInstance.GetStatsDataSystem(this.GetGameInstance());
     if IsDefined(stats) && NotEquals(stats.GetDifficulty(), RLConfig.GameDifficulty()) {
@@ -157,6 +178,7 @@ public class RogueliteSystem extends ScriptableSystem {
         this.m_apartment.OnSessionStart();
         this.ApplyWorldSettings();
         this.ApplyDifficulty();
+        this.QuietJournal();
         this.BeginAwaitTakeover();
       }
       return;
@@ -174,6 +196,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_apartment.OnSessionStart();
     this.ApplyWorldSettings();
     this.ApplyDifficulty();
+    this.QuietJournal();
     let abandonedPayout = 0;
     let wasAbandoned = service.GetActiveRunToken() != 0;
     if wasAbandoned {
@@ -192,6 +215,9 @@ public class RogueliteSystem extends ScriptableSystem {
   // Called by RogueliteService on Session/BeforeEnd.
   public func OnSessionEnding() {
     this.CancelTimer();
+    if IsDefined(this.m_journalGuard) {
+      this.m_journalGuard.Stop(this.GetGameInstance());
+    }
     this.m_spawner.Abort();
     this.m_arenas.OnSessionEnd();
     this.m_apartment.OnSessionEnd();
@@ -344,6 +370,12 @@ public class RogueliteSystem extends ScriptableSystem {
         break;
       case n"openingReady":
         this.OpeningReadyTick();
+        break;
+      case n"glitchOff":
+        let glitched = GetPlayer(this.GetGameInstance());
+        if IsDefined(glitched) {
+          GameObjectEffectHelper.StopEffectEvent(glitched, n"transition_glitch_loop");
+        }
         break;
       case n"prepareGear":
         this.PrepareRunGear();
@@ -663,7 +695,7 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     RLBoons.ClearBuffs(player);
     this.ApplyDifficulty();
-    let roguelike = service.IsRoguelikeMode();
+    let roguelike = false;
     let token = service.BeginRunToken(roguelike);
     this.m_run = RLRunState.Create(token, kit, roguelike);
     this.m_run.rerollsPerFloor = RLMeta.PerkActive(service, n"perk.Reroll") ? 1 : 0;
@@ -736,6 +768,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_arenas.StopWalls();
     this.m_spawner.DeleteAll();
     this.m_run.Advance();
+    this.Glitch(player);
     this.ReturnToHub(player);
     // Home is safe: V patches up between arenas.
     RLCharacterReset.HealFull(player);
@@ -785,6 +818,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_wave = 0;
     this.m_waveCount = 0;
     this.m_alive = 0;
+    this.Glitch(player);
     this.m_arenas.Enter(player, arena);
     this.m_arenas.StartWalls();
     RLLoot.RefillForArena(player);
@@ -1001,14 +1035,14 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     let game = this.GetGameInstance();
-    let player = GetPlayer(game);
     this.m_run.floorsCleared += 1;
     RogueliteService.Get().UpdateActiveRun(this.m_run.floorsCleared, this.m_run.kills, this.m_run.bossesKilled);
 
-    // Every cleared floor is worth a level.
-    if IsDefined(player) {
-      PlayerDevelopmentSystem.GetData(player).RL_GrantLevels(1);
-    }
+    // Cred is earned per cleared arena (and only then).
+    let cred = RLMeta.ArenaCred(this.m_run.act, this.m_run.Threat(), this.m_run.IsBossFloor());
+    RogueliteService.Get().AddCred(cred);
+    this.m_run.credEarned += cred;
+    RLNotify(game, s"+\(cred) Cred.", 4.0);
 
     this.m_state = RLState.Cleared;
     if this.m_run.IsFinalFloor() {
@@ -1134,7 +1168,8 @@ public class RogueliteSystem extends ScriptableSystem {
     ArrayClear(this.m_doors);
 
     let service = RogueliteService.Get();
-    let payout = RLMeta.Payout(run.floorsCleared, run.kills, run.bossesKilled, victory, run.roguelike);
+    // Cred was banked arena by arena; a completed run adds a bonus.
+    let payout = victory ? RLMeta.VictoryCred() : 0;
     service.AddCred(payout);
     service.RecordRunEnd(run.floorsCleared, run.kills, victory);
     service.ClearRunToken();
@@ -1145,11 +1180,12 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_hud.Hide();
 
     this.m_lastSummary = (victory ? "RUN COMPLETE" : "RUN OVER")
-      + s" - floors cleared \(run.floorsCleared), kills \(run.kills). +\(payout) Cred (total \(service.GetCred())).";
+      + s" - floors cleared \(run.floorsCleared), kills \(run.kills). Cred earned \(run.credEarned + payout) (total \(service.GetCred())).";
     RLLog(this.m_lastSummary);
     this.m_run = null;
 
     if IsDefined(player) {
+      this.Glitch(player);
       this.ReturnToHub(player);
       RLCharacterReset.HealFull(player);
       RLCharacterReset.ResetProgressionAndUnequip(player, RLConfig.StartingAttributePoints(), RLConfig.StartingPerkPoints());

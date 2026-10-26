@@ -41,3 +41,11 @@ Needs the WolvenKit CLI 10 nightly (2.5 support) and Python 3.
 
 `handles.py` loads WolvenKit's JSON with its shared handles as real object
 references, so cloned nodes and new connections serialize back correctly.
+
+## Quiet world (build_world.py)
+
+`ep1\quest\cyberpunk2077_ep1_standalone.quest` starts the whole base-game quest
+graph. The archive's copy waits one second, then starts it only when the fact
+`nc_roguelite_quiet_world` is not set; the scripts set it at Session/Start for
+new roguelite characters. Rebuild with `python3 build_world.py`, deserialize,
+and pack it at `ep1/quest/cyberpunk2077_ep1_standalone.quest`.

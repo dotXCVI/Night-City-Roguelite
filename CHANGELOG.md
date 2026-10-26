@@ -3,6 +3,15 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.10 - Quiet world, XP only from rewards (2026-10-26)
+
+- Quiet world, first attempt: a base-game quest gate plus a journal guard. It caused a freeze and was replaced in v0.0.11.
+- XP only comes from rewards; arenas no longer grant a level.
+- Cred only for completed arenas (6 + 4 x act + 3 x threat, +30 on a boss floor); +150 for a won run.
+- Roguelike mode removed.
+- Terminal: kits are bought from their cards, and the unlock grid no longer overlaps the footer.
+- Transitions: the game's glitch effect between home and arenas.
+
 ## v0.0.9 - Freeze and missing-enemy fixes (2026-10-26)
 
 - Fixed the freeze on returning home. Menus now wait until V has been placed, run without slow motion, and load icons in the background.

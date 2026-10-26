@@ -49,12 +49,27 @@ public final func RL_ResetProgression(attributePoints: Int32, perkPoints: Int32)
   this.UpdateUIBB();
 }
 
+// Roguelite characters only gain experience from the mod's rewards: kills,
+// skill use and anything else the game hands out are ignored while the
+// character is the mod's (RL_GrantLevels lifts the block for its own grants).
+@addField(PlayerDevelopmentData)
+public let rl_allowExperience: Bool;
+
+@wrapMethod(PlayerDevelopmentData)
+public const final func AddExperience(amount: Int32, type: gamedataProficiencyType, telemetryGainReason: telemetryLevelGainReason, opt isDebug: Bool) {
+  if !this.rl_allowExperience && RLCharacterReset.BlocksExperience(this.m_owner) {
+    return;
+  }
+  wrappedMethod(amount, type, telemetryGainReason, isDebug);
+}
+
 @addMethod(PlayerDevelopmentData)
 public final func RL_GrantLevels(levels: Int32) {
+  this.rl_allowExperience = true;
   let i = 0;
   while i < levels {
     if this.IsProficiencyMaxLvl(gamedataProficiencyType.Level) {
-      return;
+      break;
     }
     this.AddExperience(
       this.GetRemainingExpForLevelUp(gamedataProficiencyType.Level),
@@ -63,11 +78,21 @@ public final func RL_GrantLevels(levels: Int32) {
     );
     i += 1;
   }
+  this.rl_allowExperience = false;
 }
 
 // --- Inventory reset ------------------------------------------------------------
 
 public abstract class RLCharacterReset {
+  public static func BlocksExperience(owner: wref<GameObject>) -> Bool {
+    let player = owner as PlayerPuppet;
+    if !IsDefined(player) {
+      return false;
+    }
+    let system = RogueliteSystem.Get(player.GetGame());
+    return IsDefined(system) && system.IsHomeTerminalActive();
+  }
+
   // Phase 1. Returns immediately; call RemoveGear() ~0.5 s later.
   public static func ResetProgressionAndUnequip(player: ref<PlayerPuppet>, attributePoints: Int32, perkPoints: Int32) {
     if !IsDefined(player) {

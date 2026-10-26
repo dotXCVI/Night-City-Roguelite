@@ -1,9 +1,8 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - meta progression
 // -----------------------------------------------------------------------------
-// Cred is earned at the end of every run (flatline or victory) and spent at the
-// hub terminal. In roguelike mode unlock perks are ignored for the run, but
-// Cred is still earned (at a 50% bonus) and kits remain usable.
+// Cred is earned for every cleared arena (never for a lost one), plus a bonus
+// for a completed run, and spent at the hub terminal.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -88,16 +87,16 @@ public abstract class RLMeta {
     return bonus;
   }
 
-  public static func Payout(floorsCleared: Int32, kills: Int32, bossesKilled: Int32, victory: Bool, roguelike: Bool) -> Int32 {
-    let cred = floorsCleared * 10 + kills + bossesKilled * 25;
-    if victory {
-      cred += 150;
-    }
-    if roguelike {
-      cred = cred * 3 / 2;
+  // Cred for a cleared arena: more for later acts, harder fights and bosses.
+  public static func ArenaCred(act: Int32, threat: Int32, boss: Bool) -> Int32 {
+    let cred = 6 + act * 4 + threat * 3;
+    if boss {
+      cred += 30;
     }
     return cred;
   }
+
+  public static func VictoryCred() -> Int32 = 150
 
   // --- Kits -------------------------------------------------------------------------
 

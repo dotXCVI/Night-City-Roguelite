@@ -98,3 +98,105 @@ public final func RL_EndActiveCall() -> Bool {
   );
   return true;
 }
+
+// --- Quiet world ---------------------------------------------------------------------------
+// Roguelite characters get no story at all:
+//   - the quest patch doesn't start the base-game quest graph for them (fact
+//     nc_roguelite_quiet_world, set at Session/Start): no calls, texts,
+//     side jobs or objectives from the base game;
+//   - every active quest and message in the journal is set inactive on load,
+//     and anything that becomes active later is set inactive straight away,
+//     so nothing shows on the HUD, the map or the journal.
+
+public class RLJournalGuard extends IScriptable {
+  private let m_registered: Bool;
+  private let m_cleared: Int32;
+
+  public func Start(game: GameInstance) {
+    let journal = GameInstance.GetJournalManager(game);
+    if !IsDefined(journal) {
+      return;
+    }
+    if !this.m_registered {
+      journal.RegisterScriptCallback(this, n"OnJournalStateChanged", gameJournalListenerType.State);
+      this.m_registered = true;
+    }
+    let count = RLJournalGuard.ClearAll(journal);
+    if count > 0 {
+      RLLog(s"Journal: set \(count) quest/message entr(ies) inactive.");
+    }
+  }
+
+  public func Stop(game: GameInstance) {
+    if this.m_registered {
+      let journal = GameInstance.GetJournalManager(game);
+      if IsDefined(journal) {
+        journal.UnregisterScriptCallback(this, n"OnJournalStateChanged");
+      }
+      this.m_registered = false;
+    }
+  }
+
+  public static func IsQuiet(className: CName) -> Bool {
+    switch className {
+      case n"gameJournalQuest":
+      case n"gameJournalQuestPhase":
+      case n"gameJournalQuestObjective":
+      case n"gameJournalQuestSubObjective":
+      case n"gameJournalQuestMapPin":
+      case n"gameJournalPhoneMessage":
+      case n"gameJournalPhoneConversation":
+      case n"gameJournalPhoneChoiceEntry":
+        return true;
+    }
+    return false;
+  }
+
+  protected cb func OnJournalStateChanged(entryHash: Uint32, className: CName, notifyOption: JournalNotifyOption, changeType: JournalChangeType) -> Bool {
+    if !RLJournalGuard.IsQuiet(className) {
+      return false;
+    }
+    let journal = GameInstance.GetJournalManager(GetGameInstance());
+    let entry = journal.GetEntry(entryHash);
+    if IsDefined(entry) && Equals(journal.GetEntryState(entry), gameJournalEntryState.Active) {
+      journal.ChangeEntryStateByHash(entryHash, gameJournalEntryState.Inactive, JournalNotifyOption.DoNotNotify);
+      this.m_cleared += 1;
+    }
+    return false;
+  }
+
+  // Every active quest (with its phases and objectives) to inactive.
+  public static func ClearAll(journal: ref<JournalManager>) -> Int32 {
+    let context: JournalRequestContext;
+    context.stateFilter.active = true;
+    let quests: array<wref<JournalEntry>>;
+    journal.GetQuests(context, quests);
+    let count = 0;
+    for quest in quests {
+      count += RLJournalGuard.ClearEntry(journal, quest, 0);
+    }
+    journal.UntrackEntry();
+    return count;
+  }
+
+  private static func ClearEntry(journal: ref<JournalManager>, entry: wref<JournalEntry>, depth: Int32) -> Int32 {
+    if !IsDefined(entry) {
+      return 0;
+    }
+    let count = 0;
+    if depth < 3 {
+      let filter: JournalRequestStateFilter;
+      filter.active = true;
+      let children: array<wref<JournalEntry>>;
+      journal.GetChildren(entry, filter, children);
+      for child in children {
+        count += RLJournalGuard.ClearEntry(journal, child, depth + 1);
+      }
+    }
+    if Equals(journal.GetEntryState(entry), gameJournalEntryState.Active) {
+      journal.ChangeEntryStateByHash(Cast<Uint32>(journal.GetEntryHash(entry)), gameJournalEntryState.Inactive, JournalNotifyOption.DoNotNotify);
+      count += 1;
+    }
+    return count;
+  }
+}

@@ -11,6 +11,7 @@ public class RLRunState {
   public let token: Int32;
   public let kit: CName;
   public let roguelike: Bool;
+  public let credEarned: Int32;
   public let act: Int32;
   public let floor: Int32;
   public let floorsCleared: Int32;

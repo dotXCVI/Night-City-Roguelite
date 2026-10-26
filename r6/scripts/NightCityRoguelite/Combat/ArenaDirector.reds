@@ -6,7 +6,8 @@
 //     up as red NCPD holo-tape when V gets close;
 //   - a position check ten times a second is the safety net: if V still ends
 //     up past the wall (or far below the arena), V is put back at the last
-//     position that was inside.
+//     position that was inside;
+//   - ArenaCleaner.reds keeps everyone else out of the arena.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -15,6 +16,7 @@ public class RLArenaDirector extends IScriptable {
   private let m_system: wref<RogueliteSystem>;
   private let m_arena: ref<RLArenaDef>;
   private let m_walls: ref<RLArenaWalls>;
+  private let m_cleaner: ref<RLArenaCleaner>;
   private let m_wallsActive: Bool;
   private let m_tickID: DelayID;
   private let m_lastInside: Vector4;
@@ -26,10 +28,13 @@ public class RLArenaDirector extends IScriptable {
     let director = new RLArenaDirector();
     director.m_system = system;
     director.m_walls = RLArenaWalls.Create();
+    director.m_cleaner = new RLArenaCleaner();
     return director;
   }
 
   public func GetArena() -> ref<RLArenaDef> = this.m_arena
+
+  public func GetCleaner() -> ref<RLArenaCleaner> = this.m_cleaner
 
   public func GetCenter() -> Vector4 {
     return IsDefined(this.m_arena) ? this.m_arena.position : Vector4(0.0, 0.0, 0.0, 1.0);
@@ -37,6 +42,7 @@ public class RLArenaDirector extends IScriptable {
 
   public func OnSessionEnd() {
     this.StopWalls();
+    this.m_cleaner.Stop();
     this.m_walls.OnSessionEnd();
   }
 
@@ -45,6 +51,7 @@ public class RLArenaDirector extends IScriptable {
   public func Enter(player: ref<PlayerPuppet>, arena: ref<RLArenaDef>) {
     this.m_arena = arena;
     this.m_hasLastInside = false;
+    this.m_cleaner.Start(arena);
     RLArenaDirector.TeleportToPoint(player, arena.position, arena.yaw);
     RLLog(s"Arena start: \(arena.name) at (\(arena.position.X), \(arena.position.Y), \(arena.position.Z)).");
   }
@@ -76,6 +83,7 @@ public class RLArenaDirector extends IScriptable {
       RLCancel(GetGameInstance(), this.m_tickID);
     }
     this.m_walls.Clear();
+    this.m_cleaner.Stop();
   }
 
   private func ScheduleTick() {
@@ -90,6 +98,7 @@ public class RLArenaDirector extends IScriptable {
     if IsDefined(player) && IsDefined(this.m_arena) {
       this.m_walls.Update(player);
       this.CheckBounds(player);
+      this.m_cleaner.Tick(0.1);
     }
     this.ScheduleTick();
   }

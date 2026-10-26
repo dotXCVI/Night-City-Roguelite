@@ -28,6 +28,16 @@ public class RLRewardPopup extends InGamePopup {
 
   public func UseCursor() -> Bool = true
 
+  // No slow motion behind the menu: nothing is going on at home, and a menu
+  // that fails to show can never leave the game crawling.
+  protected func SetTimeDilation() {}
+
+  protected func ResetTimeDilation() {}
+
+  protected cb func OnShown() {
+    RLLog("Menu shown.");
+  }
+
   protected cb func OnCreate() {
     super.OnCreate();
     this.m_container.SetSize(Vector2(2200.0, 1200.0));
@@ -44,7 +54,9 @@ public class RLRewardPopup extends InGamePopup {
     this.m_content = InGamePopupContent.Create();
     this.m_content.Reparent(this);
 
+    RLLog(s"Reward menu: building \(ArraySize(this.m_offers)) card(s).");
     this.Build();
+    RLLog("Reward menu: built.");
   }
 
   private func Build() {

@@ -82,6 +82,8 @@ public class RLApartmentHub extends IScriptable {
     if !this.IsInside(player) {
       this.TeleportHome(player);
       RLLog("Sent V home.");
+    } else if !this.m_entering {
+      this.m_settled = true;
     }
   }
 

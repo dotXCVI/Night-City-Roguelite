@@ -32,6 +32,8 @@ public class RLTrackedEnemy {
   public let bestDistance: Float;
   public let idleTime: Float;
   public let outsideTime: Float;
+  public let offFloorTime: Float;
+  public let farTime: Float;
   public let done: Bool;
   public let dead: Bool;
   public let corpsePasses: Int32;
@@ -422,6 +424,34 @@ public class RLWaveSpawner extends IScriptable {
       enemy.outsideTime = 0.0;
     }
 
+    // Lost enemies are brought back to V's level, near V:
+    //   - below the arena floor (fell through, spawned underground): at once;
+    //   - on another level (roof, basement, inside a building) for 8 s;
+    //   - with 2 or fewer left, one that hasn't come close in 20 s.
+    let playerPosition = player.GetWorldPosition();
+    if position.Z < this.m_center.Z - RLConfig.ArenaFloorDrop() {
+      this.Recall(enemy, puppet, player, "below the arena");
+      return false;
+    }
+    if AbsF(position.Z - playerPosition.Z) > 8.0 && distance > 12.0 {
+      enemy.offFloorTime += 1.0;
+      if enemy.offFloorTime >= 8.0 {
+        this.Recall(enemy, puppet, player, "on another level");
+        return false;
+      }
+    } else {
+      enemy.offFloorTime = 0.0;
+    }
+    if distance > RLConfig.ChaseDistance() && this.GetAliveCount() <= 2 {
+      enemy.farTime += 1.0;
+      if enemy.farTime >= 20.0 {
+        this.Recall(enemy, puppet, player, "straggling");
+        return false;
+      }
+    } else {
+      enemy.farTime = 0.0;
+    }
+
     // Keep the pressure on: an enemy that stays back without closing in runs at V.
     if distance > RLConfig.ChaseDistance() {
       if distance < enemy.bestDistance - 1.5 {
@@ -452,6 +482,21 @@ public class RLWaveSpawner extends IScriptable {
       enemy.strayTime = 0.0;
     }
     return false;
+  }
+
+  private func Recall(enemy: ref<RLTrackedEnemy>, puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>, const reason: String) {
+    enemy.offFloorTime = 0.0;
+    enemy.farTime = 0.0;
+    enemy.idleTime = 0.0;
+    let from = puppet.GetWorldPosition();
+    let point: Vector4;
+    if !this.FindSpawnPoint(player, point) {
+      return;
+    }
+    GameInstance.GetTeleportationFacility(puppet.GetGame()).Teleport(puppet, point, Vector4.ToRotation(player.GetWorldPosition() - point));
+    enemy.bestDistance = Vector4.Distance(point, player.GetWorldPosition());
+    RLLog(s"Brought an enemy back (\(reason)): (\(from.X), \(from.Y), \(from.Z)) -> (\(point.X), \(point.Y), \(point.Z)).");
+    RLWaveSpawner.ChargeAt(puppet, player);
   }
 
   // First-sighting setup: no god modes, level matched to V, full health, hostile.

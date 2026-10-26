@@ -296,8 +296,10 @@ public class RLCard extends CustomButton {
     }
     this.m_icon.UnbindProperty(n"tintColor");
     this.m_icon.SetTintColor(HDRColor(1.0, 1.0, 1.0, 1.0));
-    this.m_icon.SetAtlasResource(record.AtlasResourcePath());
-    this.m_icon.SetTexturePart(record.AtlasPartName());
+    // Loaded in the background like the game's own item icons.
+    let reference = new UIIconReference();
+    reference.iconID = iconID;
+    this.m_icon.RequestSetImage(reference);
     this.m_iconBox.SetSize(Vector2(width, height));
     this.m_iconBox.SetVisible(true);
     return true;

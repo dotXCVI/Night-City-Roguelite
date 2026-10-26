@@ -5,8 +5,8 @@
 //   1. marks a pending roguelite start in the meta service,
 //   2. runs the normal new-game flow,
 //   3. auto-selects the Phantom Liberty standalone start on the expansion screen
-//      (no story prologue), then continues to difficulty, lifepath and the
-//      character creator as usual.
+//      (no story prologue), skips the difficulty screen (the mod sets its own)
+//      and continues to lifepath and the character creator as usual.
 // Once the new game is ready, RogueliteSystem takes over.
 // -----------------------------------------------------------------------------
 
@@ -53,4 +53,15 @@ protected cb func OnIntroComplete(anim: ref<inkAnimProxy>) -> Bool {
     this.NextMenu();
   }
   return result;
+}
+
+// Roguelite characters use the mod's difficulty (RLConfig.GameDifficulty,
+// applied once the game starts), so the difficulty screen is skipped.
+@wrapMethod(MenuScenario_ExpansionNewGame)
+protected cb func OnAccept() -> Bool {
+  if RogueliteService.Get().HasPendingStart() {
+    this.SwitchToScenario(n"MenuScenario_LifePathSelection");
+    return true;
+  }
+  return wrappedMethod();
 }

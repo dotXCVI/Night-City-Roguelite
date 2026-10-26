@@ -39,6 +39,9 @@ public abstract class RLConfig {
   public static func ApartmentLoadTimeout() -> Float = 20.0
   // Seconds outside before V is put back inside.
   public static func ApartmentLeashSeconds() -> Float = 2.0
+  // The game difficulty for roguelite characters (the difficulty screen is
+  // skipped for them and this is applied every session).
+  public static func GameDifficulty() -> gameDifficulty = gameDifficulty.Hard
   // Turn NCPD off for roguelite characters (gunfire in arenas won't draw police).
   public static func DisablePolice() -> Bool = true
 

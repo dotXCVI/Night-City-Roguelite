@@ -65,6 +65,7 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_popup: wref<CustomPopup>;
   private let m_takeoverElapsed: Float;
   private let m_readyElapsed: Float;
+  private let m_openWaits: Int32;
   private let m_timerID: DelayID;
   private let m_hasTimer: Bool;
   private let m_countdown: Int32;
@@ -104,6 +105,30 @@ public class RogueliteSystem extends ScriptableSystem {
     }
   }
 
+  // V is in (or on the way to, or just finished) an arena fight.
+  public func IsInArenaFight() -> Bool {
+    switch this.m_state {
+      case RLState.Deploying:
+      case RLState.InEncounter:
+      case RLState.Cleared:
+      case RLState.Flatlined:
+        return true;
+    }
+    return false;
+  }
+
+  public func GetArenaCleaner() -> ref<RLArenaCleaner> = this.m_arenas.GetCleaner()
+
+  // The game's difficulty is the mod's: the selector is skipped for roguelite
+  // characters and this is applied on every session.
+  private func ApplyDifficulty() {
+    let stats = GameInstance.GetStatsDataSystem(this.GetGameInstance());
+    if IsDefined(stats) && NotEquals(stats.GetDifficulty(), RLConfig.GameDifficulty()) {
+      stats.SetDifficulty(RLConfig.GameDifficulty());
+      RLLog("Difficulty set to the mod's (" + ToString(RLConfig.GameDifficulty()) + ").");
+    }
+  }
+
   // Saving is only allowed while no run is active.
   public func IsSavingLocked() -> Bool {
     switch this.m_state {
@@ -131,6 +156,7 @@ public class RogueliteSystem extends ScriptableSystem {
         this.m_takeoverDone = false;
         this.m_apartment.OnSessionStart();
         this.ApplyWorldSettings();
+        this.ApplyDifficulty();
         this.BeginAwaitTakeover();
       }
       return;
@@ -147,6 +173,7 @@ public class RogueliteSystem extends ScriptableSystem {
     RLBoons.ClearBuffs(GetPlayer(this.GetGameInstance()));
     this.m_apartment.OnSessionStart();
     this.ApplyWorldSettings();
+    this.ApplyDifficulty();
     let abandonedPayout = 0;
     let wasAbandoned = service.GetActiveRunToken() != 0;
     if wasAbandoned {
@@ -347,7 +374,15 @@ public class RogueliteSystem extends ScriptableSystem {
         break;
       case n"openTerminal":
         if !this.m_popupOpen && (Equals(this.m_state, RLState.RunHome) || Equals(this.m_state, RLState.Hub)) {
-          this.OnTerminalKey();
+          // Never open a menu during or right after the trip home (loading
+          // screen, streaming): wait until V has been placed and checked.
+          if this.m_apartment.IsEnabled() && !this.m_apartment.IsSettled() && this.m_openWaits < 30 {
+            this.m_openWaits += 1;
+            this.After(n"openTerminal", 1.0);
+          } else {
+            this.m_openWaits = 0;
+            this.OnTerminalKey();
+          }
         }
         break;
       case n"reopenReward":
@@ -627,6 +662,7 @@ public class RogueliteSystem extends ScriptableSystem {
       kit = n"Solo";
     }
     RLBoons.ClearBuffs(player);
+    this.ApplyDifficulty();
     let roguelike = service.IsRoguelikeMode();
     let token = service.BeginRunToken(roguelike);
     this.m_run = RLRunState.Create(token, kit, roguelike);
@@ -714,8 +750,10 @@ public class RogueliteSystem extends ScriptableSystem {
     if !Equals(this.m_state, RLState.RunHome) || !IsDefined(this.m_run) {
       return;
     }
-    if RogueliteSystem.IsStoryBusy(GetPlayer(this.GetGameInstance())) {
-      RLNotify(this.GetGameInstance(), "Finish the conversation first.", 3.0);
+    let busy = RogueliteSystem.BusyReason(GetPlayer(this.GetGameInstance()));
+    if StrLen(busy) > 0 {
+      RLLog("Deploy refused: busy (" + busy + ").");
+      RLNotify(this.GetGameInstance(), "Not now - " + busy + " in progress.", 3.0);
       return;
     }
     if ArraySize(this.m_offers) > 0 {

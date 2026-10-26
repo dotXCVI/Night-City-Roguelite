@@ -3,6 +3,14 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.9 - Freeze and missing-enemy fixes (2026-10-26)
+
+- Fixed the freeze on returning home. Menus now wait until V has been placed, run without slow motion, and load icons in the background.
+- Missing last enemy: enemies below the floor are brought back at once, on another level after 8 s, and stragglers after 20 s.
+- Arenas are cleared of bystanders for the fight only. Normal saves are untouched.
+- The first fight is always a light Training fight.
+- The difficulty screen is skipped; the mod sets Hard.
+
 ## v0.0.8 - New version numbering, opening fixes (2026-10-26)
 
 - Version scheme: alpha builds are now v0.0.X.

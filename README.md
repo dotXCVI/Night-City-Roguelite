@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.0.8)
+# Night City Roguelite (v0.0.9)
 
 > **Versions:** alpha builds are v0.0.X. v0.X.X starts once the foundation is
 > solid, v1.0.0 is the finished mod. (Builds before v0.0.8 were numbered
@@ -42,15 +42,16 @@ works: it just waits for the opening call to end before taking over.
 
 ## How to play
 
-1. Main menu -> **ROGUELITE** (top of the list). The expansion choice is skipped
-   automatically; make your V as usual.
+1. Main menu -> **ROGUELITE** (top of the list). The expansion choice and the
+   difficulty screen are skipped (the mod uses its own difficulty, Hard for
+   now); make your V as usual.
 2. There's no opening scene: the screen stays black while the mod resets V to
    level 1 (clothes kept) and moves V into **V's apartment in Megabuilding
    H10**, then fades in with V standing inside. The front door is sealed.
 3. Use **V's computer** (prompt: "Roguelite Terminal") or press **F7** for the
    terminal: pick a kit, switch roguelite/roguelike mode, buy unlocks, then
    **START RUN**.
-4. The first fight is a random arena. You arrive with full ammo and full health
+4. The first fight is a light Training fight in a random arena. You arrive with full ammo and full health
    and grenade charges; the first wave comes after a 5-second countdown. The
    arena is ringed by a solid wall: invisible from a distance, it lights up as
    red NCPD holo-tape ("POLICE LINE - DO NOT CROSS") as you walk up to it, more
@@ -119,6 +120,12 @@ type, threat and arena.
 
 ### Arenas
 
+Arenas are cleared for the fight: no pedestrians or traffic, and anyone else
+standing around (vendors, workers) is moved away; shops inside an arena don't
+holster your weapon. This only happens around your fights - the world itself
+isn't edited. An enemy that ends up under the floor, on a roof or hanging back
+at the end of a wave is brought back near you.
+
 Petrochem Off-Limits, Industrial Park, Grand Imperial Mall, Oil Fields, Old
 Drive-In, Junkyard, Wind Farm and The Crater. Each has a gang that fits the
 location. Edit `Combat/Arenas.reds` to change radii, start points or disable one.
@@ -169,6 +176,7 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Combat/Arenas.reds` | The arena list |
 | `Combat/ArenaDirector.reds` | Arena teleport, wall tick, safety-net position check |
 | `Combat/ArenaWalls.reds` | Collision walls with proximity holo-tape visuals |
+| `Combat/ArenaCleaner.reds` | No bystanders in arenas, no safe zones mid-fight |
 | `Combat/WaveSpawner.reds` | Wave spawning, level matching, chasing, kill tracking |
 | `Combat/Loot.reds` | Ammo refill, body loot, arena pickup filter |
 | `Rewards/RewardSystem.reds` | Reward doors, threat, offer rolling and granting |

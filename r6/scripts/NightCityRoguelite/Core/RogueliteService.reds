@@ -36,6 +36,9 @@ public class RogueliteService extends ScriptableService {
   // The mod's own log, kept in Codeware's persistent store so it can be read
   // after a session (red4ext/plugins/Codeware/Persistent). Newest last.
   private persistent let m_log: array<CName>;
+  // Numbered lines: the save format stores identical names once, so repeated
+  // lines would otherwise collapse into one.
+  private persistent let m_logSeq: Int32;
 
   // Content pools, built once per game process.
   private let m_pools: ref<RLTweakPools>;
@@ -51,7 +54,8 @@ public class RogueliteService extends ScriptableService {
       ArrayErase(this.m_log, 0);
     }
     // CName because Codeware can't persist strings; it stores the text as-is.
-    ArrayPush(this.m_log, StringToName(line));
+    this.m_logSeq += 1;
+    ArrayPush(this.m_log, StringToName(s"[\(this.m_logSeq)] " + line));
   }
 
   public static func Get() -> ref<RogueliteService> {
@@ -72,6 +76,9 @@ public class RogueliteService extends ScriptableService {
     callbacks.RegisterCallback(n"Session/Start", this, n"OnSessionStart");
     callbacks.RegisterCallback(n"Session/Ready", this, n"OnSessionReady");
     callbacks.RegisterCallback(n"Session/BeforeEnd", this, n"OnSessionBeforeEnd");
+    // Bystanders streaming into an arena are moved out (Combat/ArenaCleaner.reds).
+    callbacks.RegisterCallback(n"Entity/AfterAttach", this, n"OnNPCAttached")
+      .AddTarget(EntityTarget.Type(n"NPCPuppet"));
     // 2.5's native InputTarget.Key has no press/release filter; OnKeyInput
     // filters for release itself so each key press fires once.
     callbacks.RegisterCallback(n"Input/Key", this, n"OnKeyInput")
@@ -92,6 +99,17 @@ public class RogueliteService extends ScriptableService {
     }
     GameInstance.GetQuestsSystem(GetGameInstance()).SetFact(n"nc_roguelite_start", 1);
     RLLog("Roguelite start flagged for the quest patch.");
+  }
+
+  private cb func OnNPCAttached(event: ref<EntityLifecycleEvent>) {
+    let npc = event.GetEntity() as NPCPuppet;
+    if !IsDefined(npc) {
+      return;
+    }
+    let system = RogueliteSystem.Get(npc.GetGame());
+    if IsDefined(system) && system.IsInArenaFight() {
+      system.GetArenaCleaner().OnNPCAttached(npc);
+    }
   }
 
   private cb func OnSessionReady(event: ref<GameSessionEvent>) {

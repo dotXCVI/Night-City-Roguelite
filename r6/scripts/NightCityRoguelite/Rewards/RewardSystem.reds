@@ -145,7 +145,16 @@ public abstract class RLRewards {
       ArrayPush(doors, boss);
       return doors;
     }
-    let count = run.floor == 1 && run.act == 1 && run.floorsCleared == 0 ? 1 : 3;
+    if run.floorsCleared == 0 {
+      // The first fight of a run is always a light Training fight.
+      let first = new RLDoor();
+      first.category = RLRewardCategory.Training;
+      first.threat = 1;
+      first.arena = RLRewards.PickArena(usedArenas);
+      ArrayPush(doors, first);
+      return doors;
+    }
+    let count = 3;
     let used: array<RLRewardCategory>;
     let guard = 0;
     while ArraySize(doors) < count && guard < 40 {

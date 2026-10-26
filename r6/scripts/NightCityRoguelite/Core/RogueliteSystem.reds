@@ -64,6 +64,7 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_popupOpen: Bool;
   private let m_popup: wref<CustomPopup>;
   private let m_takeoverElapsed: Float;
+  private let m_readyElapsed: Float;
   private let m_timerID: DelayID;
   private let m_hasTimer: Bool;
   private let m_countdown: Int32;
@@ -202,8 +203,37 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(player) {
       return false;
     }
+    return StrLen(RogueliteSystem.BusyReason(player)) > 0;
+  }
+
+  // Why V counts as busy ("" when not): a phone call, a conversation, a
+  // cinematic scene tier, a workspot or a vehicle. While the quest patch holds
+  // the opening black the mod itself is setting V up, so nothing is busy.
+  public static func BusyReason(player: ref<PlayerPuppet>) -> String {
+    if !IsDefined(player) {
+      return "";
+    }
     let game = player.GetGame();
-    return RLStory.IsCallActive(game) || RLStory.IsDialogueOpen(game) || !RogueliteSystem.IsPlayerFree(player);
+    if RLStory.IsOpeningSkipInProgress(game) {
+      return "";
+    }
+    if RLStory.IsCallActive(game) {
+      return "phone call";
+    }
+    if RLStory.IsInDialogue(player) {
+      return "conversation";
+    }
+    if RogueliteSystem.IsInVehicle(player) {
+      return "vehicle";
+    }
+    let tier = PlayerPuppet.GetSceneTier(player);
+    if tier > EnumInt(gamePSMHighLevel.SceneTier2) {
+      return s"scene (tier \(tier))";
+    }
+    if AIActionHelper.IsInWorkspot(player) {
+      return "workspot";
+    }
+    return "";
   }
 
   // For timed actions that move V: returns true (and retries `action` in a
@@ -219,7 +249,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_busyWaits += 1;
     if !this.m_busyNotified {
       this.m_busyNotified = true;
-      RLNotify(this.GetGameInstance(), "Waiting for the conversation to end...", 4.0);
+      RLNotify(this.GetGameInstance(), "Waiting for " + RogueliteSystem.BusyReason(player) + " to end...", 4.0);
     }
     this.After(action, 1.0);
     return true;
@@ -284,6 +314,9 @@ public class RogueliteSystem extends ScriptableSystem {
         break;
       case n"takeoverFinish":
         this.FinishTakeover();
+        break;
+      case n"openingReady":
+        this.OpeningReadyTick();
         break;
       case n"prepareGear":
         this.PrepareRunGear();
@@ -445,10 +478,38 @@ public class RogueliteSystem extends ScriptableSystem {
     if RLHomeDevices.ShouldSealDoor(this.GetGameInstance()) {
       RLHomeDevices.SealFrontDoor(this.GetGameInstance());
     }
+    if firstTime && RLStory.IsOpeningSkipInProgress(this.GetGameInstance()) {
+      // The screen is still black: fade in once V is settled in the apartment.
+      this.m_readyElapsed = 0.0;
+      this.After(n"openingReady", 0.5);
+      return;
+    }
+    this.WelcomeHome(firstTime);
+  }
+
+  private func WelcomeHome(firstTime: Bool) {
     let message = firstTime
       ? "Welcome home. Use your computer (or press F7) for the terminal. You can save here."
       : "Home. Use your computer (or press F7) for the terminal.";
     RLNotify(this.GetGameInstance(), message, 8.0);
+  }
+
+  // New character, opening skipped: lift the black screen once V is standing
+  // in the apartment (or after 30 s whatever happens; the quest patch itself
+  // gives up after 45 s).
+  private func OpeningReadyTick() {
+    let game = this.GetGameInstance();
+    if !RLStory.IsOpeningSkipInProgress(game) {
+      return;
+    }
+    this.m_readyElapsed += 0.5;
+    if this.m_apartment.IsSettled() || !this.m_apartment.IsEnabled() || this.m_readyElapsed >= 30.0 {
+      RLLog(s"Opening finished after \(this.m_readyElapsed)s (apartment settled: \(this.m_apartment.IsSettled())).");
+      RLStory.FinishOpeningSkip(game);
+      this.WelcomeHome(true);
+      return;
+    }
+    this.After(n"openingReady", 0.5);
   }
 
   // Puts V back at the hub (apartment, or the fallback spot).
@@ -502,8 +563,10 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     let player = GetPlayer(this.GetGameInstance());
-    if RogueliteSystem.IsStoryBusy(player) && !Equals(this.m_state, RLState.Cleared) {
-      RLNotify(this.GetGameInstance(), "Finish the conversation first.", 3.0);
+    let busy = RogueliteSystem.BusyReason(player);
+    if StrLen(busy) > 0 && !Equals(this.m_state, RLState.Cleared) {
+      RLLog("Terminal refused: busy (" + busy + ").");
+      RLNotify(this.GetGameInstance(), "Not now - " + busy + " in progress.", 3.0);
       return;
     }
     switch this.m_state {

@@ -1,4 +1,8 @@
-# Night City Roguelite (v0.7.0)
+# Night City Roguelite (v0.0.8)
+
+> **Versions:** alpha builds are v0.0.X. v0.X.X starts once the foundation is
+> solid, v1.0.0 is the finished mod. (Builds before v0.0.8 were numbered
+> v0.1-v0.7; they are the same series.)
 
 A run-based arena mode for Cyberpunk 2077 2.5, built only from the game's own
 assets and systems. Start a new roguelite character from the main menu, fight
@@ -30,7 +34,8 @@ Copy the `r6` and `archive` folders into the game folder, so you have
 With Vortex or MO2, install the zip as a normal mod.
 
 The archive skips the Phantom Liberty opening (book scene and Songbird's call)
-for roguelite characters only; normal new games play it as usual. It replaces
+for roguelite characters only; normal new games play it as usual. It keeps the
+screen black until the mod has V in the apartment (at most 45 seconds). It replaces
 one quest file, so a future game patch that changes that file needs a rebuilt
 archive (`source/quest-patch/README.md`). Without the archive the mod still
 works: it just waits for the opening call to end before taking over.
@@ -39,10 +44,9 @@ works: it just waits for the opening call to end before taking over.
 
 1. Main menu -> **ROGUELITE** (top of the list). The expansion choice is skipped
    automatically; make your V as usual.
-2. There's no opening scene: as soon as the game fades in the mod takes over.
-   V is reset to level 1 (clothes kept) and locked in **V's apartment in
-   Megabuilding H10** (V lands in the hallway first and steps inside once the
-   apartment has streamed in). The front door is sealed.
+2. There's no opening scene: the screen stays black while the mod resets V to
+   level 1 (clothes kept) and moves V into **V's apartment in Megabuilding
+   H10**, then fades in with V standing inside. The front door is sealed.
 3. Use **V's computer** (prompt: "Roguelite Terminal") or press **F7** for the
    terminal: pick a kit, switch roguelite/roguelike mode, buy unlocks, then
    **START RUN**.
@@ -80,7 +84,8 @@ Saving works only between runs. Normal story saves are never touched. For
 roguelite characters NCPD is switched off and the story quest is hidden from
 the HUD. The Phantom Liberty opening is skipped by the quest patch in the
 archive. If the story ever starts a call or conversation anyway, teleports,
-the terminal and the reward screen wait until it's over.
+the terminal and the reward screen wait until it's over (looking at something
+with a prompt doesn't count).
 
 ### Loot in arenas
 

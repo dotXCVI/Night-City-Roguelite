@@ -7,10 +7,16 @@ and a patched copy of
 `ep1\quest\main_quests\q301\phases\q301_hook.questphase` (the Phantom Liberty
 standalone opening). Five nodes are added right after the phase's setup node:
 
-    hook_setup -> [nc_roguelite_start >= 1] --False--> original opening (unchanged)
-                                            --True---> Tier1_FullGameplay -> fade in
-                                                       -> BasicUI HUD
-                                                       -> fact nc_roguelite_opening_skipped = 1
+    hook_setup -> [nc_roguelite_start >= 1]
+      False -> original opening (unchanged)
+      True  -> teleport V to the opener spot (solid ground, screen still black)
+            -> fact nc_roguelite_skipping = 1
+            -> wait for fact nc_roguelite_ready -> Tier1_FullGameplay -> fade in
+               -> BasicUI HUD -> fact nc_roguelite_opening_skipped = 1
+            -> (parallel) after 45 s set nc_roguelite_ready = 1 (safety net)
+
+The scripts move V into the apartment while the screen is black and set
+nc_roguelite_ready once V is standing inside.
 
 The scripts set `nc_roguelite_start` at Session/Start only for characters made
 from the ROGUELITE menu entry, so normal Phantom Liberty starts are untouched.

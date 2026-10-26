@@ -3,6 +3,13 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.8 - New version numbering, opening fixes (2026-10-26)
+
+- Version scheme: alpha builds are now v0.0.X.
+- Opening skip: V is teleported to solid ground and the screen stays black until V is standing in the apartment (45 s safety net). Previously the game faded in before the world had loaded and V fell through the map.
+- The front door stays sealed: any open, unlock or unseal request on it is ignored, and the seal is re-checked every second.
+- The terminal no longer refuses to open because a prompt is on screen. The busy check now asks whether V is actually in a dialogue.
+
 ## v0.0.7 - TweakXL data, home devices, new menus (2026-10-26)
 
 Originally released as v0.7.0.

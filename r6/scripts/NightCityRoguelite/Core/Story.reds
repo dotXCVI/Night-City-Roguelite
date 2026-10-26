@@ -3,14 +3,17 @@
 // -----------------------------------------------------------------------------
 // The Phantom Liberty opening (book scene, Songbird's call) is skipped by the
 // quest patch in NightCityRoguelite.archive: RogueliteService sets the fact
-// nc_roguelite_start at Session/Start and the patched q301_hook phase jumps
-// straight to gameplay. Quests can't be stopped from scripts, and cutting a
+// nc_roguelite_start at Session/Start and the patched q301_hook phase takes
+// over: it keeps the screen black (fact nc_roguelite_skipping), the takeover
+// moves V into the apartment, and nc_roguelite_ready lets it fade in with V
+// standing inside. Quests can't be stopped from scripts, and cutting a
 // call or scene off mid-way leaves it running invisibly, so if the archive is
 // missing (or the story starts something later) the mod works around it:
 //   - the takeover waits until the opening call has finished;
 //   - the quest is untracked so nothing shows on the HUD;
 //   - teleports, the terminal and the reward screen wait while a call or a
-//     conversation is going on (RogueliteSystem.IsStoryBusy);
+//     conversation is going on (RogueliteSystem.BusyReason; a prompt on
+//     screen is not a conversation);
 //   - a caller card left on screen after its call has ended is cleared.
 // -----------------------------------------------------------------------------
 
@@ -31,7 +34,26 @@ public abstract class RLStory {
     return IsDefined(manager) && manager.IsPhoneCallActive();
   }
 
-  // A conversation with choices is on screen.
+  // The quest patch is holding the screen black while the mod sets V up
+  // (between nc_roguelite_skipping and nc_roguelite_ready).
+  public static func IsOpeningSkipInProgress(game: GameInstance) -> Bool {
+    let quests = GameInstance.GetQuestsSystem(game);
+    return quests.GetFact(n"nc_roguelite_skipping") > 0 && quests.GetFact(n"nc_roguelite_ready") <= 0;
+  }
+
+  // Lets the quest patch fade in.
+  public static func FinishOpeningSkip(game: GameInstance) {
+    GameInstance.GetQuestsSystem(game).SetFact(n"nc_roguelite_ready", 1);
+  }
+
+  // V is actually in a conversation (not just looking at something with a
+  // prompt: those share the choice list with dialogue).
+  public static func IsInDialogue(player: ref<PlayerPuppet>) -> Bool {
+    let scenes = GameInstance.GetSceneSystem(player.GetGame());
+    return IsDefined(scenes) && scenes.GetScriptInterface().IsEntityInDialogue(player.GetEntityID());
+  }
+
+  // Any list of choices on screen (dialogue or an interaction prompt).
   public static func IsDialogueOpen(game: GameInstance) -> Bool {
     let blackboard = GameInstance.GetBlackboardSystem(game).Get(GetAllBlackboardDefs().UIInteractions);
     if !IsDefined(blackboard) {

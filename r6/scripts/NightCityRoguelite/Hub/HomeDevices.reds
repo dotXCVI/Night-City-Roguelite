@@ -5,7 +5,9 @@
 //
 //   Front door  - sealed the way quests seal doors (QuestForceSeal), so the
 //                 apartment is a real locked room. It's done when the door
-//                 streams in and again whenever V is sent home; the sealed
+//                 streams in, whenever V is sent home and every second while
+//                 V is home; anything that would open, unlock or unseal it
+//                 (V's own quests do, on approach) is ignored. The sealed
 //                 state is saved with the character. The soft lock in
 //                 ApartmentHub.reds stays on as a safety net.
 //   Desk computer - its only prompt becomes "Roguelite Terminal" and using it
@@ -33,7 +35,7 @@ public abstract class RLHomeDevices {
 
   // Seals the front door if its state is loaded; true when it is (or already
   // was) sealed.
-  public static func SealFrontDoor(game: GameInstance) -> Bool {
+  public static func SealFrontDoor(game: GameInstance, opt quiet: Bool) -> Bool {
     let psID = CreatePersistentID(RLHomeDevices.FrontDoorID(), n"controller");
     let door = GameInstance.GetPersistencySystem(game).GetConstAccessToPSObject(psID, n"DoorControllerPS") as DoorControllerPS;
     if !IsDefined(door) {
@@ -43,7 +45,9 @@ public abstract class RLHomeDevices {
       }
     }
     if !IsDefined(door) {
-      RLDebug("Front door not loaded yet - it is sealed when it streams in.");
+      if !quiet {
+        RLDebug("Front door not loaded yet - it is sealed when it streams in.");
+      }
       return false;
     }
     if door.RL_Seal() {
@@ -68,6 +72,20 @@ public abstract class RLHomeDevices {
     if IsDefined(ps) && ps.RL_Seal() {
       RLLog("Front door sealed.");
     }
+  }
+
+  // The front door, while the mod keeps it sealed.
+  public static func IsHomeDoor(ps: ref<DoorControllerPS>) -> Bool {
+    return PersistentID.ExtractEntityID(ps.GetID()) == RLHomeDevices.FrontDoorID()
+      && RLHomeDevices.ShouldSealDoor(ps.GetGameInstance());
+  }
+
+  // Logged only for quest-side requests (V bumping the door would flood the log).
+  public static func Refuse(ps: ref<DoorControllerPS>, const what: String) {
+    if StrBeginsWith(what, "quest") {
+      RLDebug("Front door: ignored " + what + ".");
+    }
+    ps.RL_Seal();
   }
 
   // --- Desk computer -----------------------------------------------------------------------
@@ -101,6 +119,88 @@ public final func RL_Seal() -> Bool {
   }
   this.GetPersistencySystem().QueuePSEvent(this.GetID(), this.GetClassName(), this.ActionQuestForceSeal());
   return true;
+}
+
+// Nothing opens, unlocks or unseals the front door while it is the hub's.
+@wrapMethod(DoorControllerPS)
+public final func OnToggleOpen(evt: ref<ToggleOpen>) -> EntityNotificationType {
+  if !this.IsOpen() && RLHomeDevices.IsHomeDoor(this) {
+    RLHomeDevices.Refuse(this, "open");
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+@wrapMethod(DoorControllerPS)
+public final func OnSetOpened(evt: ref<SetOpened>) -> EntityNotificationType {
+  if RLHomeDevices.IsHomeDoor(this) {
+    RLHomeDevices.Refuse(this, "set opened");
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+@wrapMethod(DoorControllerPS)
+public final func OnForceOpen(evt: ref<ForceOpen>) -> EntityNotificationType {
+  if RLHomeDevices.IsHomeDoor(this) {
+    RLHomeDevices.Refuse(this, "force open");
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+@wrapMethod(DoorControllerPS)
+public final func OnQuestForceOpen(evt: ref<QuestForceOpen>) -> EntityNotificationType {
+  if RLHomeDevices.IsHomeDoor(this) {
+    RLHomeDevices.Refuse(this, "quest open");
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+@wrapMethod(DoorControllerPS)
+public final func OnQuestForceUnlock(evt: ref<QuestForceUnlock>) -> EntityNotificationType {
+  if RLHomeDevices.IsHomeDoor(this) {
+    RLHomeDevices.Refuse(this, "quest unlock");
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+@wrapMethod(DoorControllerPS)
+public final func OnQuestForceUnseal(evt: ref<QuestForceUnseal>) -> EntityNotificationType {
+  if RLHomeDevices.IsHomeDoor(this) {
+    RLHomeDevices.Refuse(this, "quest unseal");
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+@wrapMethod(DoorControllerPS)
+public final func OnToggleSeal(evt: ref<ToggleSeal>) -> EntityNotificationType {
+  if this.IsSealed() && RLHomeDevices.IsHomeDoor(this) {
+    RLHomeDevices.Refuse(this, "unseal");
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+@wrapMethod(DoorControllerPS)
+public final func OnToggleLock(evt: ref<ToggleLock>) -> EntityNotificationType {
+  if RLHomeDevices.IsHomeDoor(this) {
+    RLHomeDevices.Refuse(this, "lock toggle");
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+@wrapMethod(DoorControllerPS)
+public final func OnQuickHackToggleOpen(evt: ref<QuickHackToggleOpen>) -> EntityNotificationType {
+  if RLHomeDevices.IsHomeDoor(this) {
+    RLHomeDevices.Refuse(this, "quickhack open");
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
 }
 
 @wrapMethod(Door)

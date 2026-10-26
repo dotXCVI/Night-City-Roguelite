@@ -39,6 +39,7 @@ public class RLApartmentHub extends IScriptable {
   private let m_target: Vector4;
   private let m_targetInside: Bool;
   private let m_failures: Int32;
+  private let m_settled: Bool;
 
   public static func Create(system: ref<RogueliteSystem>) -> ref<RLApartmentHub> {
     let hub = new RLApartmentHub();
@@ -60,7 +61,12 @@ public class RLApartmentHub extends IScriptable {
     this.m_entering = false;
     this.m_failures = 0;
     this.m_outsideSeconds = 0.0;
+    this.m_settled = false;
   }
+
+  // V has been placed and checked: inside the apartment, or in the hallway
+  // when that is home for this session.
+  public func IsSettled() -> Bool = (this.m_settled || this.m_broken) && !this.m_entering
 
   public func OnSessionEnd() {
     this.StopLeash();
@@ -108,6 +114,7 @@ public class RLApartmentHub extends IScriptable {
   private func Place(player: ref<PlayerPuppet>, target: Vector4, yaw: Float, inside: Bool) {
     this.m_target = target;
     this.m_targetInside = inside;
+    this.m_settled = false;
     this.m_graceSeconds = 5.0;
     RLArenaDirector.TeleportToPoint(player, target, yaw);
     RLDelay(player.GetGame(), this, n"verify", 4.0);
@@ -205,19 +212,25 @@ public class RLApartmentHub extends IScriptable {
       return;
     }
     if RLApartmentHub.InteriorLoaded(game) {
-      this.m_entering = false;
-      this.m_mode = RLHomeMode.Apartment;
-      RLLog(s"Apartment loaded after \(this.m_enterElapsed)s - moving V inside.");
-      // Only if V is still waiting at home (not already sent to an arena).
-      if this.IsInside(player) {
+      // Only once V has actually arrived in the hallway (a teleport can take
+      // a moment to apply) - and not if V has been sent to an arena since.
+      if this.IsInside(player) || Vector4.Distance(player.GetWorldPosition(), RLConfig.HallwayPosition()) < 4.0 {
+        this.m_entering = false;
+        this.m_mode = RLHomeMode.Apartment;
+        RLLog(s"Apartment loaded after \(this.m_enterElapsed)s - moving V inside.");
         this.PlaceInside(player);
+        return;
       }
-      return;
+      if !this.m_leashActive {
+        this.m_entering = false;
+        return;
+      }
     }
     this.m_enterElapsed += 0.5;
     if this.m_enterElapsed >= RLConfig.ApartmentLoadTimeout() {
       this.m_entering = false;
       this.m_mode = RLHomeMode.Hallway;
+      this.m_settled = true;
       RLLog("The apartment never loaded - the hallway is home for this session.");
       this.ReleaseGodMode(player);
       return;
@@ -233,6 +246,10 @@ public class RLApartmentHub extends IScriptable {
     if this.m_graceSeconds > 0.0 {
       this.m_graceSeconds -= 1.0;
       return;
+    }
+    // Quests may unlock the front door again; keep it sealed.
+    if RLHomeDevices.ShouldSealDoor(player.GetGame()) {
+      RLHomeDevices.SealFrontDoor(player.GetGame(), true);
     }
     if this.m_entering || RogueliteSystem.IsInVehicle(player) || RogueliteSystem.IsStoryBusy(player) {
       return;
@@ -265,6 +282,9 @@ public class RLApartmentHub extends IScriptable {
     RLLog(s"Home check: V at (\(position.X), \(position.Y), \(position.Z)), \(distance) m from the \(this.m_targetInside ? "apartment" : "hallway") spot.");
     if distance <= 15.0 {
       this.m_failures = 0;
+      if this.m_targetInside || Equals(this.m_mode, RLHomeMode.Hallway) {
+        this.m_settled = true;
+      }
       if !this.m_entering {
         this.ReleaseGodMode(player);
       }

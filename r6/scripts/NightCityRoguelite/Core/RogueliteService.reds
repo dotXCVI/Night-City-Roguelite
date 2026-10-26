@@ -33,6 +33,10 @@ public class RogueliteService extends ScriptableService {
   private persistent let m_activeRunBosses: Int32;
   private persistent let m_activeRunRoguelike: Bool;
 
+  // The mod's own log, kept in Codeware's persistent store so it can be read
+  // after a session (red4ext/plugins/Codeware/Persistent). Newest last.
+  private persistent let m_log: array<CName>;
+
   // Content pools, built once per game process.
   private let m_pools: ref<RLTweakPools>;
 
@@ -41,6 +45,14 @@ public class RogueliteService extends ScriptableService {
   private let m_pendingScreenSkipped: Bool;
 
   // --- Access -------------------------------------------------------------------
+
+  public func AppendLog(const line: String) {
+    while ArraySize(this.m_log) >= 600 {
+      ArrayErase(this.m_log, 0);
+    }
+    // CName because Codeware can't persist strings; it stores the text as-is.
+    ArrayPush(this.m_log, StringToName(line));
+  }
 
   public static func Get() -> ref<RogueliteService> {
     return GameInstance.GetScriptableServiceContainer()
@@ -75,6 +87,7 @@ public class RogueliteService extends ScriptableService {
       // Back in the main menu: a pending start that never reached a new game is stale.
       return;
     }
+    RLLog(s"===== Session ready (loaded save: \(event.IsRestored())) =====");
     let system = RogueliteSystem.Get(GetGameInstance());
     if IsDefined(system) {
       system.OnSessionReady(event.IsRestored());

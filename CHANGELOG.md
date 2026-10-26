@@ -3,6 +3,23 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.5 - Fixes from the first in-game test (2026-10-26)
+
+Originally released as v0.5.2.
+
+- Fixed the nine issues from the first test:
+  - a stuck Songbird caller card;
+  - enemies spawning outside the arena or inside buildings;
+  - passive enemies;
+  - V placed in the hallway;
+  - invisible arms (V's body items were removed along with the gear);
+  - upside-down wall lettering;
+  - an unkillable enemy;
+  - a single magazine of ammo;
+  - junk loot.
+- Hades-style doors: pick the next fight by its reward. The first arena is random.
+- Ammo and loot rework; an enemy roster of the game's open-world combat NPCs per faction.
+
 ## v0.0.4 - Compiles cleanly on 2.5 (2026-10-25)
 
 Originally released as v0.4.0.

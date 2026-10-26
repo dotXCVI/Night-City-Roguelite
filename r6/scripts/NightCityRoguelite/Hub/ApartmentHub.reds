@@ -3,22 +3,27 @@
 // -----------------------------------------------------------------------------
 // Whenever V isn't in an arena, V is in the Megabuilding H10 apartment:
 //   - after the takeover, on every load and after every arena V is put inside;
-//   - a soft lock keeps V there: leave the apartment (front door, glitching
-//     through a wall, anything) and V is put back inside after a moment;
+//   - a soft lock keeps V there: leave it (front door, glitching through a
+//     wall, anything) and V is put back after a moment.
 //
-// Inside test: the game's district tracker reports "LittleChina_VApartment"
-// while V is in the apartment. Until that district has been seen once this
-// session, a distance/height check around the spawn point is used instead.
+// Getting in: the apartment's floor streams in a little after the rest of the
+// building, so dropping V straight inside from across the city can land V on
+// nothing. V is first put in the hallway outside the front door, and steps
+// inside as soon as a downward ray finds the apartment floor. If it never
+// loads, the hallway is home for that session.
 //
-// Safety: if V ends up well below the apartment floor after being put there
-// (the apartment didn't stream in), the apartment hub is switched off for the
-// session and the run system falls back to the takeover spot.
-//
-// The world itself streams around V, so while V is in the apartment only the
-// area around H10 is loaded, and each arena streams in when V is sent there.
+// Safety: V is invulnerable while being moved. If V ends up somewhere else
+// entirely after a placement, the next fallback is tried (apartment ->
+// hallway -> the spot where the takeover happened).
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
+
+public enum RLHomeMode {
+  Unknown = 0,
+  Apartment = 1,
+  Hallway = 2,
+}
 
 public class RLApartmentHub extends IScriptable {
   private let m_system: wref<RogueliteSystem>;
@@ -26,10 +31,13 @@ public class RLApartmentHub extends IScriptable {
   private let m_tickID: DelayID;
   private let m_outsideSeconds: Float;
   private let m_graceSeconds: Float;
-  private let m_seenDistrict: Bool;
   private let m_broken: Bool;
-  private let m_doorCallbackRegistered: Bool;
-  private let m_loggedDoors: array<Uint32>;
+  private let m_mode: RLHomeMode;
+  private let m_entering: Bool;
+  private let m_enterElapsed: Float;
+  private let m_target: Vector4;
+  private let m_targetInside: Bool;
+  private let m_failures: Int32;
 
   public static func Create(system: ref<RogueliteSystem>) -> ref<RLApartmentHub> {
     let hub = new RLApartmentHub();
@@ -46,22 +54,16 @@ public class RLApartmentHub extends IScriptable {
   // --- Session ----------------------------------------------------------------------
 
   public func OnSessionStart() {
-    this.m_seenDistrict = false;
     this.m_broken = false;
+    this.m_mode = RLHomeMode.Unknown;
+    this.m_entering = false;
+    this.m_failures = 0;
     this.m_outsideSeconds = 0.0;
-    ArrayClear(this.m_loggedDoors);
-    if RLConfig.UseApartmentHub() && RLConfig.LogApartmentDoors() && !this.m_doorCallbackRegistered {
-      // Session-scoped: auto-removed by the callback system when the session ends.
-      GameInstance.GetCallbackSystem()
-        .RegisterCallback(n"Entity/Attach", this, n"OnDoorAttached")
-        .AddTarget(EntityTarget.Type(n"Door"));
-      this.m_doorCallbackRegistered = true;
-    }
   }
 
   public func OnSessionEnd() {
     this.StopLeash();
-    this.m_doorCallbackRegistered = false;
+    this.m_entering = false;
   }
 
   // --- Placement ----------------------------------------------------------------------
@@ -72,50 +74,80 @@ public class RLApartmentHub extends IScriptable {
     }
     if !this.IsInside(player) {
       this.TeleportHome(player);
-      RLLog("Sent V to the apartment.");
+      RLLog("Sent V home.");
     }
   }
 
-  // Teleports V into the apartment. V is invulnerable until the landing has
-  // been checked, so a missing floor can't turn into a fatal fall.
   private func TeleportHome(player: ref<PlayerPuppet>) {
-    GameInstance.GetGodModeSystem(player.GetGame())
+    let game = player.GetGame();
+    GameInstance.GetGodModeSystem(game)
       .AddGodMode(player.GetEntityID(), gameGodModeType.Invulnerable, n"NightCityRoguelite.Home");
-    RLArenaDirector.TeleportToPoint(player, RLConfig.ApartmentPosition(), RLConfig.ApartmentYaw());
-    // Give streaming and the district trigger time before judging position.
-    this.m_graceSeconds = 4.0;
     this.m_outsideSeconds = 0.0;
+    if Equals(this.m_mode, RLHomeMode.Apartment) && RLApartmentHub.InteriorLoaded(game) {
+      this.PlaceInside(player);
+      return;
+    }
+    this.PlaceInHallway(player);
+    if !Equals(this.m_mode, RLHomeMode.Hallway) && !this.m_entering {
+      // Wait for the apartment to stream in, then step inside.
+      this.m_entering = true;
+      this.m_enterElapsed = 0.0;
+      RLDelay(game, this, n"enter", 0.5);
+    }
+  }
+
+  private func PlaceInside(player: ref<PlayerPuppet>) {
+    this.Place(player, RLApartmentHub.SpawnPoint(player.GetGame()), RLConfig.ApartmentYaw(), true);
+  }
+
+  private func PlaceInHallway(player: ref<PlayerPuppet>) {
+    this.Place(player, RLConfig.HallwayPosition(), RLConfig.HallwayYaw(), false);
+  }
+
+  private func Place(player: ref<PlayerPuppet>, target: Vector4, yaw: Float, inside: Bool) {
+    this.m_target = target;
+    this.m_targetInside = inside;
+    this.m_graceSeconds = 5.0;
+    RLArenaDirector.TeleportToPoint(player, target, yaw);
     RLDelay(player.GetGame(), this, n"verify", 4.0);
   }
 
-  public func IsInside(player: ref<PlayerPuppet>) -> Bool {
-    if Equals(RLApartmentHub.CurrentDistrictName(player.GetGame()), RLConfig.ApartmentDistrict()) {
-      this.m_seenDistrict = true;
-      return true;
-    }
-    if this.m_seenDistrict {
-      return false;
-    }
+  // The configured spot, nudged onto the navmesh when the room is loaded.
+  public static func SpawnPoint(game: GameInstance) -> Vector4 {
     let anchor = RLConfig.ApartmentPosition();
-    let position = player.GetWorldPosition();
-    return Vector4.Distance2D(position, anchor) <= RLConfig.ApartmentRadius()
-      && AbsF(position.Z - anchor.Z) <= RLConfig.ApartmentHeightTolerance();
+    let found = GameInstance.GetNavigationSystem(game).FindPointInSphereOnlyHumanNavmesh(anchor, 1.5, NavGenAgentSize.Human, false);
+    if Equals(found.status, worldNavigationRequestStatus.OK) && AbsF(found.point.Z - anchor.Z) < 1.0
+      && RLApartmentHub.InBox(found.point, RLConfig.ApartmentMin(), RLConfig.ApartmentMax()) {
+      return found.point;
+    }
+    return anchor;
   }
 
-  public static func CurrentDistrictName(game: GameInstance) -> String {
-    let prevention = GameInstance.GetScriptableSystemsContainer(game).Get(n"PreventionSystem") as PreventionSystem;
-    if !IsDefined(prevention) {
-      return "";
+  // True once there is solid floor under the apartment spawn point.
+  public static func InteriorLoaded(game: GameInstance) -> Bool {
+    let anchor = RLConfig.ApartmentPosition();
+    let start = Vector4(anchor.X, anchor.Y, anchor.Z + 1.0, 1.0);
+    let end = Vector4(anchor.X, anchor.Y, anchor.Z - 1.5, 1.0);
+    let result: TraceResult;
+    let hit = GameInstance.GetSpatialQueriesSystem(game).SyncRaycastByCollisionGroup(start, end, n"Static", result, true, false);
+    return hit && TraceResult.IsValid(result) && AbsF(result.position.Z - anchor.Z) < 1.0;
+  }
+
+  // Inside the apartment; the hallway also counts until the apartment has
+  // been reached (and for good if it never loads).
+  public func IsInside(player: ref<PlayerPuppet>) -> Bool {
+    let position = player.GetWorldPosition();
+    if RLApartmentHub.InBox(position, RLConfig.ApartmentMin(), RLConfig.ApartmentMax()) {
+      return true;
     }
-    let district = prevention.GetCurrentDistrict();
-    if !IsDefined(district) {
-      return "";
-    }
-    let record = district.GetDistrictRecord();
-    if !IsDefined(record) {
-      return "";
-    }
-    return record.EnumName();
+    return NotEquals(this.m_mode, RLHomeMode.Apartment)
+      && RLApartmentHub.InBox(position, RLConfig.HallwayMin(), RLConfig.HallwayMax());
+  }
+
+  public static func InBox(position: Vector4, low: Vector4, high: Vector4) -> Bool {
+    return position.X >= low.X && position.X <= high.X
+      && position.Y >= low.Y && position.Y <= high.Y
+      && position.Z >= low.Z && position.Z <= high.Z;
   }
 
   // --- Soft lock ------------------------------------------------------------------------
@@ -146,10 +178,50 @@ public class RLApartmentHub extends IScriptable {
           this.m_tickID = RLDelay(GetGameInstance(), this, n"tick", 1.0);
         }
         break;
+      case n"enter":
+        this.TryEnter();
+        break;
       case n"verify":
         this.Verify();
         break;
     }
+  }
+
+  // Polls for the apartment floor while V waits in the hallway.
+  private func TryEnter() {
+    if !this.m_entering {
+      return;
+    }
+    let player = GetPlayer(GetGameInstance());
+    if !IsDefined(player) || !this.IsEnabled() {
+      this.m_entering = false;
+      return;
+    }
+    let game = player.GetGame();
+    if RogueliteSystem.IsStoryBusy(player) {
+      // Don't move V mid-conversation; keep waiting.
+      RLDelay(game, this, n"enter", 0.5);
+      return;
+    }
+    if RLApartmentHub.InteriorLoaded(game) {
+      this.m_entering = false;
+      this.m_mode = RLHomeMode.Apartment;
+      RLLog(s"Apartment loaded after \(this.m_enterElapsed)s - moving V inside.");
+      // Only if V is still waiting at home (not already sent to an arena).
+      if this.IsInside(player) {
+        this.PlaceInside(player);
+      }
+      return;
+    }
+    this.m_enterElapsed += 0.5;
+    if this.m_enterElapsed >= RLConfig.ApartmentLoadTimeout() {
+      this.m_entering = false;
+      this.m_mode = RLHomeMode.Hallway;
+      RLLog("The apartment never loaded - the hallway is home for this session.");
+      this.ReleaseGodMode(player);
+      return;
+    }
+    RLDelay(game, this, n"enter", 0.5);
   }
 
   private func Tick() {
@@ -161,7 +233,7 @@ public class RLApartmentHub extends IScriptable {
       this.m_graceSeconds -= 1.0;
       return;
     }
-    if RogueliteSystem.IsInVehicle(player) || !RogueliteSystem.IsPlayerFree(player) {
+    if this.m_entering || RogueliteSystem.IsInVehicle(player) || RogueliteSystem.IsStoryBusy(player) {
       return;
     }
     if this.IsInside(player) {
@@ -175,46 +247,53 @@ public class RLApartmentHub extends IScriptable {
     }
   }
 
-  // After a teleport home: if V is far below the apartment floor, the interior
-  // didn't stream in. Switch the apartment hub off for this session.
+  // A few seconds after a placement: if V isn't near where V was put (fell
+  // through an unloaded floor and was rescued elsewhere by the game), try the
+  // next fallback.
   private func Verify() {
     let player = GetPlayer(GetGameInstance());
-    if !IsDefined(player) || !RLConfig.UseApartmentHub() {
+    if !IsDefined(player) || !this.IsEnabled() {
       return;
     }
-    let anchor = RLConfig.ApartmentPosition();
+    // V has left home since (sent to an arena): nothing to check.
+    if !this.m_leashActive && !this.m_entering {
+      return;
+    }
     let position = player.GetWorldPosition();
-    let district = RLApartmentHub.CurrentDistrictName(player.GetGame());
-    GameInstance.GetGodModeSystem(player.GetGame())
-      .RemoveGodMode(player.GetEntityID(), gameGodModeType.Invulnerable, n"NightCityRoguelite.Home");
-    RLLog(s"Apartment check: district '\(district)', height offset \(position.Z - anchor.Z).");
-    if position.Z < anchor.Z - 5.0 {
-      this.m_broken = true;
-      this.StopLeash();
-      RLLog("V fell below the apartment floor - apartment hub disabled for this session.");
-      if IsDefined(this.m_system) {
-        this.m_system.OnApartmentUnavailable();
+    let distance = Vector4.Distance(position, this.m_target);
+    RLLog(s"Home check: V at (\(position.X), \(position.Y), \(position.Z)), \(distance) m from the \(this.m_targetInside ? "apartment" : "hallway") spot.");
+    if distance <= 15.0 {
+      this.m_failures = 0;
+      if !this.m_entering {
+        this.ReleaseGodMode(player);
       }
+      return;
+    }
+    this.m_failures += 1;
+    if this.m_targetInside {
+      RLLog("V didn't stay in the apartment - using the hallway for this session.");
+      this.m_mode = RLHomeMode.Hallway;
+      this.PlaceInHallway(player);
+      return;
+    }
+    if this.m_failures < 4 {
+      // The game sometimes drops a teleport (right after loading, mid-scene).
+      RLLog("Trying the hallway again.");
+      this.PlaceInHallway(player);
+      return;
+    }
+    this.m_entering = false;
+    this.m_broken = true;
+    this.StopLeash();
+    this.ReleaseGodMode(player);
+    RLLog("V couldn't be placed at the apartment - home falls back to the takeover spot for this session.");
+    if IsDefined(this.m_system) {
+      this.m_system.OnApartmentUnavailable();
     }
   }
 
-  // --- Door diagnostics -------------------------------------------------------------------
-
-  protected cb func OnDoorAttached(event: ref<EntityLifecycleEvent>) {
-    let door = event.GetEntity() as GameObject;
-    if !IsDefined(door) {
-      return;
-    }
-    let distance = Vector4.Distance(door.GetWorldPosition(), RLConfig.ApartmentPosition());
-    if distance > 25.0 {
-      return;
-    }
-    let hash = EntityID.GetHash(door.GetEntityID());
-    if ArrayContains(this.m_loggedDoors, hash) {
-      return;
-    }
-    ArrayPush(this.m_loggedDoors, hash);
-    let position = door.GetWorldPosition();
-    RLLog(s"Door near apartment: id \(hash), class \(door.GetClassName()), distance \(distance), position (\(position.X), \(position.Y), \(position.Z)).");
+  private func ReleaseGodMode(player: ref<PlayerPuppet>) {
+    GameInstance.GetGodModeSystem(player.GetGame())
+      .RemoveGodMode(player.GetEntityID(), gameGodModeType.Invulnerable, n"NightCityRoguelite.Home");
   }
 }

@@ -1,12 +1,13 @@
-# Night City Roguelite (v0.4.0, untested)
+# Night City Roguelite (v0.5.2)
 
 A run-based arena mode for Cyberpunk 2077 2.5, built only from the game's own
 assets and systems. Start a new roguelite character from the main menu, fight
 through 3 acts of 5 arenas, pick one of three rewards after every floor, and
 bank meta Cred when you flatline.
 
-> **Status:** compiles cleanly with redscript 0.5.32 against the 2.5 game
-> scripts, Codeware 1.21.0 and TweakXL 1.12.0. First in-game test pending.
+> **Status:** first in-game test done; v0.5 fixes what it turned up. Compiles
+> cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0
+> and TweakXL 1.12.0.
 
 ## Requirements
 
@@ -30,29 +31,61 @@ the zip as a normal mod.
 1. Main menu -> **ROGUELITE** (top of the list). The expansion choice is skipped
    automatically; make your V as usual.
 2. The moment V can move, the mod takes over: V is reset to level 1 (clothes
-   kept) and locked in **V's apartment in Megabuilding H10**. Walk out and you're
+   kept) and locked in **V's apartment in Megabuilding H10** (V lands in the
+   hallway first and steps inside once the apartment has streamed in). Walk out and you're
    put back inside. If the opening scene holds V, press **F7** to skip ahead.
 3. Press **F7** for the terminal: pick a kit, switch roguelite/roguelike mode,
    buy unlocks, then **START RUN**.
-4. The terminal lists the arenas. Pick one and you're teleported to its start.
-   The first wave comes after a 5-second countdown. The arena is ringed by a
-   solid wall: invisible from a distance, it lights up as red NCPD holo-tape
-   ("POLICE LINE - DO NOT CROSS") as you walk up to it, more solid the closer
-   you get.
-5. Clear every wave and you have 30 seconds to loot (F7 skips), then you're sent
-   home. Choose a reward on the terminal, then the next arena.
-6. When health hits zero the run ends: enemies vanish, a 5-second countdown runs,
+4. The first fight is a random arena. You arrive with full ammo and full health
+   and grenade charges; the first wave comes after a 5-second countdown. The
+   arena is ringed by a solid wall: invisible from a distance, it lights up as
+   red NCPD holo-tape ("POLICE LINE - DO NOT CROSS") as you walk up to it, more
+   solid the closer you get.
+5. Clear every wave and you have 30 seconds to loot bodies for ammo (F7 skips),
+   then you're sent home. Pick one of three rewards of that fight's type.
+6. Then pick your next fight by its reward, Hades-style. Each door shows the
+   reward type, the arena and the threat:
+
+   | Reward | What you choose from | Threat |
+   | --- | --- | --- |
+   | TRAINING | Levels, attribute points, perk points | Light |
+   | ARMORY | Weapons (sometimes an iconic) | Standard |
+   | BOONS | Run-only bonuses | Standard |
+   | DAEMONS | Quickhacks | Standard |
+   | CHROME | Cyberware, installed on the spot | Heavy |
+   | ICONIC | Iconic weapons (rare door) | Heavy |
+
+   Light fights have smaller waves of weaker enemies; heavy fights have bigger
+   waves, more elites, an extra wave and enemies a level above V, and pay out
+   better quality. Before a boss floor there is a single boss door.
+7. When health hits zero the run ends: enemies vanish, a 5-second countdown runs,
    and you're sent home with your Cred. Quitting or crashing mid-run counts as a
    flatline too.
 
 | F7 at home | F7 in an arena | F7 after clearing |
 | --- | --- | --- |
-| Terminal (kit, run start, rewards, arena picker) | Run status, abandon | Go home now |
+| Terminal (kit, run start, rewards, next fight) | Run status, abandon | Go home now |
 
 Saving works only between runs. Normal story saves are never touched. For
-roguelite characters NCPD is switched off, the story quests (Phantom Liberty's
-Songbird opening included) are switched off after the takeover, and story calls
-don't ring.
+roguelite characters NCPD is switched off and the story quest is hidden from
+the HUD. The Phantom Liberty start opens with Songbird's call; the mod takes
+over once it ends (quests can't be stopped from scripts, and cutting the call
+off left it running unseen). If the story starts a call or conversation later,
+teleports, the terminal and the reward screen wait until it's over.
+
+### Loot in arenas
+
+Bodies are stripped of junk and carry ammo for your weapons, and sometimes a
+health item or grenade (each also restores a charge). Anything else you pick up
+in an arena - junk, crafting parts, weapons, clothes - is taken away again
+right after. Weapons and cyberware come from rewards only.
+
+### Enemies
+
+Enemies are the game's own open-world combat NPCs for each faction (the list
+is in `Data/EnemyRoster.reds`). They spawn inside the arena on spots you can
+reach on foot, are matched to your level, and an enemy that hangs back is sent
+running at you. Acts 2 and 3 end with MaxTac.
 
 ### Arenas
 
@@ -61,8 +94,9 @@ Drive-In, Junkyard, Wind Farm and The Crater. Each has a gang that fits the
 location. Edit `Combat/Arenas.reds` to change radii, start points or disable one.
 
 The walls are built from the game's own holo-tape hologram and a "Player
-Blocker" collider, so they stop V but not bullets or enemies. A position check
-stays on behind them as a safety net. Panel width, reveal distance and the
+Blocker" collider. They stop V (and gunfire through them). An enemy that ends
+up outside is put back inside, and a position check stays on behind the walls
+as a safety net for V. Panel width, reveal distance and the
 safety margin are in `Config.reds`.
 
 ### Hub settings
@@ -79,9 +113,11 @@ toggle, enemy/item blocklists, and verbose logging.
 
 ## Logs
 
-Lines prefixed `[NightCityRoguelite]` go to `r6/logs/redscript_rCURRENT.log`.
-Script compile errors show in the same file. Framework logs are in
-`red4ext/logs` and `red4ext/plugins/<plugin>/`.
+The game doesn't write script log lines to disk, so the mod keeps its last 600
+log lines in Codeware's persistent store,
+`red4ext/plugins/Codeware/Persistent/ScriptableServiceContainer.dat` (saved when
+the game closes; readable with any text viewer). Script compile errors are in
+`r6/logs/redscript_rCURRENT.log`; framework logs are in `red4ext/logs`.
 
 ## Files
 
@@ -91,18 +127,20 @@ Script compile errors show in the same file. Framework logs are in
 | `Core/RogueliteService.reds` | Meta progression (outside saves), hotkeys, session hooks |
 | `Core/RogueliteSystem.reds` | Per-save state machine: takeover, hub, run, floors, rewards, death |
 | `Core/Story.reds` | Switches off story quests and story calls for roguelite characters |
-| `Hub/ApartmentHub.reds` | V's apartment hub, soft door lock, door diagnostics |
+| `Hub/ApartmentHub.reds` | V's apartment hub, soft door lock |
 | `Core/RunState.reds` | In-memory run state |
 | `Menu/MainMenuEntry.reds` | ROGUELITE menu item and new-game routing |
-| `Player/CharacterReset.reds` | Level-1 reset (keeps clothes) |
+| `Player/CharacterReset.reds` | Level-1 reset (keeps clothes and V's body items), body repair |
 | `Player/Kits.reds` | Starting kits, gear/cyberware/quickhack granting |
 | `Player/DeathGuard.reds` | Immortal god mode + health listener |
-| `Data/TweakPools.reds` | Enemy and item pools read from TweakDB at runtime |
+| `Data/TweakPools.reds` | Enemy and item pools built at runtime |
+| `Data/EnemyRoster.reds` | Open-world combat NPCs per faction (generated from the 2.5 TweakDB) |
 | `Combat/Arenas.reds` | The arena list |
 | `Combat/ArenaDirector.reds` | Arena teleport, wall tick, safety-net position check |
 | `Combat/ArenaWalls.reds` | Collision walls with proximity holo-tape visuals |
-| `Combat/WaveSpawner.reds` | Wave spawning, hostility, kill tracking |
-| `Rewards/RewardSystem.reds` | Offer rolling and granting |
+| `Combat/WaveSpawner.reds` | Wave spawning, level matching, chasing, kill tracking |
+| `Combat/Loot.reds` | Ammo refill, body loot, arena pickup filter |
+| `Rewards/RewardSystem.reds` | Reward doors, threat, offer rolling and granting |
 | `Rewards/Boons.reds` | Run-only bonuses |
 | `Meta/MetaProgression.reds` | Unlocks, kits, Cred payout |
 | `UI/*.reds` | HUD line, terminal and reward popups |

@@ -80,27 +80,32 @@ public class RLTweakPools {
     RLLog(s"Pools built: \(ArraySize(this.m_factions)) factions, \(ArraySize(this.m_weapons)) weapons, \(ArraySize(this.m_iconics)) iconics, \(ArraySize(this.m_cyberware)) cyberware, \(ArraySize(this.m_quickhacks)) quickhacks.");
   }
 
+  // Enemies come from the curated roster (Data/EnemyRoster.reds): the game's
+  // own open-world combat NPCs. Each record is checked before it is used.
   private func BuildEnemies() {
     let blocklist = RLConfig.EnemyBlocklist();
     let scanned = 0;
     let accepted = 0;
-    for record in TweakDBInterface.GetRecords(n"Character") {
-      scanned += 1;
-      let character = record as Character_Record;
-      let tier = RLTweakPools.EnemyTier(character, blocklist);
-      if tier >= 0 {
-        let pool = this.GetOrAddFaction(character.Affiliation().Type());
-        switch tier {
-          case 0:
-            ArrayPush(pool.tier0, character.GetID());
-            break;
-          case 1:
-            ArrayPush(pool.tier1, character.GetID());
-            break;
-          default:
-            ArrayPush(pool.tier2, character.GetID());
+    for faction in RLRoster.Factions() {
+      let tier = 0;
+      while tier <= 2 {
+        for id in RLRoster.Records(faction, tier) {
+          scanned += 1;
+          if RLTweakPools.IsUsableEnemy(TweakDBInterface.GetCharacterRecord(id), blocklist) {
+            let pool = this.GetOrAddFaction(faction);
+            if tier == 0 {
+              ArrayPush(pool.tier0, id);
+            } else if tier == 1 {
+              ArrayPush(pool.tier1, id);
+            } else {
+              ArrayPush(pool.tier2, id);
+            }
+            accepted += 1;
+          } else {
+            RLDebug(s"Roster record skipped: \(TDBID.ToStringDEBUG(id))");
+          }
         }
-        accepted += 1;
+        tier += 1;
       }
     }
     // Drop factions that can't fill a wave.
@@ -108,47 +113,31 @@ public class RLTweakPools {
     for pool in this.m_factions {
       if pool.IsUsable() {
         ArrayPush(usable, pool);
-        RLDebug(s"Faction \(EnumValueToString("gamedataAffiliation", Cast<Int64>(EnumInt(pool.faction)))): \(ArraySize(pool.tier0))/\(ArraySize(pool.tier1))/\(ArraySize(pool.tier2))");
+        RLDebug(s"Faction \(RogueliteSystem.FactionName(pool.faction)): \(ArraySize(pool.tier0))/\(ArraySize(pool.tier1))/\(ArraySize(pool.tier2))");
       }
     }
     this.m_factions = usable;
-    RLLog(s"Enemy scan: \(scanned) character records, \(accepted) accepted.");
+    RLLog(s"Enemy roster: \(scanned) records, \(accepted) usable, \(ArraySize(usable)) factions.");
   }
 
-  // Tier (0-2) of a usable enemy record, or -1 when the record doesn't qualify:
-  // a combat-capable human/android of a hostile faction, general affiliation,
-  // with a primary weapon.
-  public static func EnemyTier(character: ref<Character_Record>, blocklist: array<TweakDBID>) -> Int32 {
+  // A roster record is usable when it exists, is a human or android and has a
+  // weapon to fight with.
+  public static func IsUsableEnemy(character: ref<Character_Record>, blocklist: array<TweakDBID>) -> Bool {
     if !IsDefined(character) || ArrayContains(blocklist, character.GetID()) {
-      return -1;
+      return false;
     }
     if character.IsCrowd() || character.IsChild() {
-      return -1;
+      return false;
     }
     let npcType = character.CharacterType();
     if !IsDefined(npcType) {
-      return -1;
+      return false;
     }
     let kind = npcType.Type();
     if NotEquals(kind, gamedataNPCType.Human) && NotEquals(kind, gamedataNPCType.Android) {
-      return -1;
+      return false;
     }
-    let quest = character.Quest();
-    if IsDefined(quest) && NotEquals(quest.Type(), gamedataNPCQuestAffiliation.General) {
-      return -1;
-    }
-    let affiliation = character.Affiliation();
-    if !IsDefined(affiliation) || !RLTweakPools.IsHostileFaction(affiliation.Type()) {
-      return -1;
-    }
-    if !IsDefined(character.PrimaryEquipment()) {
-      return -1;
-    }
-    let rarity = character.Rarity();
-    if !IsDefined(rarity) {
-      return -1;
-    }
-    return RLTweakPools.TierOf(rarity.Type());
+    return IsDefined(character.PrimaryEquipment()) || IsDefined(character.SecondaryEquipment());
   }
 
   private func GetOrAddFaction(faction: gamedataAffiliation) -> ref<RLFactionPool> {
@@ -453,20 +442,17 @@ public class RLTweakPools {
   public func HasQuickhacks() -> Bool = ArraySize(this.m_quickhacks) > 0
 }
 
-// Boss records referenced directly by the game's own scripts (so they exist in
-// 2.5). Each is validated at runtime before use.
+// Boss records: the open-world MaxTac squad (names checked against the 2.5
+// TweakDB). Each is validated at runtime before use.
 public abstract class RLBosses {
-  public static func Cyberpsychos() -> array<TweakDBID> {
-    return [t"Character.ma_bls_ina_se1_07_cyberpsycho_1", t"Character.ma_std_rcr_11_cyberpsycho"];
-  }
-
   public static func MaxTac() -> array<TweakDBID> {
+    // Open-world MaxTac (not the quest-scripted AV squads).
     return [
-      t"Character.maxtac_av_riffle_ma",
-      t"Character.maxtac_av_LMG_mb",
-      t"Character.maxtac_av_mantis_wa",
-      t"Character.maxtac_av_netrunner_ma",
-      t"Character.maxtac_av_sniper_wa_elite"
+      t"Character.maxtac_gunner_mb_elite",
+      t"Character.maxtac_melee_ma_elite",
+      t"Character.maxtac_rifle_ma_elite",
+      t"Character.maxtac_rifle_wa_elite",
+      t"Character.maxtac_shotgun_ma_elite"
     ];
   }
 

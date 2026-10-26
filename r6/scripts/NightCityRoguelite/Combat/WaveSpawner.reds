@@ -1,9 +1,17 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - wave spawner
 // -----------------------------------------------------------------------------
-// Spawns waves with Codeware's DynamicEntitySystem around an arena center,
-// forces each NPC hostile to V with a persistent threat, and polls once per
-// second to count kills, refresh threat and clean up strays.
+// Spawns waves with Codeware's DynamicEntitySystem inside the arena and keeps
+// them in the fight. Once a second each enemy is checked:
+//   - first sighting: god modes stripped, level matched to V (plus its tier),
+//     health refilled, made hostile with a persistent threat on V;
+//   - an enemy that hasn't closed in on V for a few seconds is sent running at
+//     V (then fights as normal);
+//   - an enemy that ends up outside the arena is put back inside;
+//   - dead enemies count as kills and their bodies get stocked with ammo.
+//
+// Spawn points are on the navmesh, inside the arena, near V's floor level and
+// reachable from V on foot (a path is calculated before spawning).
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -12,18 +20,25 @@ public class RLTrackedEnemy {
   public let id: EntityID;
   public let record: TweakDBID;
   public let isBoss: Bool;
+  public let levelOffset: Int32;
   public let spawnTime: Float;
   public let seen: Bool;
-  public let hostile: Bool;
+  public let prepared: Bool;
   public let lastThreat: Float;
   public let strayTime: Float;
+  public let bestDistance: Float;
+  public let idleTime: Float;
+  public let outsideTime: Float;
   public let done: Bool;
+  public let dead: Bool;
+  public let corpsePasses: Int32;
 }
 
 public class RLEncounterPlan {
   // Flat list of records; waveStarts[i] is the index of wave i's first record.
   public let records: array<TweakDBID>;
   public let bossFlags: array<Bool>;
+  public let levelOffsets: array<Int32>;
   public let waveStarts: array<Int32>;
   public let factionName: String;
 
@@ -40,10 +55,11 @@ public class RLEncounterPlan {
     ArrayPush(this.waveStarts, ArraySize(this.records));
   }
 
-  public func Add(record: TweakDBID, isBoss: Bool) {
+  public func Add(record: TweakDBID, isBoss: Bool, levelOffset: Int32) {
     if TDBID.IsValid(record) {
       ArrayPush(this.records, record);
       ArrayPush(this.bossFlags, isBoss);
+      ArrayPush(this.levelOffsets, levelOffset);
     }
   }
 }
@@ -52,6 +68,7 @@ public class RLWaveSpawner extends IScriptable {
   private let m_system: wref<RogueliteSystem>;
   private let m_plan: ref<RLEncounterPlan>;
   private let m_center: Vector4;
+  private let m_radius: Float;
   private let m_wave: Int32;
   private let m_tracked: array<ref<RLTrackedEnemy>>;
   private let m_time: Float;
@@ -72,9 +89,10 @@ public class RLWaveSpawner extends IScriptable {
 
   // --- Public API ----------------------------------------------------------------------
 
-  public func Start(center: Vector4, plan: ref<RLEncounterPlan>) {
+  public func Start(arena: ref<RLArenaDef>, plan: ref<RLEncounterPlan>) {
     this.Abort();
-    this.m_center = center;
+    this.m_center = arena.position;
+    this.m_radius = arena.radius;
     this.m_plan = plan;
     this.m_wave = -1;
     this.m_time = 0.0;
@@ -90,9 +108,9 @@ public class RLWaveSpawner extends IScriptable {
   public func Abort() {
     let game = GetGameInstance();
     if this.m_active {
-      RLCancel(game, this.m_tickID);
       RLCancel(game, this.m_waveID);
     }
+    RLCancel(game, this.m_tickID);
     this.m_active = false;
     ArrayClear(this.m_tracked);
     this.DeleteAll();
@@ -129,12 +147,12 @@ public class RLWaveSpawner extends IScriptable {
     this.m_wave += 1;
     if this.m_wave >= this.m_plan.WaveCount() {
       this.m_active = false;
-      RLCancel(GetGameInstance(), this.m_tickID);
       if IsDefined(this.m_system) {
         this.m_system.OnEncounterCleared();
       }
       return;
     }
+    let player = GetPlayer(GetGameInstance());
     let first = this.m_plan.waveStarts[this.m_wave];
     let last = this.m_plan.WaveEnd(this.m_wave);
     let i = first;
@@ -143,14 +161,14 @@ public class RLWaveSpawner extends IScriptable {
       if this.GetAliveCount() >= RLConfig.MaxAlive() {
         break;
       }
-      if this.SpawnOne(this.m_plan.records[i], this.m_plan.bossFlags[i]) {
+      if this.SpawnOne(player, this.m_plan.records[i], this.m_plan.bossFlags[i], this.m_plan.levelOffsets[i]) {
         spawned += 1;
       }
       i += 1;
     }
-    RLDebug(s"Wave \(this.m_wave + 1): spawned \(spawned)");
+    RLLog(s"Wave \(this.m_wave + 1): spawned \(spawned) of \(last - first).");
     if IsDefined(this.m_system) {
-      this.m_system.OnWaveStarted(this.m_wave + 1, this.m_plan.WaveCount(), this.m_plan.WaveEnd(this.m_wave) - first);
+      this.m_system.OnWaveStarted(this.m_wave + 1, this.m_plan.WaveCount(), last - first);
     }
     if spawned == 0 {
       // Nothing could spawn (bad records or no navmesh) - don't soft-lock.
@@ -159,16 +177,17 @@ public class RLWaveSpawner extends IScriptable {
     }
   }
 
-  private func SpawnOne(record: TweakDBID, isBoss: Bool) -> Bool {
+  private func SpawnOne(player: ref<PlayerPuppet>, record: TweakDBID, isBoss: Bool, levelOffset: Int32) -> Bool {
     let position: Vector4;
-    if !this.FindSpawnPoint(position) {
+    if !this.FindSpawnPoint(player, position) {
+      RLLog("No spawn point found for an enemy.");
       return false;
     }
-    let toCenter = this.m_center - position;
+    let facing = IsDefined(player) ? player.GetWorldPosition() - position : this.m_center - position;
     let spec = new DynamicEntitySpec();
     spec.recordID = record;
     spec.position = position;
-    spec.orientation = EulerAngles.ToQuat(Vector4.ToRotation(toCenter));
+    spec.orientation = EulerAngles.ToQuat(Vector4.ToRotation(facing));
     spec.alwaysSpawned = true;
     spec.spawnInView = true;
     spec.persistState = false;
@@ -176,50 +195,93 @@ public class RLWaveSpawner extends IScriptable {
     spec.tags = [RLWaveSpawner.Tag()];
     let id = GameInstance.GetDynamicEntitySystem().CreateEntity(spec);
     if !EntityID.IsDefined(id) {
-      RLDebug(s"CreateEntity failed for \(TDBID.ToStringDEBUG(record))");
+      RLLog(s"CreateEntity failed for \(TDBID.ToStringDEBUG(record))");
       return false;
     }
     let enemy = new RLTrackedEnemy();
     enemy.id = id;
     enemy.record = record;
     enemy.isBoss = isBoss;
+    enemy.levelOffset = levelOffset;
     enemy.spawnTime = this.m_time;
+    enemy.bestDistance = 9999.0;
     ArrayPush(this.m_tracked, enemy);
+    RLDebug(s"Spawned \(TDBID.ToStringDEBUG(record)) at (\(position.X), \(position.Y), \(position.Z)).");
     return true;
   }
 
-  private func FindSpawnPoint(out result: Vector4) -> Bool {
-    let navigation = GameInstance.GetNavigationSystem(GetGameInstance());
+  // A navmesh point inside the arena, near V's floor level, that V can reach on
+  // foot. Falls back to looser checks so a wave never fails to appear.
+  private func FindSpawnPoint(player: ref<PlayerPuppet>, out result: Vector4) -> Bool {
+    let hasPlayer = IsDefined(player);
+    let reference = hasPlayer ? player.GetWorldPosition() : this.m_center;
+    if Vector4.Distance2D(reference, this.m_center) > this.m_radius + 3.0 {
+      reference = this.m_center;
+    }
     let attempt = 0;
-    while attempt < 10 {
-      let angle = RandRangeF(0.0, 6.2831853);
-      let distance = RandRangeF(RLConfig.SpawnMinDistance(), RLConfig.SpawnMaxDistance());
-      let probe = Vector4(
-        this.m_center.X + CosF(angle) * distance,
-        this.m_center.Y + SinF(angle) * distance,
-        this.m_center.Z,
-        1.0
-      );
-      let found = navigation.FindPointInSphereOnlyHumanNavmesh(probe, 6.0, NavGenAgentSize.Human, false);
-      if Equals(found.status, worldNavigationRequestStatus.OK) && AbsF(found.point.Z - this.m_center.Z) < 6.0 {
-        result = found.point;
-        this.m_lastSpawnPoint = found.point;
+    while attempt < 24 {
+      let strict = attempt < 16;
+      let point: Vector4;
+      if this.TryPoint(reference, hasPlayer, strict, point) {
+        result = point;
+        this.m_lastSpawnPoint = point;
         this.m_hasLastSpawnPoint = true;
         return true;
       }
       attempt += 1;
     }
-    // Fall back to the center's own navmesh point, then the last good point.
-    let nearCenter = navigation.FindPointInSphereOnlyHumanNavmesh(this.m_center, 12.0, NavGenAgentSize.Human, false);
-    if Equals(nearCenter.status, worldNavigationRequestStatus.OK) {
-      result = nearCenter.point;
-      return true;
-    }
     if this.m_hasLastSpawnPoint {
       result = this.m_lastSpawnPoint;
       return true;
     }
+    let nearCenter = GameInstance.GetNavigationSystem(GetGameInstance())
+      .FindPointInSphereOnlyHumanNavmesh(this.m_center, 8.0, NavGenAgentSize.Human, false);
+    if Equals(nearCenter.status, worldNavigationRequestStatus.OK) {
+      result = nearCenter.point;
+      return true;
+    }
     return false;
+  }
+
+  private func TryPoint(reference: Vector4, hasPlayer: Bool, strict: Bool, out result: Vector4) -> Bool {
+    let navigation = GameInstance.GetNavigationSystem(GetGameInstance());
+    let usable = MaxF(8.0, this.m_radius - 4.0);
+    let angle = RandRangeF(0.0, 6.2831853);
+    let distance = SqrtF(RandRangeF(0.04, 1.0)) * usable;
+    let probe = Vector4(
+      this.m_center.X + CosF(angle) * distance,
+      this.m_center.Y + SinF(angle) * distance,
+      reference.Z,
+      1.0
+    );
+    let found = navigation.FindPointInSphereOnlyHumanNavmesh(probe, 3.0, NavGenAgentSize.Human, false);
+    if !Equals(found.status, worldNavigationRequestStatus.OK) {
+      return false;
+    }
+    let point = found.point;
+    if Vector4.Distance2D(point, this.m_center) > usable + 1.0 {
+      return false;
+    }
+    if AbsF(point.Z - reference.Z) > (strict ? 4.0 : 8.0) {
+      return false;
+    }
+    let toReference = Vector4.Distance(point, reference);
+    if hasPlayer && toReference < (strict ? 12.0 : 7.0) {
+      return false;
+    }
+    if strict {
+      // Must be reachable on foot from V (rules out rooftops, sealed rooms and
+      // spots inside buildings).
+      let path = navigation.CalculatePathOnlyHumanNavmesh(point, reference, NavGenAgentSize.Human, 2.0);
+      if !IsDefined(path) || ArraySize(path.path) < 2 {
+        return false;
+      }
+      if path.CalculateLength() > toReference * 2.5 + 15.0 {
+        return false;
+      }
+    }
+    result = point;
+    return true;
   }
 
   // --- Polling --------------------------------------------------------------------------
@@ -231,11 +293,9 @@ public class RLWaveSpawner extends IScriptable {
   public func OnDelayed(action: CName) {
     switch action {
       case n"tick":
-        if this.m_active {
-          this.Tick();
-          if this.m_active {
-            this.ScheduleTick();
-          }
+        this.Tick();
+        if this.m_active || this.HasCorpsesToStock() {
+          this.ScheduleTick();
         }
         break;
       case n"wave":
@@ -254,15 +314,20 @@ public class RLWaveSpawner extends IScriptable {
     let changed = false;
 
     for enemy in this.m_tracked {
-      if !enemy.done && this.UpdateEnemy(enemy, player, entities) {
+      if enemy.dead && enemy.corpsePasses < 2 {
+        this.StockCorpse(enemy, player, entities);
+      } else if !enemy.done && this.m_active && this.UpdateEnemy(enemy, player, entities) {
         changed = true;
       }
+    }
+    if !this.m_active {
+      return;
     }
 
     if changed && IsDefined(this.m_system) {
       this.m_system.OnEnemyCountChanged(this.GetAliveCount());
     }
-    if this.GetAliveCount() == 0 && this.m_active && !this.m_waitingForWave {
+    if this.GetAliveCount() == 0 && !this.m_waitingForWave {
       if this.m_wave + 1 >= this.m_plan.WaveCount() {
         this.NextWave(); // reports the encounter as cleared
       } else {
@@ -275,12 +340,31 @@ public class RLWaveSpawner extends IScriptable {
     }
   }
 
+  private func HasCorpsesToStock() -> Bool {
+    for enemy in this.m_tracked {
+      if enemy.dead && enemy.corpsePasses < 2 {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Two passes: the first right after death, the second a second later (the
+  // game may still be generating the body's loot), which also adds the ammo.
+  private func StockCorpse(enemy: ref<RLTrackedEnemy>, player: ref<PlayerPuppet>, entities: ref<DynamicEntitySystem>) {
+    enemy.corpsePasses += 1;
+    let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
+    if IsDefined(puppet) {
+      RLLoot.PrepareCorpse(puppet, player, enemy.corpsePasses >= 2);
+    }
+  }
+
   // Updates one tracked enemy; returns true when it stopped counting as alive.
   private func UpdateEnemy(enemy: ref<RLTrackedEnemy>, player: ref<PlayerPuppet>, entities: ref<DynamicEntitySystem>) -> Bool {
     let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
     if !IsDefined(puppet) {
       if !enemy.seen && this.m_time - enemy.spawnTime > RLConfig.SpawnTimeout() {
-        RLDebug(s"Enemy never spawned, dropping: \(TDBID.ToStringDEBUG(enemy.record))");
+        RLLog(s"Enemy never spawned, dropping: \(TDBID.ToStringDEBUG(enemy.record))");
         enemy.done = true;
         entities.DeleteEntity(enemy.id);
         return true;
@@ -296,6 +380,8 @@ public class RLWaveSpawner extends IScriptable {
 
     if puppet.IsDead() || ScriptedPuppet.IsDefeated(puppet) {
       enemy.done = true;
+      enemy.dead = true;
+      this.StockCorpse(enemy, player, entities);
       if IsDefined(this.m_system) {
         this.m_system.OnEnemyKilled(enemy.isBoss);
       }
@@ -305,19 +391,55 @@ public class RLWaveSpawner extends IScriptable {
     if !IsDefined(player) {
       return false;
     }
-    if !enemy.hostile {
-      RLWaveSpawner.MakeHostile(puppet, player);
-      enemy.hostile = true;
+    if !enemy.prepared {
+      enemy.prepared = true;
+      RLWaveSpawner.Prepare(puppet, player, enemy.levelOffset);
       enemy.lastThreat = this.m_time;
     } else if this.m_time - enemy.lastThreat >= RLConfig.ThreatRefreshSeconds() {
-      TargetTrackingExtension.InjectThreat(puppet, player);
+      RLWaveSpawner.MakeHostile(puppet, player);
       enemy.lastThreat = this.m_time;
     }
 
-    if Vector4.Distance(puppet.GetWorldPosition(), player.GetWorldPosition()) > RLConfig.StrayDistance() {
+    let position = puppet.GetWorldPosition();
+    let distance = Vector4.Distance(position, player.GetWorldPosition());
+
+    // Back inside if it wandered out of the arena.
+    if Vector4.Distance2D(position, this.m_center) > this.m_radius + 2.0 {
+      enemy.outsideTime += 1.0;
+      if enemy.outsideTime >= 4.0 {
+        enemy.outsideTime = 0.0;
+        let point: Vector4;
+        if this.FindSpawnPoint(player, point) {
+          GameInstance.GetTeleportationFacility(puppet.GetGame()).Teleport(puppet, point, Vector4.ToRotation(player.GetWorldPosition() - point));
+          RLDebug("Put an enemy back inside the arena.");
+        }
+      }
+    } else {
+      enemy.outsideTime = 0.0;
+    }
+
+    // Keep the pressure on: an enemy that stays back without closing in runs at V.
+    if distance > RLConfig.ChaseDistance() {
+      if distance < enemy.bestDistance - 1.5 {
+        enemy.bestDistance = distance;
+        enemy.idleTime = 0.0;
+      } else {
+        enemy.idleTime += 1.0;
+        if enemy.idleTime >= RLConfig.ChaseAfterSeconds() {
+          RLWaveSpawner.ChargeAt(puppet, player);
+          enemy.idleTime = 0.0;
+          enemy.bestDistance = distance;
+        }
+      }
+    } else {
+      enemy.idleTime = 0.0;
+      enemy.bestDistance = distance;
+    }
+
+    if distance > RLConfig.StrayDistance() {
       enemy.strayTime += 1.0;
       if enemy.strayTime >= RLConfig.StrayTimeout() {
-        RLDebug("Removing stray enemy.");
+        RLLog("Removing stray enemy.");
         enemy.done = true;
         entities.DeleteEntity(enemy.id);
         return true;
@@ -328,9 +450,53 @@ public class RLWaveSpawner extends IScriptable {
     return false;
   }
 
+  // First-sighting setup: no god modes, level matched to V, full health, hostile.
+  public static func Prepare(puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>, levelOffset: Int32) {
+    let game = puppet.GetGame();
+    let id = puppet.GetEntityID();
+    let godModes = GameInstance.GetGodModeSystem(game);
+    let types = [gameGodModeType.Invulnerable, gameGodModeType.Immortal];
+    for type in types {
+      let sources = godModes.GetGodModeSources(id, type);
+      for source in sources {
+        godModes.RemoveGodMode(id, type, source);
+      }
+      if ArraySize(sources) > 0 {
+        RLLog(s"Removed god mode from \(TDBID.ToStringDEBUG(puppet.GetRecordID())).");
+      }
+    }
+
+    let stats = GameInstance.GetStatsSystem(game);
+    let npcStats = Cast<StatsObjectID>(id);
+    let playerLevel = stats.GetStatValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatType.PowerLevel);
+    let target = MaxF(1.0, playerLevel + Cast<Float>(levelOffset));
+    stats.RemoveAllModifiers(npcStats, gamedataStatType.PowerLevel);
+    stats.AddModifier(npcStats, RPGManager.CreateStatModifier(gamedataStatType.PowerLevel, gameStatModifierType.Additive, target));
+    GameInstance.GetStatPoolsSystem(game).RequestSettingStatPoolValue(npcStats, gamedataStatPoolType.Health, 100.0, null, true);
+
+    RLWaveSpawner.MakeHostile(puppet, player);
+  }
+
   public static func MakeHostile(puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>) {
     GameObject.ChangeAttitudeToHostile(puppet, player);
     TargetTrackingExtension.InjectThreat(puppet, player);
     TargetTrackingExtension.SetThreatPersistence(puppet, player, true, 0u);
+  }
+
+  // Sends the enemy sprinting towards V; it resumes fighting on arrival.
+  public static func ChargeAt(puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>) {
+    let ai = puppet.GetAIControllerComponent();
+    if !IsDefined(ai) {
+      return;
+    }
+    let command = new AIMoveToCommand();
+    AIPositionSpec.SetEntity(command.movementTarget, player);
+    AIPositionSpec.SetEntity(command.facingTarget, player);
+    command.movementType = moveMovementType.Sprint;
+    command.desiredDistanceFromTarget = 7.0;
+    command.ignoreNavigation = false;
+    command.finishWhenDestinationReached = true;
+    ai.SendCommand(command);
+    RLWaveSpawner.MakeHostile(puppet, player);
   }
 }

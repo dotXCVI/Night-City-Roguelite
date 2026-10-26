@@ -201,8 +201,9 @@ public class RLArenaWalls extends IScriptable {
     mesh.isEnabled = false;
     let transform: WorldTransform;
     WorldTransform.SetPosition(transform, Vector4(0.0, 0.0, RLArenaWalls.RowZ(RLArenaWalls.FirstRowHeight(), row, rowHeight), 1.0));
-    // Same rotation as the vanilla tape: stand the plane up, lettering facing -Y.
-    WorldTransform.SetOrientation(transform, Quaternion(0.70710678, 0.0, 0.0, 0.70710678));
+    // Stand the plane up (-90 degrees about X) so the lettering is upright and
+    // reads left to right from inside the arena.
+    WorldTransform.SetOrientation(transform, Quaternion(-0.70710678, 0.0, 0.0, 0.70710678));
     mesh.localTransform = transform;
     return mesh;
   }

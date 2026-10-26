@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 // One popup, three views:
 //   Hub         (home, no run): stats, kit, mode, unlocks, START RUN.
-//   ArenaPicker (home, run active): pick the next arena, or abandon.
+//   DoorPicker  (home, run active): pick the next fight by its reward, or abandon.
 //   InArena     (in an arena): run status, abandon.
 // -----------------------------------------------------------------------------
 
@@ -12,7 +12,7 @@ import Codeware.UI.*
 
 public enum RLTerminalView {
   Hub = 0,
-  ArenaPicker = 1,
+  DoorPicker = 1,
   InArena = 2,
 }
 
@@ -20,28 +20,30 @@ public class RLTerminalPopup extends InGamePopup {
   private let m_system: wref<RogueliteSystem>;
   private let m_view: RLTerminalView;
   private let m_summary: String;
-  private let m_lastArena: CName;
+  private let m_doors: array<ref<RLDoor>>;
   private let m_content: ref<InGamePopupContent>;
   private let m_confirmAbandon: Bool;
 
   public static func OpenHub(system: ref<RogueliteSystem>) -> ref<RLTerminalPopup> {
-    return RLTerminalPopup.Open(system, RLTerminalView.Hub, "", n"");
+    let none: array<ref<RLDoor>>;
+    return RLTerminalPopup.Open(system, RLTerminalView.Hub, "", none);
   }
 
-  public static func OpenArenaPicker(system: ref<RogueliteSystem>, const summary: String, lastArena: CName) -> ref<RLTerminalPopup> {
-    return RLTerminalPopup.Open(system, RLTerminalView.ArenaPicker, summary, lastArena);
+  public static func OpenDoorPicker(system: ref<RogueliteSystem>, const summary: String, doors: array<ref<RLDoor>>) -> ref<RLTerminalPopup> {
+    return RLTerminalPopup.Open(system, RLTerminalView.DoorPicker, summary, doors);
   }
 
   public static func OpenInArena(system: ref<RogueliteSystem>, const summary: String) -> ref<RLTerminalPopup> {
-    return RLTerminalPopup.Open(system, RLTerminalView.InArena, summary, n"");
+    let none: array<ref<RLDoor>>;
+    return RLTerminalPopup.Open(system, RLTerminalView.InArena, summary, none);
   }
 
-  private static func Open(system: ref<RogueliteSystem>, view: RLTerminalView, const summary: String, lastArena: CName) -> ref<RLTerminalPopup> {
+  private static func Open(system: ref<RogueliteSystem>, view: RLTerminalView, const summary: String, doors: array<ref<RLDoor>>) -> ref<RLTerminalPopup> {
     let popup = new RLTerminalPopup();
     popup.m_system = system;
     popup.m_view = view;
     popup.m_summary = summary;
-    popup.m_lastArena = lastArena;
+    popup.m_doors = doors;
     RLUI.Show(popup);
     return popup;
   }
@@ -54,8 +56,8 @@ public class RLTerminalPopup extends InGamePopup {
 
     let header = InGamePopupHeader.Create();
     switch this.m_view {
-      case RLTerminalView.ArenaPicker:
-        header.SetTitle("CHOOSE AN ARENA");
+      case RLTerminalView.DoorPicker:
+        header.SetTitle(ArraySize(this.m_doors) == 1 ? "YOUR NEXT FIGHT" : "CHOOSE YOUR NEXT FIGHT");
         break;
       case RLTerminalView.InArena:
         header.SetTitle("RUN IN PROGRESS");
@@ -83,8 +85,8 @@ public class RLTerminalPopup extends InGamePopup {
     body.SetAnchor(inkEAnchor.Fill);
     body.Reparent(root);
     switch this.m_view {
-      case RLTerminalView.ArenaPicker:
-        this.BuildArenaPicker(body);
+      case RLTerminalView.DoorPicker:
+        this.BuildDoorPicker(body);
         break;
       case RLTerminalView.InArena:
         this.BuildInArena(body);
@@ -105,29 +107,35 @@ public class RLTerminalPopup extends InGamePopup {
     this.AddAbandonButton(actions);
   }
 
-  // --- Arena picker ------------------------------------------------------------------------
+  // --- Door picker -------------------------------------------------------------------------
+  // One row per door: [REWARD - THREAT] then what it pays, where it is and how
+  // hard it is.
 
-  private func BuildArenaPicker(body: ref<inkCompoundWidget>) {
+  private func BuildDoorPicker(body: ref<inkCompoundWidget>) {
     RLUI.Text(this.m_summary, 30, n"MainColors.Red", true).Reparent(body);
+    let hint = ArraySize(this.m_doors) == 1
+      ? "The first fight is picked for you. From here on you choose the reward - bigger rewards mean harder fights."
+      : "Pick the reward you want. The reward sets the fight: training is light, chrome and iconics are heavy.";
+    RLUI.WrappedText(hint, 24, n"MainColors.Grey", 1500.0).Reparent(body);
 
-    let columns = RLUI.HPanel(16.0);
-    columns.SetMargin(inkMargin(0.0, 16.0, 0.0, 16.0));
-    columns.Reparent(body);
-    let left = RLUI.VPanel(4.0);
-    left.Reparent(columns);
-    let right = RLUI.VPanel(4.0);
-    right.Reparent(columns);
-
+    let list = RLUI.VPanel(14.0);
+    list.SetMargin(inkMargin(0.0, 16.0, 0.0, 16.0));
+    list.Reparent(body);
     let i = 0;
-    for arena in RLArenas.Enabled() {
-      let column = i % 2 == 0 ? left : right;
-      let row = RLUI.HPanel(10.0);
-      row.Reparent(column);
-      let label = arena.name + (Equals(arena.id, this.m_lastArena) ? " (last)" : "");
-      this.AddButton(row, StringToName("arena_" + NameToString(arena.id)), label, 460.0, false, 72.0, 34);
-      let info = RLUI.Text(arena.area + " - " + RLTerminalPopup.FactionList(arena.factions), 24, n"MainColors.Grey");
+    for door in this.m_doors {
+      let row = RLUI.HPanel(18.0);
+      row.Reparent(list);
+      let label = (door.boss ? "BOSS - " : "") + RLRewards.CategoryName(door.category) + "   " + RLTerminalPopup.Stars(door.threat);
+      this.AddButton(row, StringToName(s"door_\(i)"), label, 560.0, false, 96.0, 38);
+      let info = RLUI.VPanel(2.0);
       info.SetVAlign(inkEVerticalAlign.Center);
       info.Reparent(row);
+      RLUI.Text(RLRewards.CategoryDescription(door.category), 28, n"MainColors.Blue").Reparent(info);
+      let arena = RLArenas.Get(door.arena);
+      if IsDefined(arena) {
+        RLUI.Text(arena.name + " (" + arena.area + ") - " + RLTerminalPopup.FactionList(arena.factions), 24, n"MainColors.Grey").Reparent(info);
+      }
+      RLUI.Text(RLRewards.ThreatName(door.threat) + ": " + RLRewards.ThreatDescription(door.threat), 24, door.threat >= 3 ? n"MainColors.Red" : n"MainColors.Grey").Reparent(info);
       i += 1;
     }
 
@@ -136,6 +144,16 @@ public class RLTerminalPopup extends InGamePopup {
     actions.Reparent(body);
     this.AddButton(actions, n"resume", "NOT YET", 360.0, false, 80.0, 40);
     this.AddAbandonButton(actions);
+  }
+
+  public static func Stars(threat: Int32) -> String {
+    if threat <= 1 {
+      return "[#--]";
+    }
+    if threat >= 3 {
+      return "[###]";
+    }
+    return "[##-]";
   }
 
   public static func FactionList(factions: array<gamedataAffiliation>) -> String {
@@ -229,9 +247,9 @@ public class RLTerminalPopup extends InGamePopup {
         this.m_confirmAbandon = true;
         this.Rebuild();
       }
-    } else if StrBeginsWith(name, "arena_") {
+    } else if StrBeginsWith(name, "door_") {
       this.Close();
-      this.m_system.DeployTo(StringToName(StrAfterFirst(name, "_")));
+      this.m_system.DeployToDoor(StringToInt(StrAfterFirst(name, "_")));
     } else if Equals(name, "start") {
       this.Close();
       this.m_system.StartRun(service.GetSelectedKit());

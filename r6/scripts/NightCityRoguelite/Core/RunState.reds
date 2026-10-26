@@ -22,6 +22,10 @@ public class RLRunState {
   public let rerollsPerFloor: Int32;
   public let rerollsLeft: Int32;
   public let offerCount: Int32;
+  // The fight in progress (or just cleared): its reward type and threat.
+  public let door: ref<RLDoor>;
+
+  public func Threat() -> Int32 = IsDefined(this.door) ? this.door.threat : 2
 
   public static func Create(token: Int32, kit: CName, roguelike: Bool) -> ref<RLRunState> {
     let run = new RLRunState();

@@ -21,20 +21,26 @@ public abstract class RLConfig {
   // it whenever V isn't in an arena. When false the hub is wherever the
   // takeover happened.
   public static func UseApartmentHub() -> Bool = true
-  // Interior spawn point (from Appearance Menu Mod's location database).
-  public static func ApartmentPosition() -> Vector4 = Vector4(-1391.8707, 1271.6887, 123.0824, 1.0)
-  public static func ApartmentYaw() -> Float = -99.25
-  // District the game reports while V is inside the apartment.
-  public static func ApartmentDistrict() -> String = "LittleChina_VApartment"
-  // Fallback "inside" test, used until the district has been seen once.
-  public static func ApartmentRadius() -> Float = 12.0
-  public static func ApartmentHeightTolerance() -> Float = 3.0
+  // Spawn point in the middle of the main room, and the room's bounds. Both
+  // come from the apartment's own quest markers in the 2.5 world data (the
+  // front door is at x = -1389.5; everything west of it is the hallway).
+  public static func ApartmentPosition() -> Vector4 = Vector4(-1381.77, 1270.79, 123.07, 1.0)
+  public static func ApartmentYaw() -> Float = 90.0
+  public static func ApartmentMin() -> Vector4 = Vector4(-1389.2, 1259.5, 121.5, 1.0)
+  public static func ApartmentMax() -> Vector4 = Vector4(-1371.0, 1283.0, 127.5, 1.0)
+  // The hallway right outside the front door. V lands here first and steps
+  // inside once the apartment has streamed in (it can take a few seconds);
+  // if it never does, the hallway is home for that session.
+  public static func HallwayPosition() -> Vector4 = Vector4(-1391.8707, 1271.6887, 123.0824, 1.0)
+  public static func HallwayYaw() -> Float = -99.25
+  public static func HallwayMin() -> Vector4 = Vector4(-1397.0, 1265.0, 121.5, 1.0)
+  public static func HallwayMax() -> Vector4 = Vector4(-1389.2, 1279.0, 127.5, 1.0)
+  // How long to wait in the hallway for the apartment to load.
+  public static func ApartmentLoadTimeout() -> Float = 20.0
   // Seconds outside before V is put back inside.
   public static func ApartmentLeashSeconds() -> Float = 2.0
   // Turn NCPD off for roguelite characters (gunfire in arenas won't draw police).
   public static func DisablePolice() -> Bool = true
-  // Log every door that streams in near the apartment (to find the front door).
-  public static func LogApartmentDoors() -> Bool = true
 
   // --- Run structure ------------------------------------------------------------
 
@@ -84,6 +90,10 @@ public abstract class RLConfig {
   // Enemies further than this from V for StrayTimeout seconds are removed.
   public static func StrayDistance() -> Float = 90.0
   public static func StrayTimeout() -> Float = 60.0
+  // An enemy further than ChaseDistance that hasn't closed in on V for
+  // ChaseAfterSeconds is sent running at V.
+  public static func ChaseDistance() -> Float = 15.0
+  public static func ChaseAfterSeconds() -> Float = 5.0
   // Hard cap on simultaneously alive enemies.
   public static func MaxAlive() -> Int32 = 14
 
@@ -113,11 +123,22 @@ public abstract class RLConfig {
 
 public func RLLog(const msg: String) {
   FTLog("[NightCityRoguelite] " + msg);
+  RLKeepLog(msg);
 }
 
 public func RLDebug(const msg: String) {
   if RLConfig.VerboseLogging() {
     FTLog("[NightCityRoguelite][debug] " + msg);
+    RLKeepLog("(debug) " + msg);
+  }
+}
+
+// FTLog output isn't written anywhere in release builds, so every line is
+// also kept in the service's persistent log.
+public func RLKeepLog(const msg: String) {
+  let service = RogueliteService.Get();
+  if IsDefined(service) {
+    service.AppendLog(msg);
   }
 }
 

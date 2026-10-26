@@ -9,11 +9,15 @@
 //
 //   new game -> AwaitingTakeover -> Hub (locked in V's apartment)
 //   Hub --START RUN--> Preparing --> RunHome (still in the apartment)
-//   RunHome --pick reward (if any), pick arena--> Deploying (countdown)
-//     --> InEncounter (waves, invisible walls)
+//   RunHome --pick reward (if any), pick the next fight (door)--> Deploying
+//     (countdown) --> InEncounter (waves, arena walls)
 //     --> Cleared (loot countdown, F7 skips) --> RunHome
 //     --> Flatlined (countdown) --> Ending --> Hub
 //   final floor cleared --> Cleared (countdown) --> Ending --> Hub
+//
+// Doors (Hades-style): the first fight is a random arena; after that each
+// floor offers doors by reward type, and the reward type sets the threat of
+// the fight (Rewards/RewardSystem.reds).
 //
 // The hub is V's apartment (Hub/ApartmentHub.reds) unless that is turned off
 // in Config or the apartment fails to load, in which case it is the spot where
@@ -54,6 +58,9 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_hud: ref<RLHud>;
   private let m_apartment: ref<RLApartmentHub>;
   private let m_offers: array<ref<RLOffer>>;
+  private let m_doors: array<ref<RLDoor>>;
+  private let m_lootQueue: array<ItemID>;
+  private let m_lootSweepPending: Bool;
   private let m_popupOpen: Bool;
   private let m_popup: wref<CustomPopup>;
   private let m_takeoverElapsed: Float;
@@ -67,6 +74,9 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_alive: Int32;
   private let m_lastSummary: String;
   private let m_lastArena: CName;
+  private let m_settleTries: Int32;
+  private let m_busyNotified: Bool;
+  private let m_busyWaits: Int32;
 
   public static func Get(game: GameInstance) -> ref<RogueliteSystem> {
     return GameInstance.GetScriptableSystemsContainer(game).Get(n"NightCityRoguelite.RogueliteSystem") as RogueliteSystem;
@@ -176,18 +186,39 @@ public class RogueliteSystem extends ScriptableSystem {
     this.UntrackQuest();
   }
 
-  // Hides the story from the journal once V has been taken over (the opening
-  // is left alone so it can hand control to the player).
+  // Hides the story quest from the HUD (see Core/Story.reds).
   private func UntrackQuest() {
-    let game = this.GetGameInstance();
-    if this.m_takeoverDone {
-      RLStory.DeactivateQuests(game);
-    } else {
-      GameInstance.GetJournalManager(game).UntrackEntry();
-    }
+    RLStory.Quiet(this.GetGameInstance());
   }
 
-  public func SilencesStory() -> Bool = this.m_isRoguelite && this.m_takeoverDone
+  // A call, a conversation or a scene is in progress: teleports, the terminal
+  // and the reward screen wait until it's over.
+  public static func IsStoryBusy(player: ref<PlayerPuppet>) -> Bool {
+    if !IsDefined(player) {
+      return false;
+    }
+    let game = player.GetGame();
+    return RLStory.IsCallActive(game) || RLStory.IsDialogueOpen(game) || !RogueliteSystem.IsPlayerFree(player);
+  }
+
+  // For timed actions that move V: returns true (and retries `action` in a
+  // second) while the story is busy.
+  private func WaitIfBusy(action: CName) -> Bool {
+    let player = GetPlayer(this.GetGameInstance());
+    // Never wait forever: after 30 s go ahead anyway.
+    if !RogueliteSystem.IsStoryBusy(player) || this.m_busyWaits >= 30 {
+      this.m_busyNotified = false;
+      this.m_busyWaits = 0;
+      return false;
+    }
+    this.m_busyWaits += 1;
+    if !this.m_busyNotified {
+      this.m_busyNotified = true;
+      RLNotify(this.GetGameInstance(), "Waiting for the conversation to end...", 4.0);
+    }
+    this.After(action, 1.0);
+    return true;
+  }
 
   // --- Timers --------------------------------------------------------------------------
 
@@ -259,13 +290,22 @@ public class RogueliteSystem extends ScriptableSystem {
         this.SpawnEncounter();
         break;
       case n"returnHome":
-        this.ReturnHomeAfterArena();
+        if !this.WaitIfBusy(action) {
+          this.ReturnHomeAfterArena();
+        }
         break;
       case n"victoryHome":
-        this.EndRun(true);
+        if !this.WaitIfBusy(action) {
+          this.EndRun(true);
+        }
         break;
       case n"flatlineHome":
-        this.EndRun(false);
+        if !this.WaitIfBusy(action) {
+          this.EndRun(false);
+        }
+        break;
+      case n"settleHome":
+        this.SettleHome();
         break;
       case n"openTerminal":
         if !this.m_popupOpen && (Equals(this.m_state, RLState.RunHome) || Equals(this.m_state, RLState.Hub)) {
@@ -279,6 +319,9 @@ public class RogueliteSystem extends ScriptableSystem {
         break;
       case n"endGear":
         this.FinishEndRun();
+        break;
+      case n"lootSweep":
+        this.SweepLoot();
         break;
     }
   }
@@ -298,14 +341,15 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     let player = GetPlayer(this.GetGameInstance());
     this.m_takeoverElapsed += 1.0;
-    if IsDefined(player) && RogueliteSystem.IsPlayerFree(player) {
+    // Let the opening call play out: cutting it off leaves it running unseen.
+    if IsDefined(player) && !RogueliteSystem.IsStoryBusy(player) {
       this.DoTakeover();
       return;
     }
-    if this.m_takeoverElapsed == 15.0 {
-      RLNotify(this.GetGameInstance(), "Night City Roguelite: waiting for the opening scene to end. Press F7 to skip ahead.", 6.0);
+    if this.m_takeoverElapsed == 20.0 {
+      RLNotify(this.GetGameInstance(), "Night City Roguelite: taking over once the opening call ends.", 6.0);
     }
-    if this.m_takeoverElapsed >= 90.0 && IsDefined(player) && !RogueliteSystem.IsInVehicle(player) {
+    if this.m_takeoverElapsed >= 300.0 && IsDefined(player) && !RogueliteSystem.IsInVehicle(player) && !RLStory.IsCallActive(player.GetGame()) {
       this.DoTakeover();
       return;
     }
@@ -334,6 +378,7 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     RLCharacterReset.RemoveGear(player);
+    RLCharacterReset.RestoreBody(player);
     RLCharacterReset.HealFull(player);
     this.m_takeoverDone = true;
     RLLog("Takeover complete.");
@@ -377,9 +422,18 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_hud.Hide();
     let player = GetPlayer(this.GetGameInstance());
     if IsDefined(player) {
-      this.ReturnToHub(player);
+      RLCharacterReset.RestoreBody(player);
     }
-    this.m_apartment.StartLeash();
+    if firstTime {
+      if IsDefined(player) {
+        this.ReturnToHub(player);
+      }
+      this.m_apartment.StartLeash();
+    } else {
+      // Right after a load the game ignores teleports; settle in a moment.
+      this.m_settleTries = 0;
+      this.After(n"settleHome", 3.0);
+    }
     this.UntrackQuest();
     let message = firstTime
       ? "Welcome home. Press F7 for the terminal. You can save here."
@@ -394,6 +448,21 @@ public class RogueliteSystem extends ScriptableSystem {
     } else if this.m_hubX != 0.0 || this.m_hubY != 0.0 {
       RLArenaDirector.TeleportToPoint(player, this.HubPosition(), this.m_hubYaw);
     }
+  }
+
+  // After a load: once V can move (and no call is going), send V home.
+  private func SettleHome() {
+    if !Equals(this.m_state, RLState.Hub) {
+      return;
+    }
+    let player = GetPlayer(this.GetGameInstance());
+    this.m_settleTries += 1;
+    if IsDefined(player) && (!RogueliteSystem.IsStoryBusy(player) || this.m_settleTries > 60) {
+      this.ReturnToHub(player);
+      this.m_apartment.StartLeash();
+      return;
+    }
+    this.After(n"settleHome", 1.0);
   }
 
   // Called when V fell below the apartment after being sent there.
@@ -421,6 +490,11 @@ public class RogueliteSystem extends ScriptableSystem {
     if this.m_popupOpen {
       return;
     }
+    let player = GetPlayer(this.GetGameInstance());
+    if RogueliteSystem.IsStoryBusy(player) && !Equals(this.m_state, RLState.Cleared) {
+      RLNotify(this.GetGameInstance(), "Finish the conversation first.", 3.0);
+      return;
+    }
     switch this.m_state {
       case RLState.AwaitingTakeover:
         this.DoTakeover();
@@ -433,8 +507,11 @@ public class RogueliteSystem extends ScriptableSystem {
         if ArraySize(this.m_offers) > 0 {
           this.OpenRewardPopup();
         } else {
+          if ArraySize(this.m_doors) == 0 {
+            this.RollDoors();
+          }
           this.m_popupOpen = true;
-          this.m_popup = RLTerminalPopup.OpenArenaPicker(this, this.HomeSummary(), this.m_lastArena);
+          this.m_popup = RLTerminalPopup.OpenDoorPicker(this, this.HomeSummary(), this.m_doors);
         }
         break;
       case RLState.Deploying:
@@ -481,6 +558,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_run.rerollsPerFloor = RLMeta.PerkActive(service, n"perk.Reroll") ? 1 : 0;
     this.m_run.offerCount = RLMeta.PerkActive(service, n"perk.FourthChoice") ? 4 : 3;
     ArrayClear(this.m_offers);
+    ArrayClear(this.m_doors);
     this.m_lastArena = n"";
     this.m_state = RLState.Preparing;
 
@@ -496,6 +574,7 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     RLCharacterReset.RemoveGear(player);
+    RLCharacterReset.RestoreBody(player);
     this.After(n"prepareKit", 0.6);
   }
 
@@ -523,8 +602,9 @@ public class RogueliteSystem extends ScriptableSystem {
     RLCharacterReset.HealFull(player);
     this.m_deathGuard.Arm(player);
     FastTravelSystem.AddFastTravelLock(n"NightCityRoguelite", game);
+    this.RollDoors();
     this.EnterRunHome();
-    RLNotify(game, "Run started. Spend your attribute points in the Character menu, then pick an arena.", 8.0);
+    RLNotify(game, "Run started. Spend your attribute points in the Character menu, then press F7 to deploy.", 8.0);
   }
 
   // --- Between arenas (at home, run active) -----------------------------------------------
@@ -532,7 +612,7 @@ public class RogueliteSystem extends ScriptableSystem {
   private func EnterRunHome() {
     this.m_state = RLState.RunHome;
     this.m_apartment.StartLeash();
-    let status = ArraySize(this.m_offers) > 0 ? "HOME - F7: CHOOSE YOUR REWARD" : "HOME - F7: CHOOSE AN ARENA";
+    let status = ArraySize(this.m_offers) > 0 ? "HOME - F7: CHOOSE YOUR REWARD" : "HOME - F7: CHOOSE YOUR NEXT FIGHT";
     this.m_hud.Update(this.m_run.FloorLabel(), status);
     this.After(n"openTerminal", 1.5);
   }
@@ -554,21 +634,38 @@ public class RogueliteSystem extends ScriptableSystem {
 
   // --- Arenas --------------------------------------------------------------------------------
 
-  // Called from the arena picker.
-  public func DeployTo(arenaID: CName) {
-    let player = GetPlayer(this.GetGameInstance());
-    if !Equals(this.m_state, RLState.RunHome) || !IsDefined(player) || !IsDefined(this.m_run) {
+  // Called from the door picker.
+  public func DeployToDoor(index: Int32) {
+    if !Equals(this.m_state, RLState.RunHome) || !IsDefined(this.m_run) {
+      return;
+    }
+    if RogueliteSystem.IsStoryBusy(GetPlayer(this.GetGameInstance())) {
+      RLNotify(this.GetGameInstance(), "Finish the conversation first.", 3.0);
       return;
     }
     if ArraySize(this.m_offers) > 0 {
       this.OpenRewardPopup();
       return;
     }
-    let arena = RLArenas.Get(arenaID);
-    if !IsDefined(arena) || !arena.enabled {
+    if index < 0 || index >= ArraySize(this.m_doors) {
       return;
     }
-    this.m_lastArena = arenaID;
+    let door = this.m_doors[index];
+    let arena = RLArenas.Get(door.arena);
+    if !IsDefined(arena) {
+      return;
+    }
+    this.m_run.door = door;
+    ArrayClear(this.m_doors);
+    this.DeployTo(arena);
+  }
+
+  private func DeployTo(arena: ref<RLArenaDef>) {
+    let player = GetPlayer(this.GetGameInstance());
+    if !IsDefined(player) {
+      return;
+    }
+    this.m_lastArena = arena.id;
     this.m_state = RLState.Deploying;
     this.m_apartment.StopLeash();
     this.m_spawner.DeleteAll();
@@ -577,7 +674,18 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_alive = 0;
     this.m_arenas.Enter(player, arena);
     this.m_arenas.StartWalls();
-    this.StartCountdown(RLConfig.DeployCountdown(), arena.name + " - FIGHT IN", n"spawn");
+    RLLoot.RefillForArena(player);
+    this.UntrackQuest();
+    let reward = RLRewards.CategoryName(this.m_run.door.category);
+    RLLog(s"Deploying to \(arena.name): \(reward), threat \(this.m_run.Threat()).");
+    this.StartCountdown(RLConfig.DeployCountdown(), s"\(arena.name) - \(reward) - FIGHT IN", n"spawn");
+  }
+
+  private func RollDoors() {
+    if !IsDefined(this.m_run) {
+      return;
+    }
+    this.m_doors = RLRewards.RollDoors(RogueliteService.Get().GetPools(), this.m_run, this.m_lastArena);
   }
 
   private func SpawnEncounter() {
@@ -588,29 +696,38 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     let plan = this.BuildPlan(this.m_run, arena);
     this.m_state = RLState.InEncounter;
-    this.m_spawner.Start(arena.position, plan);
+    this.m_spawner.Start(arena, plan);
     RLNotify(player.GetGame(), this.m_run.FloorLabel() + " - " + plan.factionName, 4.0);
   }
 
+  // Waves for a floor. Threat (from the door's reward type) scales the fight:
+  // light = smaller waves of weaker enemies, heavy = bigger waves, more
+  // elites, an extra wave and enemies a level above V.
   private func BuildPlan(run: ref<RLRunState>, arena: ref<RLArenaDef>) -> ref<RLEncounterPlan> {
     let pools = RogueliteService.Get().GetPools();
     let faction = pools.PickFactionPreferred(arena.factions, run.act >= 3);
+    let threat = run.Threat();
     let plan = new RLEncounterPlan();
     plan.factionName = RogueliteSystem.FactionName(faction.faction);
 
-    let weights = RogueliteSystem.TierWeights(run.act, run.IsEliteFloor());
+    let weights = RogueliteSystem.TierWeights(run.act, run.IsEliteFloor(), threat);
     let waves = run.IsEliteFloor() ? 3 : (run.act >= 2 ? 3 : 2);
+    if threat >= 3 {
+      waves += 1;
+    }
     if run.IsBossFloor() {
       waves = 2;
     }
-    let size = Min(3 + run.floor + (run.act - 1) * 2, RLConfig.MaxAlive() - 2);
+    let size = Clamp(3 + run.floor + (run.act - 1) * 2 + (threat - 2) * 2, 2, RLConfig.MaxAlive() - 2);
+    let levelBonus = threat - 2;
 
     let w = 0;
     while w < waves {
       plan.BeginWave();
       let k = 0;
       while k < size + w {
-        plan.Add(faction.Pick(RogueliteSystem.RollTier(weights)), false);
+        let tier = RogueliteSystem.RollTier(weights);
+        plan.Add(faction.Pick(tier), false, tier + levelBonus);
         k += 1;
       }
       w += 1;
@@ -620,24 +737,24 @@ public class RogueliteSystem extends ScriptableSystem {
       plan.BeginWave();
       let bosses = RogueliteSystem.BossRecords(run.act);
       if ArraySize(bosses) == 0 {
-        // No valid boss records: two faction elites stand in.
-        plan.Add(faction.Pick(2), true);
-        plan.Add(faction.Pick(2), true);
+        // Act 1, or no MaxTac records: faction elites lead the boss wave.
+        plan.Add(faction.Pick(2), true, 3 + run.act);
+        plan.Add(faction.Pick(2), true, 3 + run.act);
       } else {
         for boss in bosses {
-          plan.Add(boss, true);
+          plan.Add(boss, true, 2 + run.act);
         }
       }
-      let adds = run.act;
+      let adds = run.act + 1;
       while adds > 0 {
-        plan.Add(faction.Pick(1), false);
+        plan.Add(faction.Pick(1), false, 1);
         adds -= 1;
       }
     }
     return plan;
   }
 
-  public static func TierWeights(act: Int32, elite: Bool) -> array<Int32> {
+  public static func TierWeights(act: Int32, elite: Bool, threat: Int32) -> array<Int32> {
     let weights: array<Int32>;
     if act <= 1 {
       weights = [70, 30, 0];
@@ -646,12 +763,19 @@ public class RogueliteSystem extends ScriptableSystem {
     } else {
       weights = [10, 50, 40];
     }
-    if elite {
+    if elite || threat >= 3 {
       let shift = Min(20, weights[0]);
       weights[0] -= shift;
       weights[2] += shift;
       weights[2] += 20 - shift;
       weights[1] -= 20 - shift;
+    }
+    if threat <= 1 {
+      // Light fights: mostly grunts.
+      let down = Min(15, weights[2]);
+      weights[2] -= down;
+      weights[0] += down + 15;
+      weights[1] = Max(0, weights[1] - 15);
     }
     return weights;
   }
@@ -668,13 +792,12 @@ public class RogueliteSystem extends ScriptableSystem {
     return 2;
   }
 
+  // MaxTac lead the boss waves of acts 2 and 3; act 1's boss wave is led by
+  // faction elites (empty result).
   public static func BossRecords(act: Int32) -> array<TweakDBID> {
     let result: array<TweakDBID>;
-    let psychos: array<TweakDBID>;
-    for id in RLBosses.Cyberpsychos() {
-      if RLBosses.Exists(id) {
-        ArrayPush(psychos, id);
-      }
+    if act <= 1 {
+      return result;
     }
     let maxtac: array<TweakDBID>;
     for id in RLBosses.MaxTac() {
@@ -682,25 +805,11 @@ public class RogueliteSystem extends ScriptableSystem {
         ArrayPush(maxtac, id);
       }
     }
-    if act <= 1 {
-      if ArraySize(psychos) > 0 {
-        ArrayPush(result, psychos[RandRange(0, ArraySize(psychos))]);
-      }
-    } else if act == 2 {
-      let i = 0;
-      while i < 3 && ArraySize(maxtac) > 0 {
-        ArrayPush(result, maxtac[RandRange(0, ArraySize(maxtac))]);
-        i += 1;
-      }
-    } else {
-      let j = 0;
-      while j < 4 && ArraySize(maxtac) > 0 {
-        ArrayPush(result, maxtac[RandRange(0, ArraySize(maxtac))]);
-        j += 1;
-      }
-      if ArraySize(psychos) > 0 {
-        ArrayPush(result, psychos[RandRange(0, ArraySize(psychos))]);
-      }
+    let count = act >= 3 ? 3 : 2;
+    let i = 0;
+    while i < count && ArraySize(maxtac) > 0 {
+      ArrayPush(result, maxtac[RandRange(0, ArraySize(maxtac))]);
+      i += 1;
     }
     return result;
   }
@@ -797,7 +906,7 @@ public class RogueliteSystem extends ScriptableSystem {
 
     this.m_run.rerollsLeft = this.m_run.rerollsPerFloor;
     this.RollOffers();
-    RLNotify(game, "Area clear. Loot up - you'll be sent home shortly (F7 to go now).", 6.0);
+    RLNotify(game, "Area clear. Loot the bodies for ammo - you'll be sent home shortly (F7 to go now).", 6.0);
     this.StartCountdown(RLConfig.ClearedCountdown(), "CLEARED - HOME IN", n"returnHome");
   }
 
@@ -808,7 +917,8 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(player) || !IsDefined(this.m_run) {
       return;
     }
-    this.m_offers = RLRewards.Roll(player, RogueliteService.Get().GetPools(), this.m_run, this.m_run.offerCount);
+    let category = IsDefined(this.m_run.door) ? this.m_run.door.category : RLRewardCategory.Boons;
+    this.m_offers = RLRewards.RollForCategory(player, RogueliteService.Get().GetPools(), this.m_run, category, this.m_run.Threat(), this.m_run.offerCount);
   }
 
   private func OpenRewardPopup() {
@@ -816,7 +926,8 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     this.m_popupOpen = true;
-    this.m_popup = RLRewardPopup.Open(this, this.m_offers, "FLOOR CLEARED - CHOOSE ONE", this.m_run.rerollsLeft);
+    let category = IsDefined(this.m_run.door) ? this.m_run.door.category : RLRewardCategory.Boons;
+    this.m_popup = RLRewardPopup.Open(this, this.m_offers, RLRewards.CategoryName(category) + " - CHOOSE ONE", this.m_run.rerollsLeft);
   }
 
   public func OnRewardChosen(index: Int32) {
@@ -837,8 +948,9 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     RLRewards.Grant(player, RogueliteService.Get().GetPools(), this.m_run, offer);
     ArrayClear(this.m_offers);
+    this.RollDoors();
     RLNotify(game, s"\(offer.title) acquired.", 4.0);
-    this.m_hud.Update(this.m_run.FloorLabel(), "HOME - F7: CHOOSE AN ARENA");
+    this.m_hud.Update(this.m_run.FloorLabel(), "HOME - F7: CHOOSE YOUR NEXT FIGHT");
     this.After(n"openTerminal", 0.8);
   }
 
@@ -905,6 +1017,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_spawner.Abort();
     this.m_arenas.StopWalls();
     ArrayClear(this.m_offers);
+    ArrayClear(this.m_doors);
 
     let service = RogueliteService.Get();
     let payout = RLMeta.Payout(run.floorsCleared, run.kills, run.bossesKilled, victory, run.roguelike);
@@ -934,12 +1047,50 @@ public class RogueliteSystem extends ScriptableSystem {
     let player = GetPlayer(this.GetGameInstance());
     if IsDefined(player) {
       RLCharacterReset.RemoveGear(player);
+      RLCharacterReset.RestoreBody(player);
       RLCharacterReset.HealFull(player);
     }
     this.m_spawner.DeleteAll();
     this.m_state = RLState.Hub;
     this.m_apartment.StartLeash();
     RLNotify(this.GetGameInstance(), this.m_lastSummary, 10.0);
+  }
+
+  // --- Arena loot ----------------------------------------------------------------------------------
+
+  // True while V is in an arena: pickups are filtered (Combat/Loot.reds).
+  public func FiltersLoot() -> Bool {
+    switch this.m_state {
+      case RLState.Deploying:
+      case RLState.InEncounter:
+      case RLState.Cleared:
+      case RLState.Flatlined:
+        return true;
+    }
+    return false;
+  }
+
+  public func QueueLootRemoval(itemID: ItemID) {
+    ArrayPush(this.m_lootQueue, itemID);
+    if !this.m_lootSweepPending {
+      this.m_lootSweepPending = true;
+      this.After(n"lootSweep", 0.2);
+    }
+  }
+
+  private func SweepLoot() {
+    this.m_lootSweepPending = false;
+    let player = GetPlayer(this.GetGameInstance());
+    if IsDefined(player) {
+      let transactionSystem = GameInstance.GetTransactionSystem(player.GetGame());
+      for itemID in this.m_lootQueue {
+        let quantity = transactionSystem.GetItemQuantity(player, itemID);
+        if quantity > 0 {
+          transactionSystem.RemoveItem(player, itemID, quantity);
+        }
+      }
+    }
+    ArrayClear(this.m_lootQueue);
   }
 
   // --- HUD and summaries -----------------------------------------------------------------------

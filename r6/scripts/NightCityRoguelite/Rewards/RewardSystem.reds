@@ -1,9 +1,11 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - rewards
 // -----------------------------------------------------------------------------
-// After every cleared floor the player picks one of three (or four) offers.
-// Offer kinds never repeat within one pick. Item quality and iconic chance
-// scale with depth.
+// Hades-style: between arenas the player picks the next fight by its reward
+// type (a "door"). The reward type sets how hard the fight is: training is a
+// light fight, chrome and iconics are heavy ones. Clearing the arena then
+// offers three (or four) rewards of that type to choose from. Item quality
+// scales with depth and with the fight's threat.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -18,6 +20,23 @@ public enum RLOfferKind {
   AttributePoints = 6,
   PerkPoints = 7,
   Supplies = 8,
+}
+
+public enum RLRewardCategory {
+  Armory = 0,
+  Chrome = 1,
+  Daemons = 2,
+  Boons = 3,
+  Training = 4,
+  Iconic = 5,
+}
+
+// One choice for the next fight.
+public class RLDoor {
+  public let category: RLRewardCategory;
+  public let threat: Int32;
+  public let arena: CName;
+  public let boss: Bool;
 }
 
 public class RLOffer {
@@ -55,36 +74,104 @@ public abstract class RLRewards {
     return 0.04 + Cast<Float>(depth) * 0.015;
   }
 
-  // --- Rolling ---------------------------------------------------------------------
+  // --- Categories (doors) -----------------------------------------------------------
 
-  public static func Roll(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, count: Int32) -> array<ref<RLOffer>> {
-    let offers: array<ref<RLOffer>>;
-    let usedKinds: array<RLOfferKind>;
-    let guard = 0;
-    while ArraySize(offers) < count && guard < 40 {
-      guard += 1;
-      let kind = RLRewards.RollKind(run, pools);
-      if !ArrayContains(usedKinds, kind) {
-        let offer = RLRewards.Build(player, pools, run, kind);
-        if IsDefined(offer) {
-          ArrayPush(offers, offer);
-          ArrayPush(usedKinds, kind);
-        }
-      }
+  public static func CategoryName(category: RLRewardCategory) -> String {
+    switch category {
+      case RLRewardCategory.Armory: return "ARMORY";
+      case RLRewardCategory.Chrome: return "CHROME";
+      case RLRewardCategory.Daemons: return "DAEMONS";
+      case RLRewardCategory.Boons: return "BOONS";
+      case RLRewardCategory.Training: return "TRAINING";
+      case RLRewardCategory.Iconic: return "ICONIC";
     }
-    return offers;
+    return "REWARD";
   }
 
-  private static func RollKind(run: ref<RLRunState>, pools: ref<RLTweakPools>) -> RLOfferKind {
-    let depth = run.Depth();
-    if RandF() < RLRewards.IconicChance(depth) {
-      return RLOfferKind.Iconic;
+  public static func CategoryDescription(category: RLRewardCategory) -> String {
+    switch category {
+      case RLRewardCategory.Armory: return "Pick a new weapon";
+      case RLRewardCategory.Chrome: return "Pick cyberware, installed on the spot";
+      case RLRewardCategory.Daemons: return "Pick a quickhack";
+      case RLRewardCategory.Boons: return "Pick a run-only bonus";
+      case RLRewardCategory.Training: return "Pick levels, attribute points or perk points";
+      case RLRewardCategory.Iconic: return "Pick an iconic weapon";
     }
-    // Weighted table.
-    let weights: array<Int32> = [22, 0, 22, 0, 22, 8, 8, 10, 8];
-    if pools.HasQuickhacks() {
-      weights[3] = 8; // RLOfferKind.Quickhack
+    return "";
+  }
+
+  // 1 = light, 2 = standard, 3 = heavy.
+  public static func CategoryThreat(category: RLRewardCategory) -> Int32 {
+    switch category {
+      case RLRewardCategory.Training: return 1;
+      case RLRewardCategory.Chrome:
+      case RLRewardCategory.Iconic: return 3;
     }
+    return 2;
+  }
+
+  public static func ThreatName(threat: Int32) -> String {
+    if threat <= 1 {
+      return "LIGHT";
+    }
+    if threat >= 3 {
+      return "HEAVY";
+    }
+    return "STANDARD";
+  }
+
+  public static func ThreatDescription(threat: Int32) -> String {
+    if threat <= 1 {
+      return "Fewer, weaker enemies.";
+    }
+    if threat >= 3 {
+      return "Bigger waves, tougher enemies, an extra wave.";
+    }
+    return "A regular fight.";
+  }
+
+  // Doors for the next floor: one boss door before a boss floor, otherwise
+  // three different reward types, each in a different arena.
+  public static func RollDoors(pools: ref<RLTweakPools>, run: ref<RLRunState>, lastArena: CName) -> array<ref<RLDoor>> {
+    let doors: array<ref<RLDoor>>;
+    let usedArenas: array<CName>;
+    ArrayPush(usedArenas, lastArena);
+    if run.IsBossFloor() {
+      let boss = new RLDoor();
+      boss.category = RandF() < 0.5 ? RLRewardCategory.Iconic : RLRewardCategory.Chrome;
+      boss.threat = 3;
+      boss.boss = true;
+      boss.arena = RLRewards.PickArena(usedArenas);
+      ArrayPush(doors, boss);
+      return doors;
+    }
+    let count = run.floor == 1 && run.act == 1 && run.floorsCleared == 0 ? 1 : 3;
+    let used: array<RLRewardCategory>;
+    let guard = 0;
+    while ArraySize(doors) < count && guard < 40 {
+      guard += 1;
+      let category = RLRewards.RollCategory(pools, run);
+      if !ArrayContains(used, category) {
+        ArrayPush(used, category);
+        let door = new RLDoor();
+        door.category = category;
+        door.threat = RLRewards.CategoryThreat(category);
+        door.arena = RLRewards.PickArena(usedArenas);
+        ArrayPush(usedArenas, door.arena);
+        ArrayPush(doors, door);
+      }
+    }
+    return doors;
+  }
+
+  private static func RollCategory(pools: ref<RLTweakPools>, run: ref<RLRunState>) -> RLRewardCategory {
+    // The very first fight is never a heavy one.
+    let first = run.floorsCleared == 0;
+    if !first && RandF() < 0.12 {
+      return RLRewardCategory.Iconic;
+    }
+    // Armory, Chrome, Daemons, Boons, Training
+    let weights: array<Int32> = [24, first ? 0 : 22, pools.HasQuickhacks() && !first ? 12 : 0, 24, 18];
     let total = 0;
     for w in weights {
       total += w;
@@ -93,16 +180,91 @@ public abstract class RLRewards {
     let i = 0;
     while i < ArraySize(weights) {
       if roll < weights[i] {
-        return IntEnum<RLOfferKind>(i);
+        return IntEnum<RLRewardCategory>(i);
       }
       roll -= weights[i];
       i += 1;
     }
+    return RLRewardCategory.Boons;
+  }
+
+  public static func PickArena(exclude: array<CName>) -> CName {
+    let candidates: array<CName>;
+    let all: array<CName>;
+    for arena in RLArenas.Enabled() {
+      ArrayPush(all, arena.id);
+      if !ArrayContains(exclude, arena.id) {
+        ArrayPush(candidates, arena.id);
+      }
+    }
+    if ArraySize(candidates) == 0 {
+      candidates = all;
+    }
+    if ArraySize(candidates) == 0 {
+      return n"";
+    }
+    return candidates[RandRange(0, ArraySize(candidates))];
+  }
+
+  // The offers for a cleared fight: all of the door's reward type.
+  public static func RollForCategory(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, threat: Int32, count: Int32) -> array<ref<RLOffer>> {
+    let offers: array<ref<RLOffer>>;
+    let records: array<TweakDBID>;
+    let boons: array<CName>;
+    let bonus = threat - 2;
+    if Equals(category, RLRewardCategory.Training) {
+      let kinds = [RLOfferKind.Levels, RLOfferKind.AttributePoints, RLOfferKind.PerkPoints];
+      for kind in kinds {
+        let offer = RLRewards.Build(player, pools, run, kind, bonus);
+        if IsDefined(offer) {
+          ArrayPush(offers, offer);
+        }
+      }
+      return offers;
+    }
+    let guard = 0;
+    while ArraySize(offers) < count && guard < 30 {
+      guard += 1;
+      let kind = RLRewards.KindFor(category, run);
+      let offer = RLRewards.Build(player, pools, run, kind, bonus);
+      if IsDefined(offer) {
+        let duplicate = (TDBID.IsValid(offer.record) && ArrayContains(records, offer.record))
+          || (IsNameValid(offer.boon) && ArrayContains(boons, offer.boon));
+        if !duplicate {
+          ArrayPush(offers, offer);
+          if TDBID.IsValid(offer.record) {
+            ArrayPush(records, offer.record);
+          }
+          if IsNameValid(offer.boon) {
+            ArrayPush(boons, offer.boon);
+          }
+        }
+      }
+    }
+    if ArraySize(offers) == 0 && NotEquals(category, RLRewardCategory.Boons) {
+      // Nothing of that type is available (e.g. no quickhacks): boons instead.
+      return RLRewards.RollForCategory(player, pools, run, RLRewardCategory.Boons, threat, count);
+    }
+    return offers;
+  }
+
+  private static func KindFor(category: RLRewardCategory, run: ref<RLRunState>) -> RLOfferKind {
+    switch category {
+      case RLRewardCategory.Armory:
+        return RandF() < RLRewards.IconicChance(run.Depth()) ? RLOfferKind.Iconic : RLOfferKind.Weapon;
+      case RLRewardCategory.Chrome:
+        return RLOfferKind.Cyberware;
+      case RLRewardCategory.Daemons:
+        return RLOfferKind.Quickhack;
+      case RLRewardCategory.Iconic:
+        return RLOfferKind.Iconic;
+    }
     return RLOfferKind.Boon;
   }
 
-  private static func Build(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, kind: RLOfferKind) -> ref<RLOffer> {
-    let depth = run.Depth();
+  private static func Build(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, kind: RLOfferKind, bonus: Int32) -> ref<RLOffer> {
+    // Heavier fights pay out better quality.
+    let depth = Max(1, run.Depth() + bonus * 2);
     let offer = new RLOffer();
     offer.kind = kind;
     let noIDs: array<TweakDBID>;

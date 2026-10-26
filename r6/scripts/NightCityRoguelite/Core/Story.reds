@@ -1,11 +1,12 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - story handling
 // -----------------------------------------------------------------------------
-// The Phantom Liberty start is a base-game save at the end of "Transmission"
-// with Songbird's call queued. Quests can't be stopped from scripts, and
-// cutting a call or scene off mid-way leaves it running invisibly (its lines
-// keep playing, its choices pop up later, teleporting during it can freeze
-// the game). So the mod works around the story instead of fighting it:
+// The Phantom Liberty opening (book scene, Songbird's call) is skipped by the
+// quest patch in NightCityRoguelite.archive: RogueliteService sets the fact
+// nc_roguelite_start at Session/Start and the patched q301_hook phase jumps
+// straight to gameplay. Quests can't be stopped from scripts, and cutting a
+// call or scene off mid-way leaves it running invisibly, so if the archive is
+// missing (or the story starts something later) the mod works around it:
 //   - the takeover waits until the opening call has finished;
 //   - the quest is untracked so nothing shows on the HUD;
 //   - teleports, the terminal and the reward screen wait while a call or a

@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.5.2)
+# Night City Roguelite (v0.6.0)
 
 A run-based arena mode for Cyberpunk 2077 2.5, built only from the game's own
 assets and systems. Start a new roguelite character from the main menu, fight
@@ -18,22 +18,29 @@ bank meta Cred when you flatline.
 redscript is what compiles `.reds` files when the game starts. Without it the
 mod does nothing at all, and there is no ROGUELITE entry in the menu.
 
-No ArchiveXL, CET or new archives are needed.
+No ArchiveXL or CET is needed.
 
 ## Install
 
-Copy the `r6` folder into the game folder, so the scripts end up in
-`Cyberpunk 2077/r6/scripts/NightCityRoguelite/`. With Vortex or MO2, install
-the zip as a normal mod.
+Copy the `r6` and `archive` folders into the game folder, so you have
+`Cyberpunk 2077/r6/scripts/NightCityRoguelite/` and
+`Cyberpunk 2077/archive/pc/mod/NightCityRoguelite.archive`. With Vortex or MO2,
+install the zip as a normal mod.
+
+The archive skips the Phantom Liberty opening (book scene and Songbird's call)
+for roguelite characters only; normal new games play it as usual. It replaces
+one quest file, so a future game patch that changes that file needs a rebuilt
+archive (`source/quest-patch/README.md`). Without the archive the mod still
+works: it just waits for the opening call to end before taking over.
 
 ## How to play
 
 1. Main menu -> **ROGUELITE** (top of the list). The expansion choice is skipped
    automatically; make your V as usual.
-2. The moment V can move, the mod takes over: V is reset to level 1 (clothes
-   kept) and locked in **V's apartment in Megabuilding H10** (V lands in the
-   hallway first and steps inside once the apartment has streamed in). Walk out and you're
-   put back inside. If the opening scene holds V, press **F7** to skip ahead.
+2. There's no opening scene: as soon as the game fades in the mod takes over.
+   V is reset to level 1 (clothes kept) and locked in **V's apartment in
+   Megabuilding H10** (V lands in the hallway first and steps inside once the
+   apartment has streamed in). Walk out and you're put back inside.
 3. Press **F7** for the terminal: pick a kit, switch roguelite/roguelike mode,
    buy unlocks, then **START RUN**.
 4. The first fight is a random arena. You arrive with full ammo and full health
@@ -68,10 +75,9 @@ the zip as a normal mod.
 
 Saving works only between runs. Normal story saves are never touched. For
 roguelite characters NCPD is switched off and the story quest is hidden from
-the HUD. The Phantom Liberty start opens with Songbird's call; the mod takes
-over once it ends (quests can't be stopped from scripts, and cutting the call
-off left it running unseen). If the story starts a call or conversation later,
-teleports, the terminal and the reward screen wait until it's over.
+the HUD. The Phantom Liberty opening is skipped by the quest patch in the
+archive. If the story ever starts a call or conversation anyway, teleports,
+the terminal and the reward screen wait until it's over.
 
 ### Loot in arenas
 
@@ -126,7 +132,7 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Core/Config.reds` | Settings, logging, delay helper |
 | `Core/RogueliteService.reds` | Meta progression (outside saves), hotkeys, session hooks |
 | `Core/RogueliteSystem.reds` | Per-save state machine: takeover, hub, run, floors, rewards, death |
-| `Core/Story.reds` | Switches off story quests and story calls for roguelite characters |
+| `Core/Story.reds` | Keeps the story quiet: quest untracked, busy checks for calls/dialogue, stale caller cards |
 | `Hub/ApartmentHub.reds` | V's apartment hub, soft door lock |
 | `Core/RunState.reds` | In-memory run state |
 | `Menu/MainMenuEntry.reds` | ROGUELITE menu item and new-game routing |
@@ -144,3 +150,5 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Rewards/Boons.reds` | Run-only bonuses |
 | `Meta/MetaProgression.reds` | Unlocks, kits, Cred payout |
 | `UI/*.reds` | HUD line, terminal and reward popups |
+| `archive/pc/mod/NightCityRoguelite.archive` | Quest patch: skips the Phantom Liberty opening for roguelite starts |
+| `source/quest-patch/` | How the archive is built (Python + WolvenKit) |

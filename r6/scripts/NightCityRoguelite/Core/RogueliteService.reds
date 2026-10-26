@@ -69,6 +69,7 @@ public class RogueliteService extends ScriptableService {
       RLLog("WARNING: TweakXL 1.12.0 or newer is required on game version 2.5.");
     }
     let callbacks = GameInstance.GetCallbackSystem();
+    callbacks.RegisterCallback(n"Session/Start", this, n"OnSessionStart");
     callbacks.RegisterCallback(n"Session/Ready", this, n"OnSessionReady");
     callbacks.RegisterCallback(n"Session/BeforeEnd", this, n"OnSessionBeforeEnd");
     // 2.5's native InputTarget.Key has no press/release filter; OnKeyInput
@@ -80,6 +81,17 @@ public class RogueliteService extends ScriptableService {
       this.m_selectedKit = n"Solo";
     }
     RLLog(s"Service loaded. Cred \(this.m_cred), runs \(this.m_runsStarted).");
+  }
+
+  // Before any quest runs: flag a roguelite start for the quest patch in
+  // NightCityRoguelite.archive, which then skips the Phantom Liberty opening
+  // (teleport, book scene, Songbird's call) for this character only.
+  private cb func OnSessionStart(event: ref<GameSessionEvent>) {
+    if event.IsPreGame() || event.IsRestored() || !this.m_pendingStart {
+      return;
+    }
+    GameInstance.GetQuestsSystem(GetGameInstance()).SetFact(n"nc_roguelite_start", 1);
+    RLLog("Roguelite start flagged for the quest patch.");
   }
 
   private cb func OnSessionReady(event: ref<GameSessionEvent>) {

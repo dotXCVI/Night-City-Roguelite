@@ -3,6 +3,13 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.6 - Phantom Liberty opening skipped (2026-10-26)
+
+Originally released as v0.6.0.
+
+- New archive with a quest patch that skips the Phantom Liberty opening (book scene and Songbird's call), for roguelite characters only.
+- The scripts and the quest patch hand off through quest facts, and the screen stays black until V is in the apartment.
+
 ## v0.0.5 - Fixes from the first in-game test (2026-10-26)
 
 Originally released as v0.5.2.

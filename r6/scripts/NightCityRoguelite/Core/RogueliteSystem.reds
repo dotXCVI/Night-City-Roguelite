@@ -366,6 +366,8 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     this.CancelTimer();
+    let quests = GameInstance.GetQuestsSystem(player.GetGame());
+    RLLog(s"Takeover after \(this.m_takeoverElapsed)s (start flag \(quests.GetFact(n"nc_roguelite_start")), opening skipped \(quests.GetFact(n"nc_roguelite_opening_skipped"))).");
     this.m_state = RLState.Preparing;
     this.StoreHub(player);
     RLCharacterReset.ResetProgressionAndUnequip(player, RLConfig.StartingAttributePoints(), RLConfig.StartingPerkPoints());

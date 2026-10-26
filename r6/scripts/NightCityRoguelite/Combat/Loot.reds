@@ -4,7 +4,9 @@
 // In an arena the only loot is what keeps V fighting:
 //   - V arrives with every weapon's ammo full and health/grenade charges full;
 //   - bodies are stripped of their junk and carry ammo for V's weapons, and
-//     sometimes a health item or grenade;
+//     sometimes a health item or grenade (from the enemies' own loot table,
+//     NCRoguelite.EnemyLoot in r6/tweaks; rolled here only for the game's
+//     original records, when TweakXL didn't load the variants);
 //   - picking up a health item or grenade also restores one charge;
 //   - anything else V picks up in an arena (junk, crafting parts, weapons,
 //     clothes) is taken away again right after.
@@ -77,9 +79,10 @@ public abstract class RLLoot {
 
   // --- Bodies --------------------------------------------------------------------------
 
-  // Removes everything from a body except its clothes. With `stock`, also puts
-  // in ammo for V's weapons and maybe a health item or grenade.
-  public static func PrepareCorpse(npc: ref<ScriptedPuppet>, player: ref<PlayerPuppet>, stock: Bool) {
+  // Removes everything from a body except its clothes, ammo, health items and
+  // grenades. With `stock`, also puts in ammo for V's weapons, plus (for
+  // records without the mod's loot table) maybe a health item or grenade.
+  public static func PrepareCorpse(npc: ref<ScriptedPuppet>, player: ref<PlayerPuppet>, stock: Bool, hasLootTable: Bool) {
     if !IsDefined(npc) || !IsDefined(player) {
       return;
     }
@@ -99,6 +102,9 @@ public abstract class RLLoot {
       let amount = Max(6, RLLoot.AmmoCap(player, ammoID) / 10) + RandRange(0, 8);
       transactionSystem.GiveItem(npc, ammoID, amount);
     }
+    if hasLootTable {
+      return;
+    }
     let pools = RogueliteService.Get().GetPools();
     if RandF() < 0.3 {
       let heal = pools.PickHealing();
@@ -116,6 +122,9 @@ public abstract class RLLoot {
 
   private static func IsCorpseJunk(item: wref<gameItemData>) -> Bool {
     if item.HasTag(n"Quest") || item.HasTag(n"HideInUI") || item.HasTag(n"Ammo") {
+      return false;
+    }
+    if RLLoot.IsHealing(item.GetID()) || RLLoot.IsGrenade(item.GetID()) {
       return false;
     }
     return !EquipmentSystem.IsClothing(item.GetID());

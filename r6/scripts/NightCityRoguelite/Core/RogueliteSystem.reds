@@ -142,6 +142,8 @@ public class RogueliteSystem extends ScriptableSystem {
     }
 
     RLLog("Roguelite save loaded.");
+    // No run survives a load: drop any boon buffs that came along.
+    RLBoons.ClearBuffs(GetPlayer(this.GetGameInstance()));
     this.m_apartment.OnSessionStart();
     this.ApplyWorldSettings();
     let abandonedPayout = 0;
@@ -170,6 +172,9 @@ public class RogueliteSystem extends ScriptableSystem {
   }
 
   public func IsRoguelitePlaythrough() -> Bool = this.m_isRoguelite
+
+  // V's desk computer works as the terminal once the character is set up.
+  public func IsHomeTerminalActive() -> Bool = this.m_isRoguelite && this.m_takeoverDone
 
   // Police off and no story quest on screen for roguelite characters.
   private func ApplyWorldSettings() {
@@ -437,15 +442,19 @@ public class RogueliteSystem extends ScriptableSystem {
       this.After(n"settleHome", 3.0);
     }
     this.UntrackQuest();
+    if RLHomeDevices.ShouldSealDoor(this.GetGameInstance()) {
+      RLHomeDevices.SealFrontDoor(this.GetGameInstance());
+    }
     let message = firstTime
-      ? "Welcome home. Press F7 for the terminal. You can save here."
-      : "Home. Press F7 for the terminal.";
+      ? "Welcome home. Use your computer (or press F7) for the terminal. You can save here."
+      : "Home. Use your computer (or press F7) for the terminal.";
     RLNotify(this.GetGameInstance(), message, 8.0);
   }
 
   // Puts V back at the hub (apartment, or the fallback spot).
   private func ReturnToHub(player: ref<PlayerPuppet>) {
     if this.m_apartment.IsEnabled() {
+      RLHomeDevices.SealFrontDoor(player.GetGame());
       this.m_apartment.SendHome(player);
     } else if this.m_hubX != 0.0 || this.m_hubY != 0.0 {
       RLArenaDirector.TeleportToPoint(player, this.HubPosition(), this.m_hubYaw);
@@ -554,6 +563,7 @@ public class RogueliteSystem extends ScriptableSystem {
     if !RLMeta.IsKitAvailable(service, kit) {
       kit = n"Solo";
     }
+    RLBoons.ClearBuffs(player);
     let roguelike = service.IsRoguelikeMode();
     let token = service.BeginRunToken(roguelike);
     this.m_run = RLRunState.Create(token, kit, roguelike);
@@ -979,6 +989,7 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     let player = GetPlayer(this.GetGameInstance());
     if IsDefined(player) && this.m_run.ConsumeBoon(n"SecondWind") {
+      RLBoons.RemoveBuffStack(player, n"SecondWind");
       GameInstance.GetStatPoolsSystem(player.GetGame()).RequestSettingStatPoolValue(
         Cast<StatsObjectID>(player.GetEntityID()),
         gamedataStatPoolType.Health,

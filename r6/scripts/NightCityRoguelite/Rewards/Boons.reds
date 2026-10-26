@@ -6,6 +6,10 @@
 //   Bloodlust   - every kill heals 4% health per stack
 //   BountyHunter- every kill pays 100 eddies per stack
 // Applied modifiers are tracked so they can be removed when the run ends.
+//
+// Every stack also adds a stack of the boon's HUD buff (NCRoguelite.Boon_<id>,
+// r6/tweaks/NightCityRoguelite/boons.yaml): an icon on the buff bar with the
+// stack count. The buffs carry no stats; all of them are removed with the run.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -59,6 +63,7 @@ public abstract class RLBoons {
   // Applies one stack of a boon. Stat modifiers are recorded on the run so they
   // can be removed when the run ends.
   public static func ApplyStack(player: ref<PlayerPuppet>, id: CName, run: ref<RLRunState>) {
+    RLBoons.AddBuffStack(player, id);
     let mods: array<ref<gameStatModifierData>>;
     switch id {
       case n"ReinforcedFrame":
@@ -101,7 +106,33 @@ public abstract class RLBoons {
     }
   }
 
+  // --- HUD buffs ------------------------------------------------------------------------
+
+  public static func BuffID(id: CName) -> TweakDBID = TDBID.Create("NCRoguelite.Boon_" + NameToString(id))
+
+  public static func AddBuffStack(player: ref<PlayerPuppet>, id: CName) {
+    let buff = RLBoons.BuffID(id);
+    if IsDefined(player) && IsDefined(TweakDBInterface.GetStatusEffectRecord(buff)) {
+      StatusEffectHelper.ApplyStatusEffect(player, buff);
+    }
+  }
+
+  // One stack used up (Second Wind).
+  public static func RemoveBuffStack(player: ref<PlayerPuppet>, id: CName) {
+    if IsDefined(player) {
+      StatusEffectHelper.RemoveStatusEffect(player, RLBoons.BuffID(id), 1u);
+    }
+  }
+
+  // Every boon buff on V (end of a run, or left over from an earlier session).
+  public static func ClearBuffs(player: ref<PlayerPuppet>) {
+    if IsDefined(player) {
+      StatusEffectHelper.RemoveStatusEffectsWithTag(player, n"NCRogueliteBoon");
+    }
+  }
+
   public static func RemoveAll(player: ref<PlayerPuppet>, run: ref<RLRunState>) {
+    RLBoons.ClearBuffs(player);
     if IsDefined(player) {
       let statsSystem = GameInstance.GetStatsSystem(player.GetGame());
       let objectID = Cast<StatsObjectID>(player.GetEntityID());

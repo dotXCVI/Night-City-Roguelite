@@ -3,8 +3,9 @@
 // -----------------------------------------------------------------------------
 // Whenever V isn't in an arena, V is in the Megabuilding H10 apartment:
 //   - after the takeover, on every load and after every arena V is put inside;
-//   - a soft lock keeps V there: leave it (front door, glitching through a
-//     wall, anything) and V is put back after a moment.
+//   - the front door is sealed (Hub/HomeDevices.reds);
+//   - a soft lock keeps V there as a safety net: get out anyway (glitching
+//     through a wall, anything) and V is put back after a moment.
 //
 // Getting in: the apartment's floor streams in a little after the rest of the
 // building, so dropping V straight inside from across the city can land V on
@@ -243,7 +244,7 @@ public class RLApartmentHub extends IScriptable {
     this.m_outsideSeconds += 1.0;
     if this.m_outsideSeconds >= RLConfig.ApartmentLeashSeconds() {
       this.TeleportHome(player);
-      RLNotify(player.GetGame(), "The door's locked. Press F7 for the terminal.", 5.0);
+      RLNotify(player.GetGame(), "The door's sealed. Use your computer (or F7) for the terminal.", 5.0);
     }
   }
 

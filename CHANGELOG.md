@@ -3,6 +3,18 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.7 - TweakXL data, home devices, new menus (2026-10-26)
+
+Originally released as v0.7.0.
+
+- TweakXL data:
+  - roguelite enemy variants (hostile from the start, on combat alert, one team, loot emptied);
+  - HUD buffs for boons;
+  - the computer's "Roguelite Terminal" prompt.
+- V's desk computer opens the terminal, and the front door is sealed.
+- The mod's English text is loaded through ArchiveXL.
+- Card-based menus in the game's own style for the terminal, door picker and reward screen.
+
 ## v0.0.6 - Phantom Liberty opening skipped (2026-10-26)
 
 Originally released as v0.6.0.

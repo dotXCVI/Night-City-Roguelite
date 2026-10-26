@@ -86,11 +86,16 @@ public class RLTweakPools {
     let blocklist = RLConfig.EnemyBlocklist();
     let scanned = 0;
     let accepted = 0;
+    let variants = 0;
     for faction in RLRoster.Factions() {
       let tier = 0;
       while tier <= 2 {
-        for id in RLRoster.Records(faction, tier) {
+        for name in RLRoster.Records(faction, tier) {
           scanned += 1;
+          let id = RLRoster.Resolve(name);
+          if RLRoster.IsVariant(id) {
+            variants += 1;
+          }
           if RLTweakPools.IsUsableEnemy(TweakDBInterface.GetCharacterRecord(id), blocklist) {
             let pool = this.GetOrAddFaction(faction);
             if tier == 0 {
@@ -102,7 +107,7 @@ public class RLTweakPools {
             }
             accepted += 1;
           } else {
-            RLDebug(s"Roster record skipped: \(TDBID.ToStringDEBUG(id))");
+            RLDebug("Roster record skipped: " + name);
           }
         }
         tier += 1;
@@ -117,7 +122,10 @@ public class RLTweakPools {
       }
     }
     this.m_factions = usable;
-    RLLog(s"Enemy roster: \(scanned) records, \(accepted) usable, \(ArraySize(usable)) factions.");
+    RLLog(s"Enemy roster: \(scanned) records, \(accepted) usable, \(ArraySize(usable)) factions, \(variants) roguelite variants (TweakXL).");
+    if variants == 0 {
+      RLLog("No roguelite enemy variants found - is TweakXL installed and r6/tweaks/NightCityRoguelite present? Using the game's own records.");
+    }
   }
 
   // A roster record is usable when it exists, is a human or android and has a
@@ -442,18 +450,15 @@ public class RLTweakPools {
   public func HasQuickhacks() -> Bool = ArraySize(this.m_quickhacks) > 0
 }
 
-// Boss records: the open-world MaxTac squad (names checked against the 2.5
-// TweakDB). Each is validated at runtime before use.
+// Boss records: the open-world MaxTac squad (Data/EnemyRoster.reds), as
+// roguelite variants when available. Each is validated at runtime before use.
 public abstract class RLBosses {
   public static func MaxTac() -> array<TweakDBID> {
-    // Open-world MaxTac (not the quest-scripted AV squads).
-    return [
-      t"Character.maxtac_gunner_mb_elite",
-      t"Character.maxtac_melee_ma_elite",
-      t"Character.maxtac_rifle_ma_elite",
-      t"Character.maxtac_rifle_wa_elite",
-      t"Character.maxtac_shotgun_ma_elite"
-    ];
+    let result: array<TweakDBID>;
+    for name in RLRoster.MaxTac() {
+      ArrayPush(result, RLRoster.Resolve(name));
+    }
+    return result;
   }
 
   public static func Exists(id: TweakDBID) -> Bool {

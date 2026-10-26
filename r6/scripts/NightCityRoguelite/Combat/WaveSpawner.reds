@@ -4,7 +4,9 @@
 // Spawns waves with Codeware's DynamicEntitySystem inside the arena and keeps
 // them in the fight. Once a second each enemy is checked:
 //   - first sighting: god modes stripped, level matched to V (plus its tier),
-//     health refilled, made hostile with a persistent threat on V;
+//     health refilled, made hostile with a persistent threat on V (the
+//     roguelite variants in r6/tweaks are already hostile, alert and
+//     level-scaled; this makes sure of it either way);
 //   - an enemy that hasn't closed in on V for a few seconds is sent running at
 //     V (then fights as normal);
 //   - an enemy that ends up outside the arena is put back inside;
@@ -20,6 +22,7 @@ public class RLTrackedEnemy {
   public let id: EntityID;
   public let record: TweakDBID;
   public let isBoss: Bool;
+  public let isVariant: Bool;
   public let levelOffset: Int32;
   public let spawnTime: Float;
   public let seen: Bool;
@@ -202,6 +205,7 @@ public class RLWaveSpawner extends IScriptable {
     enemy.id = id;
     enemy.record = record;
     enemy.isBoss = isBoss;
+    enemy.isVariant = RLRoster.IsVariant(record);
     enemy.levelOffset = levelOffset;
     enemy.spawnTime = this.m_time;
     enemy.bestDistance = 9999.0;
@@ -355,7 +359,7 @@ public class RLWaveSpawner extends IScriptable {
     enemy.corpsePasses += 1;
     let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
     if IsDefined(puppet) {
-      RLLoot.PrepareCorpse(puppet, player, enemy.corpsePasses >= 2);
+      RLLoot.PrepareCorpse(puppet, player, enemy.corpsePasses >= 2, enemy.isVariant);
     }
   }
 
@@ -470,6 +474,7 @@ public class RLWaveSpawner extends IScriptable {
     let npcStats = Cast<StatsObjectID>(id);
     let playerLevel = stats.GetStatValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatType.PowerLevel);
     let target = MaxF(1.0, playerLevel + Cast<Float>(levelOffset));
+    RLDebug(s"Enemy level \(stats.GetStatValue(npcStats, gamedataStatType.PowerLevel)) -> \(target) (V \(playerLevel)).");
     stats.RemoveAllModifiers(npcStats, gamedataStatType.PowerLevel);
     stats.AddModifier(npcStats, RPGManager.CreateStatModifier(gamedataStatType.PowerLevel, gameStatModifierType.Additive, target));
     GameInstance.GetStatPoolsSystem(game).RequestSettingStatPoolValue(npcStats, gamedataStatPoolType.Health, 100.0, null, true);

@@ -1,6 +1,9 @@
 # Quest patch (NightCityRoguelite.archive)
 
-`archive/pc/mod/NightCityRoguelite.archive` holds one file, a patched copy of
+`archive/pc/mod/NightCityRoguelite.archive` holds the mod's English text
+(`nightcityroguelite\localization\en-us.json`, loaded by ArchiveXL through
+`NightCityRoguelite.archive.xl`; built with `source/localization/build_loc.py`)
+and a patched copy of
 `ep1\quest\main_quests\q301\phases\q301_hook.questphase` (the Phantom Liberty
 standalone opening). Five nodes are added right after the phase's setup node:
 
@@ -26,6 +29,8 @@ Needs the WolvenKit CLI 10 nightly (2.5 support) and Python 3.
     WolvenKit.CLI convert deserialize q301_hook.questphase.json -o bin
     P=pack/NightCityRoguelite/ep1/quest/main_quests/q301/phases
     mkdir -p $P && cp bin/q301_hook.questphase $P/
+    mkdir -p pack/NightCityRoguelite/nightcityroguelite/localization
+    cp en-us.json pack/NightCityRoguelite/nightcityroguelite/localization/   # from build_loc.py + deserialize
     WolvenKit.CLI pack pack/NightCityRoguelite -o packout   # -> packout/NightCityRoguelite.archive
 
 `handles.py` loads WolvenKit's JSON with its shared handles as real object

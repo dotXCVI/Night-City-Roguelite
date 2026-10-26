@@ -1,8 +1,9 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - reward popup
 // -----------------------------------------------------------------------------
-// Shows the floor's offers as cards. ESC does not discard the reward: "Later"
-// (or ESC) just closes the popup and F7 reopens it.
+// Shows the floor's offers as cards (UI/Card.reds) with the item's own icon,
+// the boon's buff icon, or a menu icon. ESC does not discard the reward:
+// "Later" (or ESC) just closes the popup, and the computer or F7 reopens it.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -29,6 +30,7 @@ public class RLRewardPopup extends InGamePopup {
 
   protected cb func OnCreate() {
     super.OnCreate();
+    this.m_container.SetSize(Vector2(2200.0, 1200.0));
 
     let header = InGamePopupHeader.Create();
     header.SetTitle(this.m_title);
@@ -36,7 +38,7 @@ public class RLRewardPopup extends InGamePopup {
     header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
-    footer.SetFluffText("PICK ONE - F7 REOPENS THIS SCREEN");
+    footer.SetFluffText("PICK ONE - YOUR COMPUTER OR F7 REOPENS THIS SCREEN");
     footer.Reparent(this);
 
     this.m_content = InGamePopupContent.Create();
@@ -47,56 +49,109 @@ public class RLRewardPopup extends InGamePopup {
 
   private func Build() {
     let root = this.m_content.GetRootCompoundWidget();
-    let size = this.m_content.GetSize();
 
-    let column = RLUI.VPanel(14.0);
+    let column = RLUI.VPanel(10.0);
     column.SetAnchor(inkEAnchor.Fill);
     column.Reparent(root);
 
-    let cards = RLUI.HPanel(18.0);
+    let cards = RLUI.HPanel(14.0);
     cards.Reparent(column);
 
     let count = ArraySize(this.m_offers);
-    let cardWidth = count > 0 ? MinF(440.0, (size.X - 60.0) / Cast<Float>(count) - 36.0) : 440.0;
+    let cardWidth = count > 0 ? MinF(560.0, 2040.0 / Cast<Float>(count) - 28.0) : 560.0;
     let i = 0;
     while i < count {
       this.BuildCard(cards, this.m_offers[i], i, cardWidth);
       i += 1;
     }
 
-    let actions = RLUI.HPanel(18.0);
-    actions.SetMargin(inkMargin(0.0, 30.0, 0.0, 0.0));
+    let actions = RLUI.HPanel(14.0);
+    actions.SetMargin(inkMargin(0.0, 24.0, 0.0, 0.0));
     actions.Reparent(column);
 
     if this.m_rerollsLeft > 0 {
-      let reroll = RLUI.Button(n"reroll", s"REROLL (\(this.m_rerollsLeft))", 320.0, false);
-      reroll.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
-      reroll.Reparent(actions);
+      this.AddAction(actions, n"reroll", "REROLL", s"\(this.m_rerollsLeft) left this floor", n"MainColors.Gold");
     }
-    let later = RLUI.Button(n"later", "LATER", 320.0, false);
-    later.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
-    later.Reparent(actions);
+    this.AddAction(actions, n"later", "LATER", "Keep the reward for now", n"MainColors.Blue");
+  }
+
+  private func AddAction(parent: ref<inkCompoundWidget>, name: CName, const title: String, const kicker: String, accent: CName) {
+    let card = RLCard.Create(name, 520.0, 140.0, accent);
+    card.SetCompact();
+    card.SetKicker(kicker);
+    card.SetTitle(title);
+    card.SetTitleSize(40);
+    card.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
+    card.Reparent(parent);
   }
 
   private func BuildCard(parent: ref<inkCompoundWidget>, offer: ref<RLOffer>, index: Int32, width: Float) {
-    let card = RLUI.VPanel(8.0);
-    card.SetWidth(width);
+    let accent = RLRewardPopup.KindAccent(offer.kind);
+    let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 640.0, accent);
+    RLRewardPopup.SetOfferIcon(card, offer, width);
+    card.SetKicker(offer.subtitle);
+    card.SetTitle(offer.title);
+    card.SetTitleSize(40);
+    card.AddLine(offer.description, n"MainColors.Grey", 26);
+    card.SetFooter(offer.disabled ? "Unavailable" : "Take");
+    card.SetDisabled(offer.disabled);
+    card.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
     card.Reparent(parent);
+  }
 
-    let subtitle = RLUI.Text(offer.subtitle, 26, Equals(offer.kind, RLOfferKind.Iconic) ? n"MainColors.ActiveYellow" : n"MainColors.Blue");
-    subtitle.SetLetterCase(textLetterCase.UpperCase);
-    subtitle.Reparent(card);
+  // Item icons for gear (weapons are wide), the buff icon for boons, a menu
+  // icon for the rest.
+  private static func SetOfferIcon(card: ref<RLCard>, offer: ref<RLOffer>, width: Float) {
+    switch offer.kind {
+      case RLOfferKind.Weapon:
+      case RLOfferKind.Iconic:
+        let iconWidth = MinF(width - 56.0, 400.0);
+        if card.SetRecordIcon(RLIcons.ItemIcon(offer.record), iconWidth, iconWidth / 2.0) {
+          return;
+        }
+        break;
+      case RLOfferKind.Cyberware:
+      case RLOfferKind.Quickhack:
+        if card.SetRecordIcon(RLIcons.ItemIcon(offer.record), 190.0, 190.0) {
+          return;
+        }
+        break;
+      case RLOfferKind.Boon:
+        if card.SetRecordIcon(RLIcons.BoonIcon(offer.boon), 150.0, 150.0) {
+          return;
+        }
+        break;
+      default:
+        break;
+    }
+    card.SetAtlasIcon(RLIcons.HubAtlas(), RLRewardPopup.KindPart(offer.kind), 120.0);
+  }
 
-    let title = RLUI.WrappedText(offer.title, 40, n"MainColors.Red", width);
-    title.SetFontStyle(n"Semi-Bold");
-    title.Reparent(card);
+  public static func KindAccent(kind: RLOfferKind) -> CName {
+    switch kind {
+      case RLOfferKind.Weapon: return n"MainColors.Red";
+      case RLOfferKind.Iconic: return n"MainColors.Gold";
+      case RLOfferKind.Cyberware: return n"MainColors.Blue";
+      case RLOfferKind.Quickhack: return n"MainColors.Green";
+      case RLOfferKind.Boon: return n"MainColors.Purple";
+      case RLOfferKind.Supplies: return n"MainColors.Grey";
+    }
+    return n"MainColors.ActiveWhite";
+  }
 
-    let description = RLUI.WrappedText(offer.description, 28, n"MainColors.Grey", width);
-    description.Reparent(card);
-
-    let button = RLUI.Button(StringToName("offer_" + IntToString(index)), offer.disabled ? "UNAVAILABLE" : "TAKE", width, offer.disabled);
-    button.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
-    button.Reparent(card);
+  public static func KindPart(kind: RLOfferKind) -> CName {
+    switch kind {
+      case RLOfferKind.Weapon: return n"ico_inventory";
+      case RLOfferKind.Iconic: return n"ico_inventory";
+      case RLOfferKind.Cyberware: return n"ico_cyberware";
+      case RLOfferKind.Quickhack: return n"ico_deck";
+      case RLOfferKind.Boon: return n"ico_tarot";
+      case RLOfferKind.Levels: return n"ico_character";
+      case RLOfferKind.AttributePoints: return n"ico_stats";
+      case RLOfferKind.PerkPoints: return n"ico_stats";
+      case RLOfferKind.Supplies: return n"ico_backpack";
+    }
+    return n"ico_map";
   }
 
   protected cb func OnButtonClick(widget: wref<inkWidget>) -> Bool {

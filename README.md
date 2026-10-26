@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.6.0)
+# Night City Roguelite (v0.7.0)
 
 A run-based arena mode for Cyberpunk 2077 2.5, built only from the game's own
 assets and systems. Start a new roguelite character from the main menu, fight
@@ -13,19 +13,21 @@ bank meta Cred when you flatline.
 
 - Cyberpunk 2077 **2.5** with **Phantom Liberty** (the mode uses the
   Phantom Liberty standalone start to skip the story)
-- RED4ext 1.31.0+, redscript 0.5.32+, Codeware 1.21.0+, TweakXL 1.12.0+
+- RED4ext 1.31.0+, redscript 0.5.32+, Codeware 1.21.0+, TweakXL 1.12.0+,
+  ArchiveXL (for the mod's own text: the computer prompt and buff names)
 
 redscript is what compiles `.reds` files when the game starts. Without it the
 mod does nothing at all, and there is no ROGUELITE entry in the menu.
 
-No ArchiveXL or CET is needed.
+No CET is needed.
 
 ## Install
 
 Copy the `r6` and `archive` folders into the game folder, so you have
-`Cyberpunk 2077/r6/scripts/NightCityRoguelite/` and
-`Cyberpunk 2077/archive/pc/mod/NightCityRoguelite.archive`. With Vortex or MO2,
-install the zip as a normal mod.
+`Cyberpunk 2077/r6/scripts/NightCityRoguelite/`,
+`Cyberpunk 2077/r6/tweaks/NightCityRoguelite/` and
+`Cyberpunk 2077/archive/pc/mod/NightCityRoguelite.archive` (+ `.archive.xl`).
+With Vortex or MO2, install the zip as a normal mod.
 
 The archive skips the Phantom Liberty opening (book scene and Songbird's call)
 for roguelite characters only; normal new games play it as usual. It replaces
@@ -40,9 +42,10 @@ works: it just waits for the opening call to end before taking over.
 2. There's no opening scene: as soon as the game fades in the mod takes over.
    V is reset to level 1 (clothes kept) and locked in **V's apartment in
    Megabuilding H10** (V lands in the hallway first and steps inside once the
-   apartment has streamed in). Walk out and you're put back inside.
-3. Press **F7** for the terminal: pick a kit, switch roguelite/roguelike mode,
-   buy unlocks, then **START RUN**.
+   apartment has streamed in). The front door is sealed.
+3. Use **V's computer** (prompt: "Roguelite Terminal") or press **F7** for the
+   terminal: pick a kit, switch roguelite/roguelike mode, buy unlocks, then
+   **START RUN**.
 4. The first fight is a random arena. You arrive with full ammo and full health
    and grenade charges; the first wave comes after a 5-second countdown. The
    arena is ringed by a solid wall: invisible from a distance, it lights up as
@@ -69,7 +72,7 @@ works: it just waits for the opening call to end before taking over.
    and you're sent home with your Cred. Quitting or crashing mid-run counts as a
    flatline too.
 
-| F7 at home | F7 in an arena | F7 after clearing |
+| Computer or F7 at home | F7 in an arena | F7 after clearing |
 | --- | --- | --- |
 | Terminal (kit, run start, rewards, next fight) | Run status, abandon | Go home now |
 
@@ -81,17 +84,33 @@ the terminal and the reward screen wait until it's over.
 
 ### Loot in arenas
 
-Bodies are stripped of junk and carry ammo for your weapons, and sometimes a
-health item or grenade (each also restores a charge). Anything else you pick up
+Enemies drop no weapons or money. Bodies carry ammo for your weapons, and
+sometimes a health item or grenade from the enemies' own loot table (each also
+restores a charge). Anything else you pick up
 in an arena - junk, crafting parts, weapons, clothes - is taken away again
 right after. Weapons and cyberware come from rewards only.
 
 ### Enemies
 
-Enemies are the game's own open-world combat NPCs for each faction (the list
-is in `Data/EnemyRoster.reds`). They spawn inside the arena on spots you can
-reach on foot, are matched to your level, and an enemy that hangs back is sent
-running at you. Acts 2 and 3 end with MaxTac.
+Enemies are roguelite versions of the game's own open-world combat NPCs for
+each faction (`r6/tweaks/NightCityRoguelite/enemies.yaml`, made from the list
+in `Data/EnemyRoster.reds`): hostile to V from the start, on combat alert
+instead of relaxed, all on one side, with the loot described above. They spawn
+inside the arena on spots you can reach on foot, are matched to your level, and
+an enemy that hangs back is sent running at you. Acts 2 and 3 end with MaxTac.
+Without TweakXL the game's original records are used.
+
+### Boons
+
+Every boon you take shows on the HUD buff bar with its stack count, and the
+buffs are removed when the run ends.
+
+### Menus
+
+The terminal, the door picker and the reward screen are built from cards in
+the game's own menu style: reward cards show the item's icon (weapons,
+cyberware, quickhacks) or the boon's buff icon, door cards show the reward
+type, threat and arena.
 
 ### Arenas
 
@@ -133,7 +152,8 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Core/RogueliteService.reds` | Meta progression (outside saves), hotkeys, session hooks |
 | `Core/RogueliteSystem.reds` | Per-save state machine: takeover, hub, run, floors, rewards, death |
 | `Core/Story.reds` | Keeps the story quiet: quest untracked, busy checks for calls/dialogue, stale caller cards |
-| `Hub/ApartmentHub.reds` | V's apartment hub, soft door lock |
+| `Hub/ApartmentHub.reds` | V's apartment hub, getting in, soft lock |
+| `Hub/HomeDevices.reds` | Sealed front door, desk computer as the terminal |
 | `Core/RunState.reds` | In-memory run state |
 | `Menu/MainMenuEntry.reds` | ROGUELITE menu item and new-game routing |
 | `Player/CharacterReset.reds` | Level-1 reset (keeps clothes and V's body items), body repair |
@@ -149,6 +169,10 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Rewards/RewardSystem.reds` | Reward doors, threat, offer rolling and granting |
 | `Rewards/Boons.reds` | Run-only bonuses |
 | `Meta/MetaProgression.reds` | Unlocks, kits, Cred payout |
+| `UI/Card.reds` | The card used by every menu, icon helpers |
 | `UI/*.reds` | HUD line, terminal and reward popups |
-| `archive/pc/mod/NightCityRoguelite.archive` | Quest patch: skips the Phantom Liberty opening for roguelite starts |
+| `r6/tweaks/NightCityRoguelite/*.yaml` | Enemy variants and loot, boon buffs, computer prompt (TweakXL) |
+| `archive/pc/mod/NightCityRoguelite.archive` | Quest patch (skips the Phantom Liberty opening for roguelite starts) and English text |
 | `source/quest-patch/` | How the archive is built (Python + WolvenKit) |
+| `source/tweaks/gen_tweaks.py` | Generates the yaml files and the text list |
+| `source/localization/` | English text and its converter for ArchiveXL |

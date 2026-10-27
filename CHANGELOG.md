@@ -3,6 +3,57 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.18 - Runs that build, the armory (2026-10-27)
+
+A big content patch - runs that build - plus a polish pass on home and the menus. Start a new roguelite character for this build.
+
+**Home and menus**
+
+- **The armory:** kits are picked at the stash in the weapon room at the back of the apartment (the mod opens its door). Locked kits are bought there. No stash on your character? F7 in the room does the same.
+- **A guide** the first time you come home: six pictures covering the apartment, the terminal, the armory, the run, patrons and flatlining. HOW IT WORKS on the terminal brings it back.
+- **Pictures on the cards,** from the game's own codex: door cards show the arena with the reward as a badge, boon cards the patron's crew, gig cards the fixer, kit cards the weapon. Events open with whoever you're dealing with, and Misty deals real tarot cards.
+- **Hover is an animation now:** the card lifts and its frame lights up. No more colour fill behind the text.
+- **The terminal** is laid out around START RUN and your kit, with assist, test runs and the guide beside them.
+- **Text pass** across cards, doors and notifications.
+- **README** rewritten; the full reference moved to docs/MECHANICS.md.
+
+**Builds and choices**
+
+- **A level-up after every floor:** after the door's reward, pick one of three small upgrades - an attribute, a perk from a tree you're in, or a weapon mod, weapon tune-up, boon upgrade or capacity. Twice the picks per run; the level comes with it.
+- **Styles:** every reward feeds one of 12 styles (Blades, Brawler, Monowire, Gunslinger, Heavy, Rifles, Marksman, Netrunner, Smart, Tech, Demolitions, Ninja). Ranks at 3, 6 and 9 points add +10/+20/+35% damage, and rank III a signature effect. Cards show the styles they feed; the reward footer and the F7 screen show yours.
+- **Weapons rework:** weapon cards show DPS against your best equipped weapon, the class, its attribute and how it plays. New weapons are never worse than what you have, and every Armory screen offers an upgrade or mod for your own gun.
+- **Weapon mods:** 22 mods (Hades' hammers) in two slots per weapon - three on iconics.
+- **Iconics are earned:** a Legendary weapon with both mod slots filled evolves into an iconic of its type. The ICONIC door and random Armory iconics are gone; the stranger's deal waits until Act 2.
+- **Overdrive:** the Act 1 boss now pays out a choice of Operating System (Sandevistan, Berserk or a cyberdeck with Overclock). It unlocks Overdrive, a meter that fills from kills and damage taken; activating your OS at full charge triggers ZERO HOUR, RAMPAGE or BLACKWALL.
+- **Gigs:** a run opens with three gigs from Night City's fixers - a style kill count before the Act 2 boss, paying eddies and style points.
+- **Capacity overclock:** chrome that doesn't fit can go in anyway, at the risk of cyberpsychosis episodes.
+- **Saying no:** skip a reward screen for eddies, banish one card per act, and the Fixer buys back gear you don't use. The Fixer also sells a weapon mod.
+- **Workshop** on floors 4, 10 and 16, with mods and evolutions.
+- **Build weighting** leans much harder towards your build once you've taken an Operating System, and Signature perks need their attribute at 15.
+- **Gates:** from Act 2, bosses take 15% less damage (25% in Act 3), and every Act 3 enemy 10% less. A weapon far below the floor's quality deals less damage.
+- **New kit, Wireman:** Monowire, a cyberdeck, a quickhack and Siphon.
+- **33 more perks in Training:** the monowire perks (Siphon, Finisher: Live Wire), the Relic tree (Jailbreak, Data Tunneling, Spatial Mapping, Vulnerability Analytics, Emergency Cloaking...), Ticking Time Bomb, Doomlauncher, the throwing and stealth branches.
+- **Door cards say what the ground is like:** OPEN GROUND, MIXED or CLOSE QUARTERS.
+
+**Patrons and the rest**
+
+- **Patrons.** Boons now come from six of Night City's powers - Arasaka, Militech, the Voodoo Boys, Maelstrom, the Aldecaldos and the Afterlife - each with its own style. A patron door offers three of that patron's boons. 44 boons in all.
+- **Boon rarities and upgrades.** Boons come as Common, Rare, Epic or Heroic, and a boon you hold is offered again as an upgrade. Three boons from one patron unlock its legendary; boons from two patrons unlock their duo (eight duos).
+- **Boons that change how you fight:** damage on headshots, crits, first hits, melee, explosions and quickhacks, kill effects (healing, eddies, ammo, RAM, exploding bodies, slowed time), damage reduction, second chances.
+- **Bosses.** Act 1 ends with the gang's own leader, Act 2 with a MaxTac squad, Act 3 with a Minotaur mech. Bosses have a health bar, call reinforcements when hurt and enrage near death.
+- **Elite affixes:** Armored, Berserk, Regenerating, Volatile and Vampiric, announced when the elite appears.
+- **Objectives:** some fights ask you to Survive, Hold the Uplink or plant charges (Sabotage), with map markers and bonus eddies.
+- **Events:** "?" doors with no fight - a back-alley ripperdoc, a bookie, Misty's tarot reading, a stranger with an iconic.
+- **Bounties:** from Act 2, a door to hunt a lone cyberpsycho for eddies and boons.
+- **Menus:** patron and gang logos on door cards, patron colours on boon cards, a boss health bar, and your boons listed by patron on the F7 screen during a fight.
+- Fixer's Cut makes the Fixer and paid rerolls cheaper; Afterlife Legend adds a card to every reward screen.
+- **Test runs:** the terminal can start a run on any floor (bosses, Act 2, Act 3) with the levels, eddies and a few boons a real run would have by then. Test runs show the new door types every time, pay no Cred and don't count in your stats.
+- **Bug marker:** press F8 (or MARK BUG on the F7 screen in a fight) when something goes wrong; the log gets a snapshot of the fight.
+- **Run telemetry:** every run records its doors, fight times, damage taken, reward offers, picks, build and cause of death. `tools/runreport.py` turns it into a floor-by-floor report or CSV.
+- Fixed: the HUD line stayed hidden for every run after the first one in a session.
+- Fixed: waves no longer keep coming for a few seconds after V goes down.
+
+
 ## v0.0.17 - Stray weapons removed, call tracing (2026-10-27)
 
 Finishing the v0.0.15 test notes.

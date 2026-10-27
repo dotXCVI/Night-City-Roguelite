@@ -1,4 +1,4 @@
-# Night City Roguelite - developer handoff (v0.0.17)
+# Night City Roguelite - developer handoff (v0.0.17 + unreleased dev work)
 
 You are picking up an in-progress Cyberpunk 2077 mod from another AI. Read this
 whole file before changing anything. The mod's source is the attached ZIP; the
@@ -111,12 +111,12 @@ Every file starts with a header comment explaining its design - read it.
 | Area | Files |
 | --- | --- |
 | Core | `Config.reds` (all tunables), `Runtime.reds` (RLLog/RLDebug/RLNotify, RLDelay timers, RLDelayTarget), `RogueliteService.reds` (meta progression persisted outside saves, F7 key, session hooks), `RogueliteSystem.reds` (per-save state machine - the orchestrator), `RunState.reds`, `Story.reds` (quiet story) |
-| Run | `Difficulty.reds` (enemy level + damage curves, damage hook), `Encounters.reds` (wave plans), `Pacing.reds` (L4D director), `Fixer.reds` |
-| Rewards | `RewardSystem.reds` (doors, offers, granting), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Boons.reds` |
-| Combat | `Arenas.reds` (8 arenas), `ArenaDirector.reds` (teleport, walls tick, bounds), `ArenaWalls.reds`, `ArenaCleaner.reds`, `WaveSpawner.reds`, `Loot.reds` |
+| Run | `Difficulty.reds` (enemy level + damage curves, incoming damage hook), `Encounters.reds` (wave plans, bosses, bounties), `Pacing.reds` (L4D director), `Fixer.reds`, `Objectives.reds` (survive / uplink / sabotage), `Events.reds` ("?" doors) |
+| Rewards | `RewardSystem.reds` (doors, offers, granting), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Patrons.reds`, `Boons.reds` (catalogue, rarities, stat boons), `BoonEffects.reds` (RLCombatState + scripted boons) |
+| Combat | `Arenas.reds` (8 arenas), `ArenaDirector.reds` (teleport, walls tick, bounds), `ArenaWalls.reds`, `ArenaCleaner.reds`, `WaveSpawner.reds` (+ boss phases, objective hold-open), `Affixes.reds` (elite affixes, `RLExplosions`), `DamageHooks.reds` (outgoing hit + NPC death hooks), `Loot.reds` |
 | Player | `CharacterReset.reds`, `Kits.reds`, `Perks.reds`, `Consumables.reds` (quality steps, MaxDoc ladder, grenades), `DeathGuard.reds`, `Death.reds` |
 | Hub/Menu/Audio | `ApartmentHub.reds`, `HomeDevices.reds`, `MainMenuEntry.reds`, `Music.reds` |
-| UI | `Card.reds` (the one card widget everything uses), `Widgets.reds`, `Hud.reds`, `Transition.reds`, `TerminalPopup.reds`, `RewardPopup.reds`, `FixerPopup.reds` |
+| UI | `Card.reds` (the one card widget everything uses; `RLIcons` incl. the gang logo atlas), `Widgets.reds`, `Hud.reds` (+ boss bar), `Transition.reds`, `TerminalPopup.reds`, `RewardPopup.reds`, `EventPopup.reds`, `FixerPopup.reds` |
 
 Generated files - edit the generator, not the output:
 - `Rewards/PerkCatalogData.reds` <- `source/perks/catalog.tsv` via `source/perks/build_catalog.py`
@@ -135,9 +135,11 @@ new game -> AwaitingTakeover -> Hub
 Hub --START RUN--> Preparing --> RunHome (first door; Quartermaster reward)
 RunHome / Cleared --door--> Traveling (fade out, teleport while black,
     wait for arena navmesh, fade in) --> Deploying (5 s countdown, music)
-    --> InEncounter (waves) --> Cleared
+    --> InEncounter (waves; an objective holds the encounter open) --> Cleared
 Cleared: reward popup (auto-opens after 2.5 s) -> AdvanceFloor() ->
     Fixer if next floor is a boss -> door picker -> Traveling ...
+"?" door: no trip - OpenEvent -> event popup -> OnEventChoice (+1 level,
+    counts as a floor) -> AdvanceFloor() -> next doors
 InEncounter --health at 1%--> Flatlined (real death, resurrect) --> Ending
     (home, reset) --> Hub
 Final floor cleared --> Cleared (5 s) --> Ending --> Hub
@@ -209,15 +211,31 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
     (hallway first, step inside once the floor streams in) were tuned in game.
 15. Enemies are TweakXL variants (`enemies.yaml`) of the game's open-world NPCs:
     hostile from the start, combat-alert, one team, emptied loot. Keep the
-    roster generator flow.
+    roster generator flow (the boss lists in `EnemyRoster.reds` are part of it).
+16. **Combat hooks:** V's outgoing hits are scaled in a wrap of
+    `DamageSystem.ProcessCrowdTarget` (runs right after the game's global
+    modifiers, before `DealDamages`) and skip `projectionPipeline` hits; hits
+    V takes in `ProcessPlayerIncomingDamageMultiplier`. Kill effects fire
+    once per enemy (`RLCombatState.MarkDead`): from the `NPCPuppet.OnDeath`
+    wrap, or from the spawner's poll for enemies that were defeated instead.
+    Enemies removed by Unstick never fire them.
+17. **V's own blasts** (Volatile Kills, sabotage charges) set
+    `RLCombatState.selfBlastUntil`; hits from V in that window are zeroed so
+    they can't hurt V. Keep that when adding new player explosions.
 
 ## 8. Balance (all numbers live in Config.reds or the named file)
 
 - Enemy level = floor depth + act offset (-1 / 0 / +1). V gains 1 level per
   reward (only XP source).
 - Damage V takes: 55% on floor 1 -> 100% on floor 18 (game difficulty Hard),
-  x pacing (+/-8%), x (1 - assist). Assist = 20% + 2% per run lost while on,
-  max 80%, visible toggle only.
+  x pacing (+/-8%), x (1 - assist), x boons, x (1 + event trade-offs).
+  Assist = 20% + 2% per run lost while on, max 80%, visible toggle only.
+- Doors: event 22% (from floor 2), bounty 15% (Act 2+), objective 30% of
+  fights (from floor 3). Boon weights per patron screen: new 10, upgrade 6,
+  duo 6, legendary 4; rarity = director roll above expectation (+1 from floor
+  10); upgrades +1 (+2 on a big roll).
+- Bosses: reinforcements at 60% health, enrage at 30%. Affixes: elites 1 from
+  floor 3, 1-2 in Act 2, 2 in Act 3; bosses 1 from Act 2.
 - Waves: 2 per fight in Act 1, 3 later; per-wave size grows with depth and
   threat; elite floors have an elite every wave; boss floor = 2 waves + boss.
 - Reward quality expectation: Common (floor 1) -> Legendary+ (floor 18);
@@ -249,6 +267,21 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   `V came to after Xs.`
 
 ## 10. Status and what's next
+
+- **Unreleased (on the `dev` branch, untested in game):** patrons and boon
+  rarities, bosses with phases, elite affixes, objectives, events, bounties,
+  gang logos in menus. Least certain - check first in the next test log:
+  1. Boss records spawning and fighting (gang bosses, Minotaur mechs,
+     cyberpsychos via DynamicEntitySystem) - log lines "Spawned ..." /
+     "Enemy never spawned".
+  2. Explosions (`RLExplosions.Blast`: damage from the attack record, no
+     fire VFX - only shockwave sound, impulse and dismemberment).
+  3. Map pins for objectives (`Mappins.QuestStaticMappinDefinition`).
+  4. Boon damage multipliers actually applying (log a hit if unsure).
+  5. The gang logo atlas showing on cards (`gang_logos.inkatlas`).
+- **Dogtown arenas:** not added. No reliable coordinates were found online
+  (AMM's location list only has the Dogtown apartment interior). Needs
+  in-game positions read from the "Arena start" log line.
 
 - **v0.0.16 and v0.0.17 are untested in game.** It was built from the owner's v0.0.15
   playtest notes (see CHANGELOG.md). Still open from that test: a story call

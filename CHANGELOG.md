@@ -3,6 +3,23 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## Unreleased (dev branch)
+
+Built overnight as one batch; not released yet and untested in game.
+
+- **Patrons.** Boons now come from six of Night City's powers - Arasaka, Militech, the Voodoo Boys, Maelstrom, the Aldecaldos and the Afterlife - each with its own style. A patron door offers three of that patron's boons. 44 boons in all.
+- **Boon rarities and upgrades.** Boons come as Common, Rare, Epic or Heroic, and a boon you hold is offered again as an upgrade. Three boons from one patron unlock its legendary; boons from two patrons unlock their duo (eight duos).
+- **Boons that change how you fight:** damage on headshots, crits, first hits, melee, explosions and quickhacks, kill effects (healing, eddies, ammo, RAM, exploding bodies, slowed time), damage reduction, second chances.
+- **Bosses.** Act 1 ends with the gang's own leader, Act 2 with a MaxTac squad, Act 3 with a Minotaur mech. Bosses have a health bar, call reinforcements when hurt and enrage near death.
+- **Elite affixes:** Armored, Berserk, Regenerating, Volatile and Vampiric, announced when the elite appears.
+- **Objectives:** some fights ask you to Survive, Hold the Uplink or plant charges (Sabotage), with map markers and bonus eddies.
+- **Events:** "?" doors with no fight - a back-alley ripperdoc, a bookie, Misty's tarot reading, a stranger with an iconic.
+- **Bounties:** from Act 2, a door to hunt a lone cyberpsycho for eddies and boons.
+- **Menus:** patron and gang logos on door cards, patron colours on boon cards, a boss health bar, and your boons listed by patron on the F7 screen during a fight.
+- Fixer's Cut makes the Fixer and paid rerolls cheaper; Afterlife Legend adds a card to every reward screen.
+- Fixed: the HUD line stayed hidden for every run after the first one in a session.
+- Fixed: waves no longer keep coming for a few seconds after V goes down.
+
 ## v0.0.17 - Stray weapons removed, call tracing (2026-10-27)
 
 Finishing the v0.0.15 test notes.

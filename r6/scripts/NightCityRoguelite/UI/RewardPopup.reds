@@ -68,7 +68,7 @@ public class RLRewardPopup extends InGamePopup {
     cards.Reparent(column);
 
     let count = ArraySize(this.m_offers);
-    let cardWidth = count > 3 ? 470.0 : 540.0;
+    let cardWidth = count > 4 ? 400.0 : (count > 3 ? 470.0 : 540.0);
     let i = 0;
     while i < count {
       this.BuildCard(cards, this.m_offers[i], i, cardWidth);
@@ -102,7 +102,8 @@ public class RLRewardPopup extends InGamePopup {
   }
 
   private func BuildCard(parent: ref<inkCompoundWidget>, offer: ref<RLOffer>, index: Int32, width: Float) {
-    let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 560.0, RLRewardPopup.KindAccent(offer.kind));
+    let accent = Equals(offer.kind, RLOfferKind.Boon) && IsNameValid(offer.patron) ? RLPatrons.Accent(offer.patron) : RLRewardPopup.KindAccent(offer.kind);
+    let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 560.0, accent);
     RLRewardPopup.SetOfferIcon(card, offer, width);
     if RLRewardPopup.HasQuality(offer.kind) {
       card.SetQuality(offer.step);
@@ -120,12 +121,7 @@ public class RLRewardPopup extends InGamePopup {
   }
 
   private static func HasQuality(kind: RLOfferKind) -> Bool {
-    switch kind {
-      case RLOfferKind.Boon:
-      case RLOfferKind.Perk:
-        return false;
-    }
-    return true;
+    return NotEquals(kind, RLOfferKind.Perk);
   }
 
   // The card's kicker: what it is, and its quality (or upgrade step).
@@ -162,7 +158,8 @@ public class RLRewardPopup extends InGamePopup {
         if card.SetRecordIcon(RLIcons.BoonIcon(offer.boon), 150.0, 150.0) {
           return;
         }
-        break;
+        RLIcons.SetPatronIcon(card, offer.patron, 120.0);
+        return;
       case RLOfferKind.Perk:
         if card.SetRecordIcon(RLPerkCatalog.Icon(offer.perk), 150.0, 150.0) {
           return;

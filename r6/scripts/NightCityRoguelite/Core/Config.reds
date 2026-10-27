@@ -105,6 +105,21 @@ public abstract class RLConfig {
   // then removed (WaveSpawner.Unstick) - nothing can softlock a fight.
   public static func UnstickSeconds() -> Float = 40.0
 
+  // --- Doors (Rewards/RewardSystem.reds) ----------------------------------------
+
+  // Chance that one door is an event (from floor 2, not before an elite).
+  public static func EventDoorChance() -> Float = 0.22
+  // Chance that one door is a cyberpsycho bounty (Act 2 on).
+  public static func BountyDoorChance() -> Float = 0.15
+  // Chance that a fight comes with an objective (from floor 3).
+  public static func ObjectiveChance() -> Float = 0.3
+
+  // --- Bosses and elites (Combat/Bosses.reds, Combat/Affixes.reds) --------------
+
+  // Boss health (percent) at which reinforcements arrive / the boss enrages.
+  public static func BossReinforceAt() -> Float = 60.0
+  public static func BossEnrageAt() -> Float = 30.0
+
   // --- Difficulty curve (Run/Difficulty.reds) ------------------------------------
 
   // Damage V takes, scaled from the first floor to the last (1.0 = the game's

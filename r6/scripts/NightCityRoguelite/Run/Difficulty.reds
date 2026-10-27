@@ -31,7 +31,8 @@ public abstract class RLDifficulty {
 }
 
 // Damage V takes during a run: the curve above, the pacing director's
-// pressure and assist mode (RogueliteSystem.GetIncomingDamageScale).
+// pressure, assist mode, boons and event trade-offs
+// (RogueliteSystem.ScaleIncomingHit).
 @wrapMethod(DamageSystem)
 private final func ProcessPlayerIncomingDamageMultiplier(hitEvent: ref<gameHitEvent>) {
   wrappedMethod(hitEvent);
@@ -43,5 +44,12 @@ private final func ProcessPlayerIncomingDamageMultiplier(hitEvent: ref<gameHitEv
   if !IsDefined(system) || !system.IsInArenaFight() {
     return;
   }
-  hitEvent.attackComputed.MultAttackValue(system.GetIncomingDamageScale());
+  let scale = system.ScaleIncomingHit(player, hitEvent);
+  if scale <= 0.0 {
+    // V's own blast: no damage at all (the game's fixed-percentage
+    // explosion damage would otherwise apply later in the pipeline).
+    hitEvent.attackData.AddFlag(hitFlag.DealNoDamage, n"NCRogueliteSelfBlast");
+    return;
+  }
+  hitEvent.attackComputed.MultAttackValue(scale);
 }

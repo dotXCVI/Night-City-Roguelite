@@ -242,6 +242,25 @@ public class RLCard extends CustomButton {
     return line;
   }
 
+  // A line led by a small icon from an atlas (a faction logo).
+  public func AddIconLine(atlas: ResRef, part: CName, const text: String, color: CName, size: Int32) {
+    let row = RLUI.HPanel(0.0);
+    row.SetChildMargin(inkMargin(0.0, 0.0, 10.0, 0.0));
+    row.Reparent(this.m_lines);
+    let icon = new inkImage();
+    icon.SetAtlasResource(atlas);
+    icon.SetTexturePart(part);
+    icon.SetSize(Vector2(Cast<Float>(size) + 10.0, Cast<Float>(size) + 10.0));
+    icon.SetFitToContent(false);
+    icon.SetVAlign(inkEVerticalAlign.Center);
+    icon.SetStyle(RLUI.Style());
+    icon.BindProperty(n"tintColor", color);
+    icon.Reparent(row);
+    let label = RLUI.Text(text, size, color);
+    label.SetVAlign(inkEVerticalAlign.Center);
+    label.Reparent(row);
+  }
+
   public func AddSpacer(height: Float) {
     let spacer = new inkRectangle();
     spacer.SetOpacity(0.0);
@@ -389,6 +408,37 @@ public abstract class RLIcons {
     return TDBID.Create("UIIcon." + effect.UiData().IconPath());
   }
 
+  public static func LogoAtlas() -> ResRef = r"base\\gameplay\\gui\\common\\icons\\gang_logos.inkatlas"
+
+  // A faction's logo in the gang logo atlas.
+  public static func FactionLogo(faction: gamedataAffiliation) -> CName {
+    switch faction {
+      case gamedataAffiliation.Animals: return n"logo_animals";
+      case gamedataAffiliation.Arasaka: return n"logo_arasaka";
+      case gamedataAffiliation.Barghest: return n"logo_barghest";
+      case gamedataAffiliation.KangTao: return n"logo_kangtao";
+      case gamedataAffiliation.Maelstrom: return n"logo_maelstrom";
+      case gamedataAffiliation.Militech: return n"logo_militech";
+      case gamedataAffiliation.Scavengers: return n"logo_scavengers";
+      case gamedataAffiliation.SixthStreet: return n"logo_6thstreet";
+      case gamedataAffiliation.TygerClaws: return n"logo_tygerclaws";
+      case gamedataAffiliation.Valentinos: return n"logo_valentinos";
+      case gamedataAffiliation.VoodooBoys: return n"logo_voodooboys";
+      case gamedataAffiliation.Wraiths: return n"logo_wraiths";
+    }
+    return n"logo_ncpd";
+  }
+
+  // A patron's logo on a card.
+  public static func SetPatronIcon(card: ref<RLCard>, patronID: CName, size: Float) {
+    let patron = RLPatrons.Get(patronID);
+    if !IsDefined(patron) {
+      card.SetAtlasIcon(RLIcons.HubAtlas(), n"ico_tarot", size);
+      return;
+    }
+    card.SetAtlasIcon(patron.isLogo ? RLIcons.LogoAtlas() : RLIcons.HubAtlas(), patron.iconPart, size);
+  }
+
   public static func CategoryPart(category: RLRewardCategory) -> CName {
     switch category {
       case RLRewardCategory.Armory: return n"ico_inventory";
@@ -398,6 +448,8 @@ public abstract class RLIcons {
       case RLRewardCategory.Training: return n"ico_stats";
       case RLRewardCategory.Iconic: return n"ico_inventory";
       case RLRewardCategory.Workshop: return n"ico_cafting_upgrading";
+      case RLRewardCategory.Event: return n"ico_journal";
+      case RLRewardCategory.Bounty: return n"ico_money";
     }
     return n"ico_map";
   }
@@ -411,6 +463,8 @@ public abstract class RLIcons {
       case RLRewardCategory.Training: return n"MainColors.ActiveWhite";
       case RLRewardCategory.Iconic: return n"MainColors.Gold";
       case RLRewardCategory.Workshop: return n"MainColors.Yellow";
+      case RLRewardCategory.Event: return n"MainColors.Blue";
+      case RLRewardCategory.Bounty: return n"MainColors.Red";
     }
     return n"MainColors.Red";
   }

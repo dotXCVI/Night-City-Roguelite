@@ -7,15 +7,18 @@
 //
 //   TRAINING  perk cards (Rewards/PerkCatalog.reds)            light
 //   ARMORY    weapons, grenades, sometimes an iconic           standard
-//   BOONS     run-only bonuses (Rewards/Boons.reds)            standard
+//   PATRON    three boons from one patron (Rewards/Patrons)   standard
 //   DAEMONS   quickhacks                                       standard
 //   WORKSHOP  upgrade gear you own (floors 4 and 10)           standard
 //   CHROME    cyberware, installed on the spot                 heavy
 //   ICONIC    iconic weapons (rare door)                       heavy
+//   BOUNTY    a lone cyberpsycho; boons and eddies (Act 2+)    heavy
+//   ?         an event instead of a fight (Run/Events.reds)    -
 //
-// Heavy doors appear from floor 3. Before a boss floor there is a single boss
-// door. Card quality, pity, spikes and build weighting are the reward
-// director's (Rewards/Director.reds).
+// Heavy doors appear from floor 3. Some fights come with an objective
+// (Run/Objectives.reds). Before a boss floor there is a single boss door.
+// Card quality, pity, spikes and build weighting are the reward director's
+// (Rewards/Director.reds).
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -40,6 +43,8 @@ public enum RLRewardCategory {
   Training = 4,
   Iconic = 5,
   Workshop = 6,
+  Event = 7,
+  Bounty = 8,
 }
 
 // One choice for the next fight.
@@ -49,6 +54,12 @@ public class RLDoor {
   public let arena: CName;
   public let faction: ref<RLFactionPool>;
   public let boss: Bool;
+  // Patron doors (and bounties): whose boons the reward screen offers.
+  public let patron: CName;
+  // Event doors: which event (Run/Events.reds).
+  public let event: CName;
+  // The fight's objective (Run/Objectives.reds); none = clear the waves.
+  public let objective: RLObjectiveKind;
 }
 
 public class RLOffer {
@@ -59,6 +70,9 @@ public class RLOffer {
   public let tier: CName;
   public let step: Int32;
   public let boon: CName;
+  // Boons: the rarity taken (an upgrade's new rarity) and the patron.
+  public let rarity: Int32;
+  public let patron: CName;
   public let tags: array<CName>;
   public let title: String;
   public let subtitle: String;
@@ -80,8 +94,18 @@ public abstract class RLRewards {
       case RLRewardCategory.Training: return "TRAINING";
       case RLRewardCategory.Iconic: return "ICONIC";
       case RLRewardCategory.Workshop: return "WORKSHOP";
+      case RLRewardCategory.Event: return "?";
+      case RLRewardCategory.Bounty: return "BOUNTY";
     }
     return "REWARD";
+  }
+
+  // A door's title: the patron for patron doors.
+  public static func DoorTitle(door: ref<RLDoor>) -> String {
+    if Equals(door.category, RLRewardCategory.Boons) && IsNameValid(door.patron) {
+      return RLPatrons.Name(door.patron);
+    }
+    return RLRewards.CategoryName(door.category);
   }
 
   // What a door's reward is, where the name alone doesn't say.
@@ -94,6 +118,8 @@ public abstract class RLRewards {
       case RLRewardCategory.Training: return "Perks";
       case RLRewardCategory.Iconic: return "Iconic weapons";
       case RLRewardCategory.Workshop: return "Upgrade your gear";
+      case RLRewardCategory.Event: return "No fight. Something else.";
+      case RLRewardCategory.Bounty: return "A cyberpsycho. NCPD pays well.";
     }
     return "";
   }
@@ -101,14 +127,19 @@ public abstract class RLRewards {
   // 1 = light, 2 = standard, 3 = heavy.
   public static func CategoryThreat(category: RLRewardCategory) -> Int32 {
     switch category {
+      case RLRewardCategory.Event: return 0;
       case RLRewardCategory.Training: return 1;
       case RLRewardCategory.Chrome:
-      case RLRewardCategory.Iconic: return 3;
+      case RLRewardCategory.Iconic:
+      case RLRewardCategory.Bounty: return 3;
     }
     return 2;
   }
 
   public static func ThreatName(threat: Int32) -> String {
+    if threat <= 0 {
+      return "NO FIGHT";
+    }
     if threat <= 1 {
       return "LIGHT";
     }
@@ -163,6 +194,15 @@ public abstract class RLRewards {
       ArrayPush(used, RLRewardCategory.Workshop);
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Workshop, false, usedArenas));
     }
+    // Now and then a door is an event (no fight) or, from Act 2, a bounty.
+    if depth >= 2 && !run.IsEliteFloor() && ArraySize(doors) < count && RandF() < RLConfig.EventDoorChance() {
+      ArrayPush(used, RLRewardCategory.Event);
+      ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Event, false, usedArenas));
+    }
+    if run.act >= 2 && ArraySize(doors) < count && RandF() < RLConfig.BountyDoorChance() {
+      ArrayPush(used, RLRewardCategory.Bounty);
+      ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Bounty, false, usedArenas));
+    }
     let profile = RLBuildProfile.Read(player);
     let guard = 0;
     while ArraySize(doors) < count && guard < 40 {
@@ -171,9 +211,34 @@ public abstract class RLRewards {
       if !ArrayContains(used, category) {
         ArrayPush(used, category);
         ArrayPush(doors, RLRewards.MakeDoor(pools, run, category, false, usedArenas));
+      } else if Equals(category, RLRewardCategory.Boons) && RLRewards.CountCategory(doors, category) < 2 {
+        // Two patrons can compete for V (never the same one twice).
+        let door = RLRewards.MakeDoor(pools, run, category, false, usedArenas);
+        if !RLRewards.HasPatronDoor(doors, door.patron) {
+          ArrayPush(doors, door);
+        }
       }
     }
     return doors;
+  }
+
+  private static func CountCategory(doors: array<ref<RLDoor>>, category: RLRewardCategory) -> Int32 {
+    let count = 0;
+    for door in doors {
+      if Equals(door.category, category) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  private static func HasPatronDoor(doors: array<ref<RLDoor>>, patron: CName) -> Bool {
+    for door in doors {
+      if Equals(door.category, RLRewardCategory.Boons) && Equals(door.patron, patron) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static func MakeDoor(pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, boss: Bool, out usedArenas: array<CName>) -> ref<RLDoor> {
@@ -181,11 +246,23 @@ public abstract class RLRewards {
     door.category = category;
     door.threat = boss ? 3 : RLRewards.CategoryThreat(category);
     door.boss = boss;
+    switch category {
+      case RLRewardCategory.Boons:
+      case RLRewardCategory.Bounty:
+        door.patron = RLPatrons.PickForDoor(run);
+        break;
+      case RLRewardCategory.Event:
+        door.event = RLEvents.Pick(run);
+        return door;
+    }
     door.arena = RLRewards.PickArena(usedArenas);
     ArrayPush(usedArenas, door.arena);
     let arena = RLArenas.Get(door.arena);
     if IsDefined(arena) {
       door.faction = pools.PickFactionPreferred(arena.factions, run.act >= 3);
+    }
+    if !boss && NotEquals(category, RLRewardCategory.Bounty) {
+      door.objective = RLObjectives.RollForDoor(run, arena);
     }
     return door;
   }
@@ -240,7 +317,7 @@ public abstract class RLRewards {
   // --- Offers --------------------------------------------------------------------------
 
   // The reward screen for a cleared fight: all of the door's reward type.
-  public static func RollForCategory(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, threat: Int32, count: Int32) -> array<ref<RLOffer>> {
+  public static func RollForCategory(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, patron: CName, threat: Int32, count: Int32) -> array<ref<RLOffer>> {
     let profile = RLBuildProfile.Read(player);
     let spike = RLRewardDirector.SpikeDue(run);
     let offers: array<ref<RLOffer>>;
@@ -251,12 +328,22 @@ public abstract class RLRewards {
       case RLRewardCategory.Workshop:
         offers = RLRewards.WorkshopOffers(player, run, count);
         break;
+      case RLRewardCategory.Boons:
+      case RLRewardCategory.Bounty:
+        offers = RLRewards.BoonOffers(run, patron, threat, Min(count, 3), spike);
+        break;
       default:
         offers = RLRewards.ItemOffers(player, pools, run, category, threat, count, profile, spike);
     }
-    if ArraySize(offers) == 0 && NotEquals(category, RLRewardCategory.Boons) {
-      // Nothing of that type is available: boons instead.
-      offers = RLRewards.ItemOffers(player, pools, run, RLRewardCategory.Boons, threat, count, profile, false);
+    // Nothing of that type is available (or the patron has nothing left):
+    // another patron's boons instead.
+    if ArraySize(offers) == 0 {
+      offers = RLRewards.BoonOffers(run, RLPatrons.PickForDoor(run), threat, Min(count, 3), false);
+    }
+    for other in RLPatrons.All() {
+      if ArraySize(offers) == 0 {
+        offers = RLRewards.BoonOffers(run, other.id, threat, Min(count, 3), false);
+      }
     }
     RLRewards.KeepOneOffBuild(player, pools, run, category, threat, profile, offers);
     RLRewardDirector.AfterRoll(run, offers, profile);
@@ -325,7 +412,7 @@ public abstract class RLRewards {
   public static func RerollPrice(run: ref<RLRunState>) -> Int32 {
     let base = Cast<Float>(60 + 20 * run.Depth());
     let price = base * (1.0 + 0.5 * Cast<Float>(run.paidRerolls));
-    return RLFixer.Discounted(5 * RoundF(price / 5.0));
+    return RLFixer.Discounted(run, 5 * RoundF(price / 5.0));
   }
 
   private static func PerkOffers(player: ref<PlayerPuppet>, run: ref<RLRunState>, profile: ref<RLBuildProfile>, count: Int32, spike: Bool) -> array<ref<RLOffer>> {
@@ -353,7 +440,7 @@ public abstract class RLRewards {
   // the director nudges and never decides.
   private static func KeepOneOffBuild(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, threat: Int32, profile: ref<RLBuildProfile>, out offers: array<ref<RLOffer>>) {
     let count = ArraySize(offers);
-    if count < 3 || Equals(category, RLRewardCategory.Workshop) || Equals(category, RLRewardCategory.Boons) {
+    if count < 3 || Equals(category, RLRewardCategory.Workshop) || Equals(category, RLRewardCategory.Boons) || Equals(category, RLRewardCategory.Bounty) {
       return;
     }
     for offer in offers {
@@ -481,15 +568,8 @@ public abstract class RLRewards {
         }
         break;
       case RLOfferKind.Boon:
-        let boon = RLRewards.PickBoon(run);
-        if !IsDefined(boon) {
-          return null;
-        }
-        offer.boon = boon.id;
-        offer.title = boon.name;
-        offer.subtitle = s"BOON - \(run.BoonStacks(boon.id) + 1)/\(boon.maxStacks)";
-        offer.description = boon.description;
-        return offer;
+        let boons = RLRewards.BoonOffers(run, RLPatrons.PickForDoor(run), threat, 1, spike);
+        return ArraySize(boons) > 0 ? boons[0] : null;
     }
     if !TDBID.IsValid(offer.record) {
       return null;
@@ -536,26 +616,88 @@ public abstract class RLRewards {
     return candidates[ArraySize(candidates) - 1];
   }
 
-  public static func PickBoon(run: ref<RLRunState>) -> ref<RLBoonDef> {
+  // --- Boons ---------------------------------------------------------------------------
+
+  // A patron's reward screen: up to `count` of its boons V can take now -
+  // new ones, upgrades of ones V holds, its legendary, and duos shared with
+  // patrons V already serves.
+  public static func BoonOffers(run: ref<RLRunState>, patron: CName, threat: Int32, count: Int32, spike: Bool) -> array<ref<RLOffer>> {
+    let offers: array<ref<RLOffer>>;
     let candidates: array<ref<RLBoonDef>>;
-    let total = 0;
+    let weights: array<Int32>;
     for def in RLBoons.All() {
-      if run.BoonStacks(def.id) < def.maxStacks {
+      if (Equals(def.patron, patron) || Equals(def.partner, patron)) && RLBoons.IsOfferable(run, def) {
         ArrayPush(candidates, def);
-        total += def.weight;
+        ArrayPush(weights, RLRewards.BoonWeight(run, def));
       }
     }
-    if total == 0 {
-      return null;
-    }
-    let roll = RandRange(0, total);
-    for def in candidates {
-      if roll < def.weight {
-        return def;
+    while ArraySize(offers) < count && ArraySize(candidates) > 0 {
+      let total = 0;
+      for weight in weights {
+        total += weight;
       }
-      roll -= def.weight;
+      let roll = RandRange(0, Max(1, total));
+      let i = 0;
+      while i < ArraySize(candidates) - 1 && roll >= weights[i] {
+        roll -= weights[i];
+        i += 1;
+      }
+      ArrayPush(offers, RLRewards.BoonOffer(run, candidates[i], patron, threat, spike && ArraySize(offers) == 0));
+      ArrayErase(candidates, i);
+      ArrayErase(weights, i);
     }
-    return candidates[0];
+    return offers;
+  }
+
+  // New boons are the bread and butter; upgrades, duos and the legendary are
+  // the exciting finds.
+  private static func BoonWeight(run: ref<RLRunState>, def: ref<RLBoonDef>) -> Int32 {
+    switch def.kind {
+      case RLBoonKind.Legendary: return 4;
+      case RLBoonKind.Duo: return 6;
+    }
+    return RLBoons.Has(run, def.id) ? 6 : 10;
+  }
+
+  // One boon card. A new boon's rarity comes from the reward director (a
+  // better roll is a rarer boon, and deep runs start at Rare); an upgrade is
+  // one rarity up (two on a lucky roll).
+  public static func BoonOffer(run: ref<RLRunState>, def: ref<RLBoonDef>, patron: CName, threat: Int32, spike: Bool) -> ref<RLOffer> {
+    let roll = RLRewardDirector.RollStep(run, threat, spike) - RLQuality.ExpectedStep(run.Depth(), run.TotalFloors());
+    let owned = RLBoons.Owned(run, def.id);
+    let offer = new RLOffer();
+    offer.kind = RLOfferKind.Boon;
+    offer.boon = def.id;
+    offer.patron = Equals(def.kind, RLBoonKind.Duo) ? def.patron : patron;
+    offer.tags = def.tags;
+    offer.title = def.name;
+    let top = RLBoons.HighestRarity(def);
+    if IsDefined(owned) {
+      offer.rarity = Min(top, owned.rarity + (roll >= 2 ? 2 : 1));
+      offer.subtitle = RLBoons.RarityName(owned.rarity) + " > " + RLBoons.RarityName(offer.rarity);
+      offer.excitement = 1;
+    } else if Equals(def.kind, RLBoonKind.Core) {
+      offer.rarity = Clamp(Max(0, roll) + (run.Depth() >= 10 ? 1 : 0), 0, top);
+      offer.subtitle = RLPatrons.Name(def.patron) + " - " + RLBoons.RarityName(offer.rarity);
+      offer.excitement = offer.rarity;
+    } else {
+      offer.subtitle = Equals(def.kind, RLBoonKind.Legendary)
+        ? "LEGENDARY - " + RLPatrons.Name(def.patron)
+        : "DUO - " + RLPatrons.Name(def.patron) + " + " + RLPatrons.Name(def.partner);
+      offer.excitement = 2;
+    }
+    offer.step = RLRewards.BoonStep(def, offer.rarity);
+    offer.description = RLBoons.Text(def, offer.rarity);
+    return offer;
+  }
+
+  // Card colour: the rarity, gold for a legendary, green for a duo.
+  public static func BoonStep(def: ref<RLBoonDef>, rarity: Int32) -> Int32 {
+    switch def.kind {
+      case RLBoonKind.Legendary: return 8;
+      case RLBoonKind.Duo: return 2;
+    }
+    return RLBoons.RarityStep(rarity);
   }
 
   // --- Workshop ------------------------------------------------------------------------
@@ -677,8 +819,7 @@ public abstract class RLRewards {
         RLGear.GiveQuickhacks(player, [offer.record]);
         break;
       case RLOfferKind.Boon:
-        ArrayPush(run.boons, offer.boon);
-        RLBoons.ApplyStack(player, offer.boon, run);
+        RLBoons.Apply(player, run, offer.boon, offer.rarity);
         break;
       case RLOfferKind.Perk:
         let def = RLPerkCatalog.Find(offer.perk);

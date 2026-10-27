@@ -69,14 +69,17 @@ works: it just waits for the opening call to end before taking over.
    | --- | --- | --- |
    | TRAINING | Perks, granted outright | Light |
    | ARMORY | Weapons and grenades (sometimes an iconic) | Standard |
-   | BOONS | Run-only bonuses | Standard |
+   | PATRON | Boons from one of Night City's powers (see Patrons) | Standard |
    | DAEMONS | Quickhacks | Standard |
    | WORKSHOP | Upgrade a weapon, your MaxDoc or your grenade | Standard |
    | CHROME | Cyberware, installed on the spot (from floor 3) | Heavy |
    | ICONIC | Iconic weapons (rare door, from floor 3) | Heavy |
+   | BOUNTY | A lone cyberpsycho; pays eddies and a patron's boons (Act 2+) | Heavy |
+   | ? | An event instead of a fight (from floor 2) | - |
 
    Light fights have smaller waves of weaker enemies; heavy fights have bigger
-   waves (an extra wave in Act 3) and roll better rewards. Before a boss floor
+   waves (an extra wave in Act 3) and roll better rewards. From floor 3 some
+   fights come with an **objective** (see Objectives). Before a boss floor
    there is a single boss door.
 7. After each elite floor, before the boss door, the **Fixer** is in: spend
    the eddies you've earned.
@@ -159,8 +162,8 @@ is raised automatically when the floor calls for it, and one upgrade can drop
 per arena - always from a boss, from one elite in four. Grenades are rewards
 (Armory cards and the Workshop), one type at a time. Every run starts with
 Dash, Slippery and Muscle Memory, so dashing and sliding work from floor 1 and
-sprinting or vaulting doesn't restart a reload. The Quick Fuse,
-Stim Rig and Demolitionist boons speed up grenade and healing charges.
+sprinting or vaulting doesn't restart a reload. The Quick Fuse and Stim Rig
+boons speed up grenade and healing charges.
 
 ### Pacing
 
@@ -228,20 +231,82 @@ instead of relaxed, all on one side, with the loot described above. They spawn
 inside the arena on spots you can reach on foot, at the run's level, and
 an enemy that hangs back is sent running at you. If 40 seconds pass without a
 kill, the enemies left are brought to you (twice), and after that removed, so
-an enemy stuck behind a locked door can never softlock a run. Acts 2 and 3 end with MaxTac.
+an enemy stuck behind a locked door can never softlock a run.
 Without TweakXL the game's original records are used.
 
-### Boons
+### Bosses and elites
 
-Every boon you take shows on the HUD buff bar with its stack count, and the
-buffs are removed when the run ends.
+Each act ends with a boss: Act 1 the gang's own leader (or an outpost boss)
+with a lieutenant, Act 2 a MaxTac squad, Act 3 a Minotaur mech with a MaxTac
+escort. A boss's health shows under the HUD line; hurt, it calls in
+reinforcements, and near death it enrages.
+
+Elites (and bosses from Act 2) roll **affixes**, announced when they appear:
+ARMORED (takes 35% less damage), BERSERK (hits harder, moves faster),
+REGENERATING (2% health a second), VOLATILE (explodes a moment after it dies -
+step away) and VAMPIRIC (heals when it hits you). Elites get one from floor 3,
+sometimes two in Act 2, always two in Act 3.
+
+### Objectives
+
+Some fights (from floor 3, never the boss) come with a job. Enemies keep
+coming until it's done, then nobody else joins and the fight ends with the
+last one standing. A finished objective pays bonus eddies.
+
+- **SURVIVE** - hold out until the timer runs out.
+- **HOLD THE UPLINK** - stand in the marked zone until the upload completes
+  (it pauses while you're outside).
+- **SABOTAGE** - plant charges at three marked spots (a few seconds each);
+  they go off when the last one is set.
+
+### Events
+
+A "?" door is a stop without a fight. It counts as a floor and brings a
+level, like a reward:
+
+- **Back-Alley Ripperdoc** - a free MaxDoc patch-up, paid street chrome, or
+  bone lacing (+10% max health).
+- **The Bookie** - bet half your eddies at even odds, or bet a boon for an
+  Epic one.
+- **Misty's Reading** - three tarot cards, each a blessing with a price (more
+  eddies but more damage taken, upgraded boons for less health...).
+- **A Stranger's Offer** - an iconic weapon that makes you a target (15% more
+  damage taken for the run), or sell a boon for eddies.
+
+### Patrons
+
+Boons come from six of Night City's powers, Hades-style. A patron door is a
+fight whose reward is three of that patron's boons; a patron you already serve
+turns up more often.
+
+| Patron | Style |
+| --- | --- |
+| ARASAKA | Precision: crits, headshots, first strikes, slowed time |
+| MILITECH | Firepower: ranged and explosive damage, ammo, grenades |
+| VOODOO BOYS | The Net: RAM, quickhack damage and spread |
+| MAELSTROM | Brutality: melee, low-health fury, exploding bodies |
+| ALDECALDOS | Survival: health, speed, less damage, second winds |
+| THE AFTERLIFE | Fortune: eddies, lucky hits, a cheaper Fixer, more choice |
+
+- Each patron has five boons. A boon comes in a rarity - COMMON, RARE, EPIC
+  or HEROIC - and is offered again later as an upgrade to the next one. Deep
+  runs and lucky rolls give rarer boons.
+- Hold three of a patron's boons and its **legendary** can appear (Shogun's
+  Edge, Kill Count, Loa's Embrace, Cyberpsychosis, Family Ties, Afterlife
+  Legend).
+- Serve two patrons and their **duo** boon can appear (eight in all, e.g.
+  Smart Link for Arasaka + Militech).
+
+Every boon shows on the HUD buff bar; F7 during a fight lists them by patron.
+Everything is removed when the run ends.
 
 ### Menus
 
-The terminal, the door picker and the reward screen are built from cards in
-the game's own menu style: reward cards show the item's icon (weapons,
-cyberware, quickhacks) or the boon's buff icon, door cards show the reward
-type, threat and arena.
+The terminal, the door picker, the reward and event screens are built from
+cards in the game's own menu style: reward cards show the item's icon
+(weapons, cyberware, quickhacks) or the boon's buff icon in the patron's
+colour; door cards show the reward (or the patron's logo), threat, objective,
+arena and the enemy gang's logo.
 
 ### Arenas
 
@@ -303,14 +368,18 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Data/TweakPools.reds` | Enemy and item pools built at runtime |
 | `Data/EnemyRoster.reds` | Open-world combat NPCs per faction (generated from the 2.5 TweakDB) |
 | `Run/Difficulty.reds` | Enemy level curve, damage-taken curve and hook |
-| `Run/Encounters.reds` | Wave plans: sizes, tiers, elites, bosses |
+| `Run/Encounters.reds` | Wave plans: sizes, tiers, elites, bosses, bounties |
+| `Run/Objectives.reds` | Survive, uplink and sabotage objectives |
+| `Run/Events.reds` | "?" doors: ripperdoc, bookie, tarot, stranger |
 | `Run/Pacing.reds` | Pacing director (intensity, relax, pressure) |
 | `Run/Fixer.reds` | Eddie payouts and the Fixer's stock |
 | `Combat/Arenas.reds` | The arena list |
 | `Combat/ArenaDirector.reds` | Arena teleport, wall tick, safety-net position check |
 | `Combat/ArenaWalls.reds` | Collision walls with proximity holo-tape visuals |
 | `Combat/ArenaCleaner.reds` | No bystanders in arenas, no safe zones mid-fight |
-| `Combat/WaveSpawner.reds` | Wave spawning, level matching, chasing, kill tracking |
+| `Combat/WaveSpawner.reds` | Wave spawning, level matching, chasing, kill tracking, boss phases |
+| `Combat/Affixes.reds` | Elite affixes and the explosion helper |
+| `Combat/DamageHooks.reds` | Boons and affixes in the damage pipeline; death hook |
 | `Combat/Loot.reds` | Ammo refill, empty bodies, arena pickup filter |
 | `Audio/Music.reds` | Arena music: combat scores and radio stations |
 | `World/Atmosphere.reds` | Time of day and weather per arena |
@@ -319,11 +388,13 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Rewards/BuildProfile.reds` | Reads V's build into style tags |
 | `Rewards/PerkCatalog.reds` | Perk cards: prerequisites, signature perks, weighting |
 | `Rewards/PerkCatalogData.reds` | The perk list (generated from `source/perks/catalog.tsv`) |
-| `Rewards/Boons.reds` | Run-only bonuses |
+| `Rewards/Patrons.reds` | The six patrons |
+| `Rewards/Boons.reds` | The boon catalogue, rarities, upgrades |
+| `Rewards/BoonEffects.reds` | What boons do in fights (hits, kills, saves) |
 | `Meta/MetaProgression.reds` | Unlocks, kits, Cred payout |
 | `UI/Card.reds` | The card used by every menu, icon helpers |
 | `UI/Transition.reds` | Fade to black with the destination (trips, death) |
-| `UI/*.reds` | HUD line, terminal, reward and Fixer popups |
+| `UI/*.reds` | HUD line and boss bar, terminal, reward, event and Fixer popups |
 | `r6/tweaks/NightCityRoguelite/*.yaml` | Enemy variants and loot, boon buffs, computer prompt (TweakXL) |
 | `archive/pc/mod/NightCityRoguelite.archive` | Quest patch (skips the Phantom Liberty opening for roguelite starts) and English text |
 | `source/quest-patch/` | How the archive is built (Python + WolvenKit) |

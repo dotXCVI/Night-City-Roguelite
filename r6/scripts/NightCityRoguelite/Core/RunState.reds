@@ -16,12 +16,15 @@ public class RLRunState {
   public let floorsCleared: Int32;
   public let kills: Int32;
   public let bossesKilled: Int32;
-  // One entry per stack.
-  public let boons: array<CName>;
+  // Boons held this run (Rewards/Boons.reds).
+  public let boons: array<ref<RLBoonState>>;
+  // Trade-offs taken at events (Run/Events.reds): extra damage V takes (0.15
+  // = +15%), and stat modifiers that are removed when the run ends.
+  public let damageTakenBonus: Float;
+  public let appliedMods: array<ref<gameStatModifierData>>;
   // Every weapon the run handed out (kit and rewards): any other weapon V
   // carries was picked up in an arena and is taken away on the next trip.
   public let grantedWeapons: array<TweakDBID>;
-  public let appliedMods: array<ref<gameStatModifierData>>;
   // Free reroll charges (refilled at the start of every act) and paid rerolls
   // bought on the current screen (each one costs more).
   public let rerolls: Int32;
@@ -79,28 +82,6 @@ public class RLRunState {
       this.act += 1;
       this.rerolls = Max(this.rerolls, this.rerollsPerAct);
     }
-  }
-
-  public func BoonStacks(id: CName) -> Int32 {
-    let count = 0;
-    for boon in this.boons {
-      if Equals(boon, id) {
-        count += 1;
-      }
-    }
-    return count;
-  }
-
-  public func ConsumeBoon(id: CName) -> Bool {
-    let i = 0;
-    while i < ArraySize(this.boons) {
-      if Equals(this.boons[i], id) {
-        ArrayErase(this.boons, i);
-        return true;
-      }
-      i += 1;
-    }
-    return false;
   }
 
   public func FloorLabel() -> String {

@@ -101,17 +101,22 @@ public abstract class RLLoot {
     if !IsDefined(player) {
       return;
     }
+    RLLoot.RefillAmmo(player, RLConfig.WaveAmmoRefill());
+    ConsumablesChargesHelper.RefreshAmountOfCharges(player.GetGame(), gamedataStatPoolType.HealingItemsCharges, 1);
+  }
+
+  // A share of every ammo type's carry limit back, never past the limit.
+  public static func RefillAmmo(player: ref<PlayerPuppet>, share: Float) {
     let transactionSystem = GameInstance.GetTransactionSystem(player.GetGame());
     for ammo in RLLoot.PlayerAmmoTypes(player) {
       let ammoID = ItemID.CreateQuery(ammo);
       let cap = RLLoot.AmmoCap(player, ammoID);
       let have = transactionSystem.GetItemQuantity(player, ammoID);
-      let amount = Min(cap - have, Cast<Int32>(Cast<Float>(cap) * RLConfig.WaveAmmoRefill()));
+      let amount = Min(cap - have, Max(1, RoundF(Cast<Float>(cap) * share)));
       if amount > 0 {
         transactionSystem.GiveItem(player, ammoID, amount);
       }
     }
-    ConsumablesChargesHelper.RefreshAmountOfCharges(player.GetGame(), gamedataStatPoolType.HealingItemsCharges, 1);
   }
 
   // --- Pickups ---------------------------------------------------------------------------

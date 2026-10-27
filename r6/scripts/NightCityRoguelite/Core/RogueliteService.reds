@@ -45,6 +45,7 @@ public class RogueliteService extends ScriptableService {
   // Content pools and the perk card catalog, built once per game process.
   private let m_pools: ref<RLTweakPools>;
   private let m_perkCatalog: array<ref<RLPerkDef>>;
+  private let m_boonCatalog: array<ref<RLBoonDef>>;
   private let m_perkCatalogBuilt: Bool;
 
   // Main menu -> new game hand-off (not persistent on purpose).
@@ -293,6 +294,14 @@ public class RogueliteService extends ScriptableService {
       RLLog(s"Perk cards: \(ArraySize(this.m_perkCatalog)).");
     }
     return this.m_perkCatalog;
+  }
+
+  public func GetBoonCatalog() -> array<ref<RLBoonDef>> {
+    if ArraySize(this.m_boonCatalog) == 0 {
+      this.m_boonCatalog = RLBoons.Build();
+      RLLog(s"Boons: \(ArraySize(this.m_boonCatalog)).");
+    }
+    return this.m_boonCatalog;
   }
 
   public func RecordRunEnd(depth: Int32, kills: Int32, victory: Bool) {

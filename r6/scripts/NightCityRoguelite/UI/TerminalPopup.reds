@@ -75,7 +75,7 @@ public class RLTerminalPopup extends InGamePopup {
         header.SetFluffRight(this.m_summary);
         break;
       case RLTerminalView.InArena:
-        this.m_container.SetSize(Vector2(1800.0, 700.0));
+        this.m_container.SetSize(Vector2(1800.0, 960.0));
         header.SetTitle("RUN IN PROGRESS");
         header.SetFluffRight("NIGHT CITY ROGUELITE");
         break;
@@ -119,6 +119,16 @@ public class RLTerminalPopup extends InGamePopup {
 
   private func BuildInArena(body: ref<inkCompoundWidget>) {
     RLUI.WrappedText(this.m_summary, 34, n"MainColors.Blue", 1600.0).Reparent(body);
+    let run = IsDefined(this.m_system) ? this.m_system.GetRun() : null;
+    if IsDefined(run) && ArraySize(run.boons) > 0 {
+      RLUI.SectionLabel("BOONS").Reparent(body);
+      for patron in RLPatrons.All() {
+        let line = RLTerminalPopup.PatronBoons(run, patron.id);
+        if StrLen(line) > 0 {
+          RLUI.WrappedText(patron.name + "  " + line, 28, patron.accent, 1600.0).Reparent(body);
+        }
+      }
+    }
     let actions = RLUI.HPanel(14.0);
     actions.SetMargin(inkMargin(0.0, 40.0, 0.0, 0.0));
     actions.Reparent(body);
@@ -155,19 +165,40 @@ public class RLTerminalPopup extends InGamePopup {
   }
 
   private func AddDoorCard(parent: ref<inkCompoundWidget>, door: ref<RLDoor>, index: Int32, width: Float) {
-    let accent = door.boss ? n"MainColors.Red" : RLIcons.CategoryAccent(door.category);
+    let isPatron = Equals(door.category, RLRewardCategory.Boons) && IsNameValid(door.patron);
+    let accent = door.boss ? n"MainColors.Red" : (isPatron ? RLPatrons.Accent(door.patron) : RLIcons.CategoryAccent(door.category));
     let card = RLCard.Create(StringToName(s"door_\(index)"), width, 520.0, accent);
-    card.SetAtlasIcon(RLIcons.HubAtlas(), RLIcons.CategoryPart(door.category), 104.0);
+    if isPatron {
+      RLIcons.SetPatronIcon(card, door.patron, 104.0);
+    } else {
+      card.SetAtlasIcon(RLIcons.HubAtlas(), RLIcons.CategoryPart(door.category), 104.0);
+    }
     card.SetKicker(door.boss ? "BOSS" : RLRewards.ThreatName(door.threat));
     card.SetPips(door.threat, 3, RLIcons.ThreatAccent(door.threat));
-    card.SetTitle(RLRewards.CategoryName(door.category));
-    card.AddLine(RLRewards.CategoryDescription(door.category), n"MainColors.Blue", 28);
-    card.AddDivider();
+    card.SetTitle(RLRewards.DoorTitle(door));
+    if isPatron {
+      let patron = RLPatrons.Get(door.patron);
+      card.AddLine(IsDefined(patron) ? patron.tagline : "", n"MainColors.Blue", 28);
+    } else {
+      card.AddLine(RLRewards.CategoryDescription(door.category), n"MainColors.Blue", 28);
+    }
+    if Equals(door.category, RLRewardCategory.Bounty) {
+      card.AddLine("Pays in " + RLPatrons.Name(door.patron) + " boons", n"MainColors.Grey", 26);
+    }
+    if NotEquals(door.objective, RLObjectiveKind.None) {
+      card.AddLine(RLObjectives.Name(door.objective), n"MainColors.Yellow", 28);
+    }
     let arena = RLArenas.Get(door.arena);
     if IsDefined(arena) {
+      card.AddDivider();
       card.AddLine(arena.name, n"MainColors.Red", 30);
-      let enemies = IsDefined(door.faction) ? RLEncounters.FactionName(door.faction.faction) : RLTerminalPopup.FactionList(arena.factions);
-      card.AddLine("vs " + enemies, n"MainColors.Grey", 26);
+      if Equals(door.category, RLRewardCategory.Bounty) {
+        card.AddLine("vs a cyberpsycho", n"MainColors.Grey", 26);
+      } else if IsDefined(door.faction) {
+        card.AddIconLine(RLIcons.LogoAtlas(), RLIcons.FactionLogo(door.faction.faction), "vs " + RLEncounters.FactionName(door.faction.faction), n"MainColors.Grey", 26);
+      } else {
+        card.AddLine("vs " + RLTerminalPopup.FactionList(arena.factions), n"MainColors.Grey", 26);
+      }
     }
     this.Hook(card, parent);
     this.Intro(card, index);
@@ -188,6 +219,21 @@ public class RLTerminalPopup extends InGamePopup {
       text += RLEncounters.FactionName(faction);
     }
     return text;
+  }
+
+  // "Kenshin Protocol (RARE), Bushido (COMMON)" - the patron's boons V holds
+  // (duos under their first patron).
+  public static func PatronBoons(run: ref<RLRunState>, patron: CName) -> String {
+    let line = "";
+    for state in run.boons {
+      let def = RLBoons.Get(state.id);
+      if IsDefined(def) && Equals(def.patron, patron) {
+        let tag = Equals(def.kind, RLBoonKind.Core) ? RLBoons.RarityName(state.rarity) : (Equals(def.kind, RLBoonKind.Duo) ? "DUO" : "LEGENDARY");
+        let shown = Equals(def.kind, RLBoonKind.Core) && RLBoons.HighestRarity(def) == 0 ? def.name : def.name + " (" + tag + ")";
+        line += (StrLen(line) > 0 ? ", " : "") + shown;
+      }
+    }
+    return line;
   }
 
   private func AddAbandonCard(parent: ref<inkCompoundWidget>) -> ref<RLCard> {

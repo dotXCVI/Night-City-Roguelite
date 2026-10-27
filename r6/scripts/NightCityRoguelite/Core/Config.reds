@@ -101,6 +101,9 @@ public abstract class RLConfig {
   public static func ChaseAfterSeconds() -> Float = 5.0
   // Hard cap on simultaneously alive enemies.
   public static func MaxAlive() -> Int32 = 12
+  // Seconds without a kill before the enemies left are brought to V (twice),
+  // then removed (WaveSpawner.Unstick) - nothing can softlock a fight.
+  public static func UnstickSeconds() -> Float = 40.0
 
   // --- Difficulty curve (Run/Difficulty.reds) ------------------------------------
 

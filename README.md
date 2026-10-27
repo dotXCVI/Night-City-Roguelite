@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.0.15)
+# Night City Roguelite (v0.0.16)
 
 > **Versions:** alpha builds are v0.0.X. v0.X.X starts once the foundation is
 > solid, v1.0.0 is the finished mod. (Builds before v0.0.8 were numbered
@@ -11,9 +11,8 @@ rewards after every floor, and bank meta Cred when you flatline. Home is where
 a run starts and ends; in between you go from arena to arena. The design rule:
 fights should be easy to read, and all the thinking happens between them.
 
-> **Status:** v0.0.13 was tested in game; v0.0.14 fixed what that test
-> turned up, and v0.0.15 fixes v0.0.14's blank screen when starting a new
-> roguelite character. Untested beyond that. Start a **new** roguelite character for this build. Compiles cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0
+> **Status:** v0.0.15 was tested in game; v0.0.16 fixes what that test
+> turned up and is untested. See CHANGELOG.md for every version. Start a **new** roguelite character for this build. Compiles cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0
 > and TweakXL 1.12.0.
 
 ## Requirements
@@ -159,7 +158,8 @@ V carries one MaxDoc. It never falls behind the run: on every trip its quality
 is raised automatically when the floor calls for it, and one upgrade can drop
 per arena - always from a boss, from one elite in four. Grenades are rewards
 (Armory cards and the Workshop), one type at a time. Every run starts with
-Dash and Slippery, so dashing and sliding work from floor 1. The Quick Fuse,
+Dash, Slippery and Muscle Memory, so dashing and sliding work from floor 1 and
+sprinting or vaulting doesn't restart a reload. The Quick Fuse,
 Stim Rig and Demolitionist boons speed up grenade and healing charges.
 
 ### Pacing
@@ -187,7 +187,8 @@ starting perk.
 
 ### No looting
 
-Bodies are emptied - there is nothing to search mid-fight. Ammo comes back as
+Every kit starts with a basic frag grenade. Bodies are emptied - there is
+nothing to search mid-fight. Ammo comes back as
 you clear waves, your MaxDoc is upgraded automatically as the run goes on, and
 grenades are Armory rewards. Anything you pick up in an arena anyway is
 taken away again right after.
@@ -204,10 +205,18 @@ and `Run/Encounters.reds`.
 
 ### Music
 
-Fights use the game's own interactive combat music: the faction's street-story
+Fights get either a radio station - the Edgerunners station, Morro Rock or
+the metal station, likelier the harder the fight - or the game's own
+interactive combat music (never both at once): the faction's street-story
 set for regular fights (tense until the last wave in light fights), the
 Konpeki heist or Kang Tao sets for heavy and elite fights, and story boss music
 on boss floors (Royce, the mall fight, Adam Smasher).
+
+### Time and weather
+
+Each arena rolls its own time of day and weather on the way in: light fights
+are mostly daytime and clear, heavy and elite fights lean to night, rain, fog
+and smog (sandstorms in the Badlands), and boss fights get the full storm.
 
 ### Enemies
 
@@ -216,7 +225,9 @@ each faction (`r6/tweaks/NightCityRoguelite/enemies.yaml`, made from the list
 in `Data/EnemyRoster.reds`): hostile to V from the start, on combat alert
 instead of relaxed, all on one side, with the loot described above. They spawn
 inside the arena on spots you can reach on foot, at the run's level, and
-an enemy that hangs back is sent running at you. Acts 2 and 3 end with MaxTac.
+an enemy that hangs back is sent running at you. If 40 seconds pass without a
+kill, the enemies left are brought to you (twice), and after that removed, so
+an enemy stuck behind a locked door can never softlock a run. Acts 2 and 3 end with MaxTac.
 Without TweakXL the game's original records are used.
 
 ### Boons
@@ -300,7 +311,8 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Combat/ArenaCleaner.reds` | No bystanders in arenas, no safe zones mid-fight |
 | `Combat/WaveSpawner.reds` | Wave spawning, level matching, chasing, kill tracking |
 | `Combat/Loot.reds` | Ammo refill, empty bodies, arena pickup filter |
-| `Audio/Music.reds` | Arena combat music |
+| `Audio/Music.reds` | Arena music: combat scores and radio stations |
+| `World/Atmosphere.reds` | Time of day and weather per arena |
 | `Rewards/RewardSystem.reds` | Reward doors, offer rolling and granting |
 | `Rewards/Director.reds` | Quality rolls, pity, magnificence, spikes |
 | `Rewards/BuildProfile.reds` | Reads V's build into style tags |

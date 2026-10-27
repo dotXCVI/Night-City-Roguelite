@@ -888,6 +888,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_lastArena = arena.id;
     ArrayClear(this.m_expectedGrants);
     this.m_arenas.Enter(player, arena);
+    RLAtmosphere.Apply(this.GetGameInstance(), arena, this.m_run);
     // V patches up on the way, and the MaxDoc never falls behind the run.
     RLCharacterReset.HealFull(player);
     this.m_deathGuard.Rearm();
@@ -928,7 +929,7 @@ public class RogueliteSystem extends ScriptableSystem {
     RLStory.Quiet(this.GetGameInstance());
     // The door already named the enemy faction, so the music sets the mood
     // over the countdown.
-    this.m_music.Prepare(this.m_faction.faction, this.m_run.Threat(), this.m_run);
+    this.m_music.Prepare(GetPlayer(this.GetGameInstance()), this.m_faction.faction, this.m_run.Threat(), this.m_run);
     let reward = RLRewards.CategoryName(this.m_run.door.category);
     RLLog(s"Deploying to \(arena.name): \(reward), threat \(this.m_run.Threat()).");
     this.StartCountdown(RLConfig.DeployCountdown(), s"\(reward) - FIGHT IN", n"spawn");
@@ -1003,6 +1004,14 @@ public class RogueliteSystem extends ScriptableSystem {
 
   public func ExpectGrant(record: TweakDBID) {
     ArrayPush(this.m_expectedGrants, record);
+  }
+
+  // Rewards are picked in the arena, where pickups are filtered: the item an
+  // offer grants must be let through.
+  private func ExpectOfferGrant(offer: ref<RLOffer>) {
+    if TDBID.IsValid(offer.record) && NotEquals(offer.kind, RLOfferKind.WeaponUpgrade) && NotEquals(offer.kind, RLOfferKind.HealthUpgrade) {
+      this.ExpectGrant(offer.record);
+    }
   }
 
   public func ConsumeExpectedGrant(record: TweakDBID) -> Bool {
@@ -1125,6 +1134,7 @@ public class RogueliteSystem extends ScriptableSystem {
     if offer.disabled || !IsDefined(player) {
       return;
     }
+    this.ExpectOfferGrant(offer);
     RLRewards.Grant(player, this.m_run, offer);
     // Every reward also brings a level: the only XP V gets.
     PlayerDevelopmentSystem.GetData(player).RL_GrantLevels(1);
@@ -1210,7 +1220,11 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(player) || !IsDefined(this.m_run) || index < 0 || index >= ArraySize(this.m_fixerStock) {
       return false;
     }
-    return RLFixer.Buy(player, this.m_run, this.m_fixerStock[index]);
+    let item = this.m_fixerStock[index];
+    if !item.contact && IsDefined(item.offer) {
+      this.ExpectOfferGrant(item.offer);
+    }
+    return RLFixer.Buy(player, this.m_run, item);
   }
 
   public func OnFixerLeft() {
@@ -1369,6 +1383,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_spawner.Abort();
     this.m_spawner.DeleteAll();
     this.m_arenas.StopWalls();
+    RLAtmosphere.Reset(this.GetGameInstance());
     if IsDefined(player) {
       this.ReturnToHub(player);
       RLCharacterReset.HealFull(player);

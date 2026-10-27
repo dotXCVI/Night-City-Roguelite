@@ -79,6 +79,10 @@ public class RLWaveSpawner extends RLDelayTarget {
   private let m_wave: Int32;
   private let m_tracked: array<ref<RLTrackedEnemy>>;
   private let m_time: Float;
+  // Last kill or wave start; long stretches without one mean an enemy is
+  // stuck somewhere V can't reach (Unstick).
+  private let m_lastProgress: Float;
+  private let m_unstickRounds: Int32;
   private let m_active: Bool;
   private let m_tickID: DelayID;
   private let m_waveID: DelayID;
@@ -150,6 +154,8 @@ public class RLWaveSpawner extends RLDelayTarget {
       return;
     }
     this.m_waitingForWave = false;
+    this.m_lastProgress = this.m_time;
+    this.m_unstickRounds = 0;
     this.m_wave += 1;
     if this.m_wave >= this.m_plan.WaveCount() {
       this.m_active = false;
@@ -338,6 +344,9 @@ public class RLWaveSpawner extends RLDelayTarget {
       return;
     }
 
+    if this.GetAliveCount() > 0 && !this.m_waitingForWave && this.m_time - this.m_lastProgress >= RLConfig.UnstickSeconds() {
+      changed = this.Unstick(player, entities) || changed;
+    }
     if changed && IsDefined(this.m_system) {
       this.m_system.OnEnemyCountChanged(this.GetAliveCount());
     }
@@ -391,6 +400,8 @@ public class RLWaveSpawner extends RLDelayTarget {
     if puppet.IsDead() || ScriptedPuppet.IsDefeated(puppet) {
       enemy.done = true;
       enemy.dead = true;
+      this.m_lastProgress = this.m_time;
+      this.m_unstickRounds = 0;
       this.StockCorpse(enemy, player, entities);
       if IsDefined(this.m_system) {
         this.m_system.OnEnemyKilled(enemy.isBoss, enemy.isElite);
@@ -492,6 +503,40 @@ public class RLWaveSpawner extends RLDelayTarget {
       enemy.strayTime = 0.0;
     }
     return false;
+  }
+
+  // No kill for a while: twice, every enemy left is brought next to V (stuck
+  // behind a locked door, in a doorway, on a roof); if that doesn't help
+  // either, they are removed and count as killed, so a run can never softlock.
+  // Returns true when enemies were removed.
+  private func Unstick(player: ref<PlayerPuppet>, entities: ref<DynamicEntitySystem>) -> Bool {
+    this.m_lastProgress = this.m_time;
+    this.m_unstickRounds += 1;
+    let removed = 0;
+    for enemy in this.m_tracked {
+      if !enemy.done {
+        let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
+        if this.m_unstickRounds <= 2 {
+          if IsDefined(puppet) && IsDefined(player) {
+            this.Recall(enemy, puppet, player, "no progress");
+          }
+        } else {
+          enemy.done = true;
+          enemy.dead = true;
+          enemy.corpsePasses = 2;
+          entities.DeleteEntity(enemy.id);
+          removed += 1;
+          if IsDefined(this.m_system) {
+            this.m_system.OnEnemyKilled(enemy.isBoss, enemy.isElite);
+          }
+        }
+      }
+    }
+    if removed > 0 {
+      RLLog(s"Removed \(removed) enemies that couldn't be reached.");
+      this.m_unstickRounds = 0;
+    }
+    return removed > 0;
   }
 
   private func Recall(enemy: ref<RLTrackedEnemy>, puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>, const reason: String) {

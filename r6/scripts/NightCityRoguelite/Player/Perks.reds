@@ -5,8 +5,9 @@
 // ignore attribute requirements and cost no points. Attributes grow with the
 // perks V takes (+1 to the perk's attribute, see RLPerkCatalog.Grant).
 //
-// Baseline for every roguelite character: Slippery and Dash (Reflexes). Every
-// action roguelite gives its core movement from the first minute; the reset
+// Baseline for every roguelite character: Slippery, Dash and Muscle Memory
+// (Reflexes). Every action roguelite gives its core movement from the first
+// minute, and a reload shouldn't restart because V sprinted; the reset
 // between runs wipes perks, so the baseline is granted again after it.
 // -----------------------------------------------------------------------------
 
@@ -14,7 +15,12 @@ module NightCityRoguelite
 
 public abstract class RLPerks {
   public static func Baseline() -> array<gamedataNewPerkType> {
-    return [gamedataNewPerkType.Reflexes_Central_Milestone_1, gamedataNewPerkType.Reflexes_Central_Milestone_2];
+    return [
+      gamedataNewPerkType.Reflexes_Central_Milestone_1,
+      gamedataNewPerkType.Reflexes_Central_Milestone_2,
+      // Muscle Memory: reloads keep going through sprints, slides and vaults.
+      gamedataNewPerkType.Reflexes_Central_Perk_1_2
+    ];
   }
 
   public static func GrantBaseline(player: ref<PlayerPuppet>) {

@@ -3,6 +3,19 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.16 - Rewards fixed, radio, weather, no softlocks (2026-10-27)
+
+From the v0.0.15 playtest.
+
+- **Rewards always arrive.** Rewards are picked inside the arena now, and the no-looting rule was taking the reward items away again (the missing EMP grenade, the wrong pistol). Granted items are now exempt.
+- **Iconics are never below Rare**, and the card says their quality.
+- **Every kit starts with a basic frag grenade**, and Armory screens offer grenades a little more often.
+- **Muscle Memory for everyone:** sprinting, sliding and vaulting no longer restart a reload.
+- **No more softlocks from stuck enemies:** 40 s without a kill brings the remaining enemies to you (twice), then removes them as kills. This also covers enemies stuck in doorways.
+- **Radio in fights:** each fight plays either a radio station (the Edgerunners station, Morro Rock, metal - likelier the harder the fight) or the game's combat score, never both.
+- **Time and weather per arena:** daylight and clear skies for light fights, night, rain, fog and smog for heavy ones, sandstorms in the Badlands, full storms for bosses.
+- Known: a story call the quest forces through (Judy) can still show its call card.
+
 ## v0.0.15 - Hotfix: blank screen on new character (2026-10-27)
 
 - Fixed a blank screen with nothing to click when starting a new roguelite character. v0.0.14 cut the campaign screen's intro animation short, but the menu only moves on when that animation finishes. The screen is now hidden and the animation is left to finish.

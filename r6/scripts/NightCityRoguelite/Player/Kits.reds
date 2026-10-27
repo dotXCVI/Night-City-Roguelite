@@ -138,7 +138,8 @@ public abstract class RLGear {
 
 // Starting kits: Common weapons (no Smart or Tech weapons at the start), one
 // identity perk, the kit's attributes, and a basic MaxDoc (an Uncommon one with
-// the Med Kit unlock). Grenades are rewards, except for the Demolitions kit.
+// the Med Kit unlock), and a Common frag grenade (Demolitions starts with a
+// better one); better grenades are rewards.
 //
 // Attributes are the kit's, not spent by hand: from the base 3, the kit's main
 // attribute gets +4 and its second +3 (the Edge unlocks add to the main one).
@@ -228,6 +229,10 @@ public abstract class RLKits {
       data.UpdateUIBB();
     }
     RLConsumables.GiveStarterHealth(player, healthStep);
+    // Everyone starts with a basic grenade; rewards replace or upgrade it.
+    if !TDBID.IsValid(RLConsumables.CurrentGrenade(player)) {
+      RLConsumables.SetGrenade(player, RLConsumables.PickGrenadeOfFamily("Frag", 0));
+    }
     RLLog("Kit applied: " + NameToString(kit) + ".");
   }
 

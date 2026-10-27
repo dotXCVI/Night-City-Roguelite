@@ -409,7 +409,7 @@ public abstract class RLRewards {
         if RandF() < RLRewards.IconicChance(run.Depth()) {
           return RLOfferKind.Iconic;
         }
-        return RandF() < 0.25 ? RLOfferKind.Grenade : RLOfferKind.Weapon;
+        return RandF() < 0.3 ? RLOfferKind.Grenade : RLOfferKind.Weapon;
       case RLRewardCategory.Chrome:
         return RLOfferKind.Cyberware;
       case RLRewardCategory.Daemons:
@@ -437,10 +437,11 @@ public abstract class RLRewards {
         offer.excitement = step - expected;
         break;
       case RLOfferKind.Iconic:
+        // Iconics are never below Rare.
         offer.record = pools.PickIconic();
-        offer.step = Min(RLQuality.MaxStep(), step + 2);
+        offer.step = Clamp(step + 2, 4, RLQuality.MaxStep());
         offer.tier = RLQuality.TierName(offer.step);
-        offer.subtitle = "ICONIC WEAPON";
+        offer.subtitle = "ICONIC - " + RLQuality.DisplayName(offer.step);
         offer.excitement = offer.step - expected;
         break;
       case RLOfferKind.Cyberware:

@@ -15,9 +15,14 @@
 // second track that the set's stop event didn't end), and stopping sends the
 // stop event of every set played this session.
 //
-// Arrival plays the set's "alerted" state over the countdown; clearing the
-// arena plays its cooldown and stops a few seconds later; going home, a
-// flatline or the end of the session stop it at once.
+// Or a radio station instead of a score (never both, so nothing doubles up):
+// the Edgerunners station, Morro Rock or the metal station through V's pocket
+// radio emitter - more likely the harder the fight (RLRadio below).
+//
+// Arrival plays the set's "alerted" state (or tunes the radio) over the
+// countdown; clearing the arena plays its cooldown (the radio keeps going
+// through the reward screens); the next trip, a flatline or the end of the
+// session stop it.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -55,7 +60,40 @@ public class RLMusicSet {
   }
 }
 
+// The game's radio stations, played through V's pocket radio emitter the way
+// the pocket radio itself does (PocketRadio.TurnOn / TurnOff).
+public abstract class RLRadio {
+  public static func Play(player: ref<PlayerPuppet>, station: ERadioStationList) {
+    GameObject.AudioSwitch(player, n"radio_port_station", RadioStationDataProvider.GetStationNameByIndex(EnumInt(station)), n"pocket_radio_emitter");
+    GameObject.AudioSwitch(player, n"radio_port_on", n"None", n"pocket_radio_emitter");
+  }
+
+  public static func Stop(player: ref<PlayerPuppet>) {
+    GameObject.AudioSwitch(player, n"radio_port_station", RadioStationDataProvider.GetStationNameByIndex(-1, true), n"pocket_radio_emitter");
+    GameObject.AudioSwitch(player, n"radio_port_off", n"None", n"pocket_radio_emitter");
+  }
+
+  // A station for the fight, or none (play the score): radio is likelier the
+  // harder the fight, and the Edgerunners station leads on the big ones.
+  public static func PickStation(threat: Int32, run: ref<RLRunState>, out station: ERadioStationList) -> Bool {
+    let big = run.IsBossFloor() || run.IsEliteFloor() || threat >= 3;
+    let chance = big ? 0.6 : (threat <= 1 ? 0.2 : 0.4);
+    if RandF() >= chance {
+      return false;
+    }
+    let roll = RandF();
+    if big {
+      station = roll < 0.55 ? ERadioStationList.EDGE_RUNNERS : (roll < 0.85 ? ERadioStationList.ATTITUDE_ROCK : ERadioStationList.METAL);
+    } else {
+      station = roll < 0.35 ? ERadioStationList.EDGE_RUNNERS : (roll < 0.7 ? ERadioStationList.ATTITUDE_ROCK : ERadioStationList.AGGRO_INDUSTRIAL);
+    }
+    return true;
+  }
+}
+
 public class RLMusic extends IScriptable {
+  private let m_player: wref<PlayerPuppet>;
+  private let m_radioOn: Bool;
   private let m_set: ref<RLMusicSet>;
   private let m_lightUntilLastWave: Bool;
   private let m_playing: Bool;
@@ -108,8 +146,16 @@ public class RLMusic extends IScriptable {
   // --- Playback ---------------------------------------------------------------------------
 
   // Arrival in an arena: start the set for this fight and build tension.
-  public func Prepare(faction: gamedataAffiliation, threat: Int32, run: ref<RLRunState>) {
+  public func Prepare(player: ref<PlayerPuppet>, faction: gamedataAffiliation, threat: Int32, run: ref<RLRunState>) {
     this.Stop();
+    this.m_player = player;
+    let station: ERadioStationList;
+    if IsDefined(player) && RLRadio.PickStation(threat, run, station) {
+      RLRadio.Play(player, station);
+      this.m_radioOn = true;
+      RLDebug("Music: radio " + ToString(station));
+      return;
+    }
     if run.IsBossFloor() {
       this.m_set = RLMusic.BossSet(run.act);
     } else if threat >= 3 || run.IsEliteFloor() {
@@ -128,7 +174,7 @@ public class RLMusic extends IScriptable {
   }
 
   public func OnWaveStarted(wave: Int32, waves: Int32, isBossWave: Bool) {
-    if !this.m_playing {
+    if !this.m_playing || this.m_radioOn {
       return;
     }
     if isBossWave && IsNameValid(this.m_set.boss) {
@@ -142,12 +188,19 @@ public class RLMusic extends IScriptable {
 
   // Arena cleared: wind down (the caller stops it when V leaves).
   public func OnCleared() {
-    if this.m_playing && IsNameValid(this.m_set.cooldown) {
+    if this.m_playing && !this.m_radioOn && IsNameValid(this.m_set.cooldown) {
       this.Play(this.m_set.cooldown);
     }
   }
 
   public func Stop() {
+    if this.m_radioOn {
+      this.m_radioOn = false;
+      let player = this.m_player;
+      if IsDefined(player) {
+        RLRadio.Stop(player);
+      }
+    }
     if this.m_playing {
       for stop in this.m_stops {
         this.Play(stop);

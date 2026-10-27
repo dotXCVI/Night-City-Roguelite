@@ -14,6 +14,8 @@ public abstract class RLConfig {
   // Opens the terminal (at home), run status (in an arena), or skips the
   // return-home countdown after an arena is cleared.
   public static func TerminalKey() -> EInputKey = EInputKey.IK_F7
+  // Marks a bug: a snapshot of the run goes into the log (RogueliteSystem.MarkBug).
+  public static func BugKey() -> EInputKey = EInputKey.IK_F8
 
   // --- Hub (V's apartment) --------------------------------------------------------
 
@@ -105,6 +107,21 @@ public abstract class RLConfig {
   // then removed (WaveSpawner.Unstick) - nothing can softlock a fight.
   public static func UnstickSeconds() -> Float = 40.0
 
+  // --- Doors (Rewards/RewardSystem.reds) ----------------------------------------
+
+  // Chance that one door is an event (from floor 2, not before an elite).
+  public static func EventDoorChance() -> Float = 0.22
+  // Chance that one door is a cyberpsycho bounty (Act 2 on).
+  public static func BountyDoorChance() -> Float = 0.15
+  // Chance that a fight comes with an objective (from floor 3).
+  public static func ObjectiveChance() -> Float = 0.3
+
+  // --- Bosses and elites (Combat/Bosses.reds, Combat/Affixes.reds) --------------
+
+  // Boss health (percent) at which reinforcements arrive / the boss enrages.
+  public static func BossReinforceAt() -> Float = 60.0
+  public static func BossEnrageAt() -> Float = 30.0
+
   // --- Difficulty curve (Run/Difficulty.reds) ------------------------------------
 
   // Damage V takes, scaled from the first floor to the last (1.0 = the game's
@@ -118,6 +135,14 @@ public abstract class RLConfig {
     if act == 2 { return 0; }
     return 1;
   }
+  // The act gates: damage arena enemies take from V (1.0 = full). Bosses
+  // from Act 2, everyone in Act 3.
+  public static func BossDamageTaken(act: Int32) -> Float {
+    if act >= 3 { return 0.75; }
+    if act == 2 { return 0.85; }
+    return 1.0;
+  }
+  public static func EnemyDamageTaken(act: Int32) -> Float = act >= 3 ? 0.9 : 1.0
   // Share of each ammo type's carry limit refilled when a wave is cleared.
   public static func WaveAmmoRefill() -> Float = 0.4
 

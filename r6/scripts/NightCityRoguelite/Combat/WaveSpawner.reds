@@ -10,7 +10,13 @@
 //   - an enemy that hasn't closed in on V for a few seconds is sent running at
 //     V (then fights as normal);
 //   - an enemy that ends up outside the arena is put back inside;
-//   - dead enemies count as kills and their bodies are emptied (no looting).
+//   - dead enemies count as kills and their bodies are emptied (no looting);
+//   - elites' affixes tick (Combat/Affixes.reds), and a boss calls in
+//     reinforcements when hurt and enrages near death.
+//
+// Objective fights (Run/Objectives.reds) hold the encounter open: the waves
+// cycle, the next one arriving when one enemy is left, until the run system
+// releases the hold; then the fight ends with the last enemy.
 //
 // Spawn points are on the navmesh, inside the arena, near V's floor level and
 // reachable from V on foot (a path is calculated before spawning).
@@ -24,6 +30,10 @@ public class RLTrackedEnemy {
   public let isBoss: Bool;
   public let isElite: Bool;
   public let level: Int32;
+  public let affixes: Int32;
+  // Bosses: 0 fresh, 1 reinforcements called, 2 enraged.
+  public let phase: Int32;
+  public let name: String;
   public let spawnTime: Float;
   public let seen: Bool;
   public let prepared: Bool;
@@ -47,6 +57,9 @@ public class RLEncounterPlan {
   public let levels: array<Int32>;
   public let waveStarts: array<Int32>;
   public let factionName: String;
+  // Boss fights: who answers the boss's call, and their level.
+  public let reinforcements: array<TweakDBID>;
+  public let reinforceLevel: Int32;
 
   public func WaveCount() -> Int32 = ArraySize(this.waveStarts)
 
@@ -91,6 +104,10 @@ public class RLWaveSpawner extends RLDelayTarget {
   private let m_waitingForWave: Bool;
   // Enemies dropped from the next wave (pacing director's relax phase).
   private let m_trimNext: Int32;
+  // Objective fights: waves cycle while held open; once released, the fight
+  // ends with the last enemy.
+  private let m_holdOpen: Bool;
+  private let m_finishing: Bool;
 
   public static func Tag() -> CName = n"NightCityRoguelite.Enemy"
 
@@ -102,8 +119,10 @@ public class RLWaveSpawner extends RLDelayTarget {
 
   // --- Public API ----------------------------------------------------------------------
 
-  public func Start(arena: ref<RLArenaDef>, plan: ref<RLEncounterPlan>) {
+  public func Start(arena: ref<RLArenaDef>, plan: ref<RLEncounterPlan>, holdOpen: Bool) {
     this.Abort();
+    this.m_holdOpen = holdOpen;
+    this.m_finishing = false;
     this.m_center = arena.position;
     this.m_radius = arena.radius;
     this.m_plan = plan;
@@ -137,6 +156,71 @@ public class RLWaveSpawner extends RLDelayTarget {
 
   public func IsActive() -> Bool = this.m_active
 
+  // V went down: no more waves; tracking stops and the bodies stay.
+  public func Halt() {
+    if this.m_active {
+      RLCancel(GetGameInstance(), this.m_waveID);
+    }
+    this.m_active = false;
+    this.m_holdOpen = false;
+    this.m_finishing = false;
+  }
+
+  // One line per enemy still counted as alive, for bug marks.
+  public func Describe(player: ref<PlayerPuppet>) -> array<String> {
+    let lines: array<String>;
+    let entities = GameInstance.GetDynamicEntitySystem();
+    ArrayPush(lines, s"Spawner: active \(this.m_active), wave \(this.m_wave + 1)/\(IsDefined(this.m_plan) ? this.m_plan.WaveCount() : 0), waiting \(this.m_waitingForWave), hold \(this.m_holdOpen), finishing \(this.m_finishing), \(RoundF(this.m_time - this.m_lastProgress))s since progress.");
+    for enemy in this.m_tracked {
+      if !enemy.done {
+        let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
+        let where = "not spawned";
+        if IsDefined(puppet) {
+          let p = puppet.GetWorldPosition();
+          let distance = IsDefined(player) ? Vector4.Distance(p, player.GetWorldPosition()) : 0.0;
+          where = s"(\(p.X), \(p.Y), \(p.Z)), \(RoundF(distance)) m from V, dead \(puppet.IsDead())";
+        }
+        ArrayPush(lines, s"  \(TDBID.ToStringDEBUG(enemy.record)) boss \(enemy.isBoss) elite \(enemy.isElite) affixes \(RLAffixes.Names(enemy.affixes)): \(where); idle \(enemy.idleTime)s, outside \(enemy.outsideTime)s, off floor \(enemy.offFloorTime)s");
+      }
+    }
+    return lines;
+  }
+
+  private func ReportLost(enemy: ref<RLTrackedEnemy>) {
+    if IsDefined(this.m_system) {
+      this.m_system.OnEnemyLost(enemy);
+    }
+  }
+
+  // The objective is done: nobody else joins; the fight ends with the last
+  // enemy standing.
+  public func ReleaseHold() {
+    if !this.m_holdOpen {
+      return;
+    }
+    this.m_holdOpen = false;
+    this.m_finishing = true;
+    if this.m_waitingForWave {
+      RLCancel(GetGameInstance(), this.m_waveID);
+      this.m_waitingForWave = false;
+    }
+  }
+
+  // Living enemies within `radius` of a spot (Overdrive, style signatures).
+  public func LivingNear(position: Vector4, radius: Float) -> array<ref<ScriptedPuppet>> {
+    let result: array<ref<ScriptedPuppet>>;
+    let entities = GameInstance.GetDynamicEntitySystem();
+    for enemy in this.m_tracked {
+      if !enemy.done {
+        let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
+        if IsDefined(puppet) && !puppet.IsDead() && Vector4.Distance(puppet.GetWorldPosition(), position) <= radius {
+          ArrayPush(result, puppet);
+        }
+      }
+    }
+    return result;
+  }
+
   public func GetAliveCount() -> Int32 {
     let count = 0;
     for enemy in this.m_tracked {
@@ -157,6 +241,9 @@ public class RLWaveSpawner extends RLDelayTarget {
     this.m_lastProgress = this.m_time;
     this.m_unstickRounds = 0;
     this.m_wave += 1;
+    if this.m_wave >= this.m_plan.WaveCount() && this.m_holdOpen {
+      this.m_wave = 0;
+    }
     if this.m_wave >= this.m_plan.WaveCount() {
       this.m_active = false;
       if IsDefined(this.m_system) {
@@ -179,7 +266,7 @@ public class RLWaveSpawner extends RLDelayTarget {
       if this.GetAliveCount() >= RLConfig.MaxAlive() {
         break;
       }
-      if this.SpawnOne(player, i) {
+      if this.SpawnRecord(player, this.m_plan.records[i], this.m_plan.bossFlags[i], this.m_plan.eliteFlags[i], this.m_plan.levels[i]) {
         spawned += 1;
       }
       i += 1;
@@ -195,8 +282,7 @@ public class RLWaveSpawner extends RLDelayTarget {
     }
   }
 
-  private func SpawnOne(player: ref<PlayerPuppet>, index: Int32) -> Bool {
-    let record = this.m_plan.records[index];
+  private func SpawnRecord(player: ref<PlayerPuppet>, record: TweakDBID, isBoss: Bool, isElite: Bool, level: Int32) -> Bool {
     let position: Vector4;
     if !this.FindSpawnPoint(player, position) {
       RLLog("No spawn point found for an enemy.");
@@ -220,12 +306,15 @@ public class RLWaveSpawner extends RLDelayTarget {
     let enemy = new RLTrackedEnemy();
     enemy.id = id;
     enemy.record = record;
-    enemy.isBoss = this.m_plan.bossFlags[index];
-    enemy.isElite = this.m_plan.eliteFlags[index];
-    enemy.level = this.m_plan.levels[index];
+    enemy.isBoss = isBoss;
+    enemy.isElite = isElite;
+    enemy.level = level;
     enemy.spawnTime = this.m_time;
     enemy.bestDistance = 9999.0;
     ArrayPush(this.m_tracked, enemy);
+    if IsDefined(this.m_system) {
+      this.m_system.OnEnemySpawned(enemy);
+    }
     RLDebug(s"Spawned \(TDBID.ToStringDEBUG(record)) at (\(position.X), \(position.Y), \(position.Z)).");
     return true;
   }
@@ -343,6 +432,36 @@ public class RLWaveSpawner extends RLDelayTarget {
     if !this.m_active {
       return;
     }
+    if IsDefined(this.m_system) {
+      this.m_system.OnFightTick();
+    }
+    if !this.m_active {
+      return;
+    }
+
+    if this.m_finishing {
+      if this.GetAliveCount() > 0 && this.m_time - this.m_lastProgress >= RLConfig.UnstickSeconds() {
+        changed = this.Unstick(player, entities) || changed;
+      }
+      if changed && IsDefined(this.m_system) {
+        this.m_system.OnEnemyCountChanged(this.GetAliveCount());
+      }
+      if this.GetAliveCount() == 0 {
+        this.m_active = false;
+        if IsDefined(this.m_system) {
+          this.m_system.OnEncounterCleared();
+        }
+      }
+      return;
+    }
+    // Objective fights: the next wave as soon as one enemy is left.
+    if this.m_holdOpen && !this.m_waitingForWave && this.GetAliveCount() <= 1 {
+      this.m_waitingForWave = true;
+      if IsDefined(this.m_system) {
+        this.m_system.OnHoldWave();
+      }
+      this.m_waveID = RLDelay(game, this, n"wave", RLConfig.WaveGap());
+    }
 
     if this.GetAliveCount() > 0 && !this.m_waitingForWave && this.m_time - this.m_lastProgress >= RLConfig.UnstickSeconds() {
       changed = this.Unstick(player, entities) || changed;
@@ -386,11 +505,13 @@ public class RLWaveSpawner extends RLDelayTarget {
         RLLog(s"Enemy never spawned, dropping: \(TDBID.ToStringDEBUG(enemy.record))");
         enemy.done = true;
         entities.DeleteEntity(enemy.id);
+        this.ReportLost(enemy);
         return true;
       }
       if enemy.seen {
         // Spawned once, now gone (despawned or deleted by the game).
         enemy.done = true;
+        this.ReportLost(enemy);
         return true;
       }
       return false;
@@ -404,7 +525,7 @@ public class RLWaveSpawner extends RLDelayTarget {
       this.m_unstickRounds = 0;
       this.StockCorpse(enemy, player, entities);
       if IsDefined(this.m_system) {
-        this.m_system.OnEnemyKilled(enemy.isBoss, enemy.isElite);
+        this.m_system.OnEnemyKilled(enemy, puppet, false);
       }
       return true;
     }
@@ -416,9 +537,17 @@ public class RLWaveSpawner extends RLDelayTarget {
       enemy.prepared = true;
       RLWaveSpawner.Prepare(puppet, player, enemy.level);
       enemy.lastThreat = this.m_time;
+      RLAffixes.OnSpawned(puppet, enemy.affixes);
+      if IsDefined(this.m_system) {
+        this.m_system.OnEnemySighted(enemy, puppet);
+      }
     } else if this.m_time - enemy.lastThreat >= RLConfig.ThreatRefreshSeconds() {
       RLWaveSpawner.MakeHostile(puppet, player);
       enemy.lastThreat = this.m_time;
+    }
+    RLAffixes.OnTick(puppet, enemy.affixes);
+    if enemy.isBoss {
+      this.UpdateBoss(enemy, puppet, player);
     }
 
     // Not placed yet: right after spawning the position reads as the world
@@ -497,6 +626,7 @@ public class RLWaveSpawner extends RLDelayTarget {
         RLLog("Removing stray enemy.");
         enemy.done = true;
         entities.DeleteEntity(enemy.id);
+        this.ReportLost(enemy);
         return true;
       }
     } else {
@@ -527,7 +657,7 @@ public class RLWaveSpawner extends RLDelayTarget {
           entities.DeleteEntity(enemy.id);
           removed += 1;
           if IsDefined(this.m_system) {
-            this.m_system.OnEnemyKilled(enemy.isBoss, enemy.isElite);
+            this.m_system.OnEnemyKilled(enemy, null, true);
           }
         }
       }
@@ -537,6 +667,35 @@ public class RLWaveSpawner extends RLDelayTarget {
       this.m_unstickRounds = 0;
     }
     return removed > 0;
+  }
+
+  // A boss's phases: reinforcements when hurt, enraged near death. Its health
+  // goes to the HUD.
+  private func UpdateBoss(enemy: ref<RLTrackedEnemy>, puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>) {
+    let health = GameInstance.GetStatPoolsSystem(puppet.GetGame()).GetStatPoolValue(Cast<StatsObjectID>(puppet.GetEntityID()), gamedataStatPoolType.Health, true);
+    if enemy.phase == 0 && health <= RLConfig.BossReinforceAt() {
+      enemy.phase = 1;
+      let called = 0;
+      for record in this.m_plan.reinforcements {
+        if this.GetAliveCount() < RLConfig.MaxAlive() && this.SpawnRecord(player, record, false, false, this.m_plan.reinforceLevel) {
+          called += 1;
+        }
+      }
+      ArrayClear(this.m_plan.reinforcements);
+      if called > 0 && IsDefined(this.m_system) {
+        this.m_system.OnBossPhase(enemy, 1);
+      }
+    }
+    if enemy.phase <= 1 && health <= RLConfig.BossEnrageAt() {
+      enemy.phase = 2;
+      StatusEffectHelper.ApplyStatusEffect(puppet, t"BaseStatusEffect.BerserkNPCBuff");
+      if IsDefined(this.m_system) {
+        this.m_system.OnBossPhase(enemy, 2);
+      }
+    }
+    if IsDefined(this.m_system) {
+      this.m_system.OnBossHealth(enemy, health);
+    }
   }
 
   private func Recall(enemy: ref<RLTrackedEnemy>, puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>, const reason: String) {

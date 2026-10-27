@@ -451,6 +451,16 @@ NCRoguelite.arasaka_guard2_ranged1_yukimura_wa:
   dropsWeaponOnDeath: false
   dropsMoneyOnDeath: false
 
+NCRoguelite.arasaka_minotaur:
+  $base: Character.arasaka_minotaur
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
 NCRoguelite.arasaka_netrunner_netrunner2_yukimura_ma_rare:
   $base: Character.arasaka_netrunner_netrunner2_yukimura_ma_rare
   baseAttitudeGroup: hostile
@@ -791,6 +801,56 @@ NCRoguelite.bou_kurtz_tech_franged2_handgun_wa_rare:
   dropsWeaponOnDeath: false
   dropsMoneyOnDeath: false
 
+NCRoguelite.gang_retaliation_enemies_animals_elite3_hmelee3_fists_mba_elite_dtn_03_boss:
+  $base: Character.gang_retaliation_enemies_animals_elite3_hmelee3_fists_mba_elite_dtn_03_boss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.gang_retaliation_enemies_maelstrom_fast_fmelee3_mantis_wa_elite_kab_02_boss:
+  $base: Character.gang_retaliation_enemies_maelstrom_fast_fmelee3_mantis_wa_elite_kab_02_boss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.gang_retaliation_enemies_sixthstreet_prepers3_shotgun3_carnage_ma_arr_11_boss:
+  $base: Character.gang_retaliation_enemies_sixthstreet_prepers3_shotgun3_carnage_ma_arr_11_boss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.gang_retaliation_enemies_tyger_claws_martial_hmelee3_StrongArms_mb_jpn_12_boss:
+  $base: Character.gang_retaliation_enemies_tyger_claws_martial_hmelee3_StrongArms_mb_jpn_12_boss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.gang_retaliation_enemies_valentinos_shotgun3_shotgun3_testera_ma_elite_gle_04_boss:
+  $base: Character.gang_retaliation_enemies_valentinos_shotgun3_shotgun3_testera_ma_elite_gle_04_boss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
 NCRoguelite.kangtao_officer_grenadier3_mah_elite:
   $base: Character.kangtao_officer_grenadier3_mah_elite
   baseAttitudeGroup: hostile
@@ -823,6 +883,296 @@ NCRoguelite.kangtao_soldier2_shotgun2_zhuo_mah_rare:
 
 NCRoguelite.kangtao_soldier2_shotgun3_zhuo_mah_elite:
   $base: Character.kangtao_soldier2_shotgun3_zhuo_mah_elite
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.kurtz_minotaur:
+  $base: Character.kurtz_minotaur
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_bls_ina_se1_08_cyberpsycho:
+  $base: Character.ma_bls_ina_se1_08_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_bls_ina_se1_17_outpost_miniboss:
+  $base: Character.ma_bls_ina_se1_17_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_bls_se5_07_outpost_miniboss:
+  $base: Character.ma_bls_se5_07_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_cct_dtn_03_cyberpsycho:
+  $base: Character.ma_cct_dtn_03_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_cct_dtn_07_cyberpsycho:
+  $base: Character.ma_cct_dtn_07_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_hey_gle_02_outpost_miniboss:
+  $base: Character.ma_hey_gle_02_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_hey_rey_06_outpost_miniboss:
+  $base: Character.ma_hey_rey_06_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_hey_spr_04_cyberpsycho:
+  $base: Character.ma_hey_spr_04_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_hey_spr_06_cyberpsycho:
+  $base: Character.ma_hey_spr_06_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_hey_spr_11_outpost_miniboss:
+  $base: Character.ma_hey_spr_11_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_pac_cvi_12_outpost_miniboss:
+  $base: Character.ma_pac_cvi_12_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_pac_cvi_15_cyberpsycho:
+  $base: Character.ma_pac_cvi_15_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_pac_wwd_02_outpost_miniboss:
+  $base: Character.ma_pac_wwd_02_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_std_arr_03_outpost_miniboss:
+  $base: Character.ma_std_arr_03_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_std_arr_06_cyberpsycho:
+  $base: Character.ma_std_arr_06_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_std_rcr_08_outpost_miniboss:
+  $base: Character.ma_std_rcr_08_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_std_rcr_11_cyberpsycho:
+  $base: Character.ma_std_rcr_11_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_std_rcr_18_outpost_miniboss:
+  $base: Character.ma_std_rcr_18_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wat_kab_02_cyberpsycho:
+  $base: Character.ma_wat_kab_02_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wat_kab_08_cyberpsycho:
+  $base: Character.ma_wat_kab_08_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wat_lch_01_outpost_miniboss:
+  $base: Character.ma_wat_lch_01_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wat_lch_06_cyberpsycho:
+  $base: Character.ma_wat_lch_06_cyberpsycho
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wat_lch_08_outpost_miniboss:
+  $base: Character.ma_wat_lch_08_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wat_nid_01_outpost_miniboss:
+  $base: Character.ma_wat_nid_01_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wat_nid_02_outpost_miniboss:
+  $base: Character.ma_wat_nid_02_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wat_nid_06_outpost_miniboss:
+  $base: Character.ma_wat_nid_06_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wbr_jpn_20_outpost_miniboss:
+  $base: Character.ma_wbr_jpn_20_outpost_miniboss
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.ma_wbr_nok_05_outpost_miniboss:
+  $base: Character.ma_wbr_nok_05_outpost_miniboss
   baseAttitudeGroup: hostile
   sensePreset: Senses.Combat
   contentAssignment: DeviceContentAssignment.Autoscaling
@@ -1133,6 +1483,16 @@ NCRoguelite.militech_enforcer2_shotgun2_tactician_mah_rare:
 
 NCRoguelite.militech_enforcer3_gunner3_HMG_mb_elite:
   $base: Character.militech_enforcer3_gunner3_HMG_mb_elite
+  baseAttitudeGroup: hostile
+  sensePreset: Senses.Combat
+  contentAssignment: DeviceContentAssignment.Autoscaling
+  lootDrop: NCRoguelite.EnemyLoot
+  lootInjectionParams: NCRoguelite.NoLootInjection
+  dropsWeaponOnDeath: false
+  dropsMoneyOnDeath: false
+
+NCRoguelite.militech_minotaur:
+  $base: Character.militech_minotaur
   baseAttitudeGroup: hostile
   sensePreset: Senses.Combat
   contentAssignment: DeviceContentAssignment.Autoscaling

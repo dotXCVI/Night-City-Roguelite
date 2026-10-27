@@ -51,18 +51,24 @@ entry at the top.
 1. Main menu -> **ROGUELITE**. Pick a body type, make your V, and confirm.
 2. The screen stays black for up to about 45 seconds while the mod sets things
    up. That's normal, so don't press anything. You'll fade in at V's apartment.
-3. Press **F7** (or use V's computer) to open the terminal. Pick a kit and press
-   **START RUN**. You can save at the apartment between runs; saving is locked
+3. A guide pops up the first time. Read it - it's six pictures, not homework.
+4. Walk into the **armory** (the weapon room at the back of the apartment) and
+   open the stash ("Gear") to pick your kit. Locked kits are bought there with
+   Cred.
+5. Use **V's computer** and hit **START RUN**. You can save at the apartment between runs; saving is locked
    during a run.
-4. In a run:
-   - Clear every wave in the arena.
-   - Pick a reward (each pick also gives +1 level).
-   - Pick your next fight. Each door shows the reward you'll get, how hard the
-     fight is, and who you'll face.
+6. In a run:
+   - Take a gig, then clear every wave in the arena.
+   - Pick a reward, then a level-up.
+   - Pick your next fight. Each door shows the place, what it pays, how hard
+     it is, and who's waiting.
    - **F7** reopens any screen you closed.
-5. Before each boss, the **Fixer** sells upgrades for the eddies you've earned.
-6. When you die, you wake up back home. You keep the **Cred** you earned and
-   spend it at the terminal on new kits and unlocks.
+7. Before each boss, the **Fixer** sells upgrades for the eddies you've earned.
+   - Want to try a boss or a later act without playing up to it? Use the
+     **FLOOR** card on the terminal to pick where to start and press
+     **TEST RUN**. Test runs pay no Cred and don't count in your stats.
+8. When you die, you wake up back home. You keep the **Cred** you earned and
+   spend it on kits (armory) and upgrades (terminal).
 
 Your Cred and unlocks are stored outside your save files, so they carry over to
 new roguelite characters on the same PC.
@@ -71,7 +77,10 @@ new roguelite characters on the same PC.
 
 1. Always quit through the main menu (Esc -> Exit to Main Menu, or Quit Game).
    Don't use Alt+F4. The mod's log is only saved when you quit properly.
-2. Send me:
+2. Hit a bug mid-run? Press **F8** right away (or MARK BUG on the F7 screen in a fight).
+   It saves a snapshot of the fight to the log, so I know exactly when and
+   where it happened. Mark as many as you like.
+3. Send me:
    - **What happened** and roughly when: which floor, and what you were doing.
      A screenshot helps a lot.
    - **These two files** from your Cyberpunk 2077 game folder:
@@ -95,8 +104,42 @@ The five framework mods are safe to keep, since lots of other mods use them.
 
 ## Things to keep an eye on in this build
 
+Big content patch plus a polish pass. Tell me how these feel:
+
+**Home**
+- Did the guide show up the first time? Did the pictures load?
+- Is the armory door open? Is there a stash in there that says "Gear" and
+  opens the kit screen? (If there's no stash, the HUD should say ARMORY and
+  F7 opens it instead - tell me if that happens.)
+- Does the computer open the terminal? (F7 inside the armory opens the kit
+  screen instead - that's on purpose.)
+
+**Menus**
+- Door, reward, kit and event cards now have pictures. Do they load, and do
+  they look right (not stretched, not blank)?
+- Hovering a card should lift it and light the frame - no color wash behind
+  the text. Easy to read now?
+- Anything that reads wrong, sounds off or is just too long? Screenshot it.
+- Does every menu fit on your screen? Tell me your resolution if one doesn't.
+
+**Builds**
+- **Level-ups:** after every reward there's a LEVEL UP screen. Too many
+  screens, or does it feel good?
+- **Weapon cards:** do they show a DPS line ("DPS 312 +38% vs ...")? Do new
+  weapons feel like upgrades now?
+- **Weapon mods and evolutions:** did a mod change how a gun played? Did you
+  get a weapon to evolve into an iconic, and did it equip properly?
+- **Styles:** do the style lines on cards and the footer make sense? Did you
+  hit a rank III signature?
+- **The Act 1 boss:** pick an Operating System. Fill the Overdrive meter (on
+  the HUD), then activate your OS. Did ZERO HOUR / RAMPAGE / BLACKWALL fire?
+- **Gigs:** take one at the start; does the counter on the HUD go up?
+- **Skip, banish, sell back:** do they work?
+- **Overall:** did your build come together by the Act 2 boss? Was Act 3
+  harder in a good way?
+
+**The basics**
 - Does dying play out properly: V goes down, the screen fades, and you come to
   at home?
 - Do the fades between arenas hide all the loading pop-in?
 - Did any story phone call (for example from Judy) get through during a run?
-- Does every menu fit on your screen? Tell me your resolution if one doesn't.

@@ -16,12 +16,21 @@ public class RLRunState {
   public let floorsCleared: Int32;
   public let kills: Int32;
   public let bossesKilled: Int32;
-  // One entry per stack.
-  public let boons: array<CName>;
+  // A test run (terminal): starts on any floor, pays no Cred, doesn't count
+  // in the stats, and rolls the new door types every time.
+  public let isTest: Bool;
+  // Telemetry (Core/Telemetry.reds): this run's id and when it started.
+  public let id: Int32;
+  public let startTime: Float;
+  // Boons held this run (Rewards/Boons.reds).
+  public let boons: array<ref<RLBoonState>>;
+  // Trade-offs taken at events (Run/Events.reds): extra damage V takes (0.15
+  // = +15%), and stat modifiers that are removed when the run ends.
+  public let damageTakenBonus: Float;
+  public let appliedMods: array<ref<gameStatModifierData>>;
   // Every weapon the run handed out (kit and rewards): any other weapon V
   // carries was picked up in an arena and is taken away on the next trip.
   public let grantedWeapons: array<TweakDBID>;
-  public let appliedMods: array<ref<gameStatModifierData>>;
   // Free reroll charges (refilled at the start of every act) and paid rerolls
   // bought on the current screen (each one costs more).
   public let rerolls: Int32;
@@ -43,6 +52,30 @@ public class RLRunState {
   // Fixer stop after the elite floor, before the boss door.
   public let fixerPending: Bool;
 
+  // Styles (Rewards/Styles.reds): points per style, recounted after picks.
+  public let stylePoints: array<Int32>;
+  // Weapons with mods (Rewards/Weapons.reds).
+  public let weapons: array<ref<RLWeaponState>>;
+  // Cards banished for the rest of the run (RLRewards.OfferKey) and banishes
+  // left (one per act).
+  public let banished: array<String>;
+  public let banishes: Int32;
+  // The Operating System taken at the Act 1 boss, and Overdrive
+  // (Run/Overdrive.reds): unlocked with it, charged 0..100.
+  public let os: CName;
+  public let overdriveUnlocked: Bool;
+  public let overdrive: Float;
+  // Capacity overclock: points of cyberware over capacity (each one raises
+  // the odds of a cyberpsychosis episode in fights).
+  public let overclock: Int32;
+  // The gig taken at the start (Run/Gigs.reds): its style (-1 none), kills
+  // needed and made, and how it ended.
+  public let gigStyle: Int32;
+  public let gigTarget: Int32;
+  public let gigProgress: Int32;
+  public let gigDone: Bool;
+  public let gigFailed: Bool;
+
   // The floor was cleared and its reward is waiting: the run moves on to the
   // next floor once it has been picked.
   public let advancePending: Bool;
@@ -56,6 +89,8 @@ public class RLRunState {
     run.act = 1;
     run.floor = 1;
     run.offerCount = 3;
+    run.banishes = 1;
+    run.gigStyle = -1;
     return run;
   }
 
@@ -78,33 +113,22 @@ public class RLRunState {
       this.floor = 1;
       this.act += 1;
       this.rerolls = Max(this.rerolls, this.rerollsPerAct);
+      this.banishes = Max(this.banishes, 1);
     }
   }
 
-  public func BoonStacks(id: CName) -> Int32 {
-    let count = 0;
-    for boon in this.boons {
-      if Equals(boon, id) {
-        count += 1;
-      }
-    }
-    return count;
-  }
-
-  public func ConsumeBoon(id: CName) -> Bool {
-    let i = 0;
-    while i < ArraySize(this.boons) {
-      if Equals(this.boons[i], id) {
-        ArrayErase(this.boons, i);
-        return true;
-      }
-      i += 1;
-    }
-    return false;
+  // Jumps to an overall floor (1-based), for test runs.
+  public func SetDepth(depth: Int32) {
+    let d = Clamp(depth, 1, this.TotalFloors()) - 1;
+    this.act = d / RLConfig.FloorsPerAct() + 1;
+    this.floor = d % RLConfig.FloorsPerAct() + 1;
   }
 
   public func FloorLabel() -> String {
     let label = s"ACT \(this.act) - FLOOR \(this.floor)";
+    if this.isTest {
+      label = "TEST - " + label;
+    }
     if this.IsBossFloor() {
       label += " (BOSS)";
     } else if this.IsEliteFloor() {

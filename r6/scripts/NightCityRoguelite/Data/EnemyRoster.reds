@@ -89,6 +89,53 @@ public abstract class RLRoster {
     return ["maxtac_gunner_mb_elite", "maxtac_melee_ma_elite", "maxtac_rifle_ma_elite", "maxtac_rifle_wa_elite", "maxtac_shotgun_ma_elite"];
   }
 
+  // --- Bosses (Run/Encounters.reds) ------------------------------------------------
+
+  // Gang leaders the game sends after V for wrecking a gang's turf: Act 1
+  // bosses, by faction ("" when the faction has none).
+  public static func GangBoss(faction: gamedataAffiliation) -> String {
+    switch faction {
+      case gamedataAffiliation.Animals: return "gang_retaliation_enemies_animals_elite3_hmelee3_fists_mba_elite_dtn_03_boss";
+      case gamedataAffiliation.Maelstrom: return "gang_retaliation_enemies_maelstrom_fast_fmelee3_mantis_wa_elite_kab_02_boss";
+      case gamedataAffiliation.SixthStreet: return "gang_retaliation_enemies_sixthstreet_prepers3_shotgun3_carnage_ma_arr_11_boss";
+      case gamedataAffiliation.TygerClaws: return "gang_retaliation_enemies_tyger_claws_martial_hmelee3_StrongArms_mb_jpn_12_boss";
+      case gamedataAffiliation.Valentinos: return "gang_retaliation_enemies_valentinos_shotgun3_shotgun3_testera_ma_elite_gle_04_boss";
+    }
+    return "";
+  }
+
+  // Leaders of the open-world gang outposts: Act 1 bosses for the rest.
+  public static func OutpostBosses() -> array<String> {
+    return ["ma_bls_ina_se1_17_outpost_miniboss", "ma_bls_se5_07_outpost_miniboss", "ma_hey_gle_02_outpost_miniboss", "ma_hey_rey_06_outpost_miniboss", "ma_hey_spr_11_outpost_miniboss", "ma_pac_cvi_12_outpost_miniboss", "ma_pac_wwd_02_outpost_miniboss", "ma_std_arr_03_outpost_miniboss", "ma_std_rcr_08_outpost_miniboss", "ma_std_rcr_18_outpost_miniboss", "ma_wat_lch_01_outpost_miniboss", "ma_wat_lch_08_outpost_miniboss", "ma_wat_nid_01_outpost_miniboss", "ma_wat_nid_02_outpost_miniboss", "ma_wat_nid_06_outpost_miniboss", "ma_wbr_jpn_20_outpost_miniboss", "ma_wbr_nok_05_outpost_miniboss"];
+  }
+
+  // Minotaur mechs: Act 3 bosses, the corp's own when it has one.
+  public static func Mechs(faction: gamedataAffiliation) -> array<String> {
+    switch faction {
+      case gamedataAffiliation.Arasaka: return ["arasaka_minotaur"];
+      case gamedataAffiliation.Militech: return ["militech_minotaur"];
+      case gamedataAffiliation.Barghest: return ["kurtz_minotaur"];
+    }
+    return ["arasaka_minotaur", "militech_minotaur", "kurtz_minotaur"];
+  }
+
+  // The open world's cyberpsychos: bounty targets.
+  public static func Cyberpsychos() -> array<String> {
+    return ["ma_bls_ina_se1_08_cyberpsycho", "ma_cct_dtn_03_cyberpsycho", "ma_cct_dtn_07_cyberpsycho", "ma_hey_spr_04_cyberpsycho", "ma_hey_spr_06_cyberpsycho", "ma_pac_cvi_15_cyberpsycho", "ma_std_arr_06_cyberpsycho", "ma_std_rcr_11_cyberpsycho", "ma_wat_kab_02_cyberpsycho", "ma_wat_kab_08_cyberpsycho", "ma_wat_lch_06_cyberpsycho"];
+  }
+
+  // A random usable record from a list of names (none if none is usable).
+  public static func PickUsable(names: array<String>) -> TweakDBID {
+    let usable: array<TweakDBID>;
+    for name in names {
+      let id = RLRoster.Resolve(name);
+      if IsDefined(TweakDBInterface.GetCharacterRecord(id)) {
+        ArrayPush(usable, id);
+      }
+    }
+    return ArraySize(usable) > 0 ? usable[RandRange(0, ArraySize(usable))] : TDBID.None();
+  }
+
   // The roguelite variant of a roster NPC, or the game's own record.
   public static func Resolve(const name: String) -> TweakDBID {
     let variant = TDBID.Create("NCRoguelite." + name);

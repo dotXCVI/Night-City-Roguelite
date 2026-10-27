@@ -2,7 +2,7 @@
 """Generates the mod's TweakXL files and English strings.
 
   r6/tweaks/NightCityRoguelite/enemies.yaml   roguelite variants of every roster NPC
-  r6/tweaks/NightCityRoguelite/boons.yaml     one HUD buff per boon
+  r6/tweaks/NightCityRoguelite/boons.yaml     one HUD buff per boon (read from Rewards/Boons.reds)
   r6/tweaks/NightCityRoguelite/terminal.yaml  the apartment computer's prompt
   source/localization/en-us.tsv               strings for the ArchiveXL localization
 
@@ -27,10 +27,10 @@ strings = []  # (secondaryKey, text)
 
 # --- Enemies --------------------------------------------------------------------
 roster_src = open(os.path.join(ROOT, 'r6/scripts/NightCityRoguelite/Data/EnemyRoster.reds')).read()
-names = re.findall(r'"([A-Za-z0-9_]+)"', roster_src.split('public static func MaxTac', 1)[0].split('public static func Records', 1)[1])
-maxtac = re.findall(r'"([A-Za-z0-9_]+)"', roster_src.split('public static func MaxTac', 1)[1])
-all_names = sorted(set(names + maxtac))
-assert len(all_names) >= 250, len(all_names)
+# Every quoted name from the faction lists through the boss lists.
+roster = roster_src.split('public static func Records', 1)[1].split('public static func PickUsable', 1)[0]
+all_names = sorted(set(re.findall(r'"([A-Za-z0-9_]+)"', roster)))
+assert len(all_names) >= 280, len(all_names)
 
 y = [HEADER.format(title='enemy variants')]
 y.append("""# Every arena enemy is a copy of one of the game's open-world combat NPCs with
@@ -78,28 +78,47 @@ for n in all_names:
 open(os.path.join(OUT, 'enemies.yaml'), 'w').write(''.join(y).rstrip() + '\n')
 
 # --- Boons ------------------------------------------------------------------------
-# id, name, description, HUD icon (UIIcon.<icon>, all from the game's own buff icons)
-BOONS = [
-    ('ReinforcedFrame', 'Reinforced Frame', '+15% max health per stack.', 'health_booster_icon'),
-    ('SubdermalPlating', 'Subdermal Plating', '+40 armor per stack.', 'armor_boost'),
-    ('KillerInstinct', 'Killer Instinct', '+5% crit chance per stack.', 'perks_aim'),
-    ('HollowPoints', 'Hollow Points', '+20% crit damage per stack.', 'buff_ranged'),
-    ('SynapticOverclock', 'Synaptic Overclock', '+2 max RAM per stack.', 'memory_booster_icon'),
-    ('FastFeet', 'Fast Feet', '+8% movement speed per stack.', 'energized_icon'),
-    ('ChromeTolerance', 'Chrome Tolerance', '+15 cyberware capacity per stack.', 'increased_stats_icon'),
-    ('IronWill', 'Iron Will', 'Immune to knockdown and stun.', 'immunity_icon'),
-    ('BigLungs', 'Big Lungs', '+25% stamina per stack.', 'stamina_booster_icon'),
-    ('SecondWind', 'Second Wind', 'A lethal hit leaves you at 50% health instead. One stack is used up.', 'second_wind'),
-    ('Bloodlust', 'Bloodlust', 'Kills heal 4% health per stack.', 'regeneration_icon'),
-    ('BountyHunter', 'Bounty Hunter', 'Kills pay 100 eddies per stack.', 'casino_chip'),
-    ('QuickFuse', 'Quick Fuse', '+25% grenade recharge speed per stack.', 'combat_booster_icon'),
-    ('Demolitionist', 'Demolitionist', 'Kills restore 25% of a grenade charge per stack.', 'discharge_connector_icon'),
-    ('StimRig', 'Stim Rig', '+25% health item recharge speed per stack.', 'inhaler_buff_icon'),
-]
+# Names, texts and values come from the catalogue in Rewards/Boons.reds; the
+# buff tooltip shows the value range ("+5-14% crit chance.").
+ICONS = {
+    'Kenshin': 'perks_aim', 'Saburo': 'increased_stats_icon', 'Hanako': 'buff_ranged',
+    'Bushido': 'rested_icon', 'Sandevistan': 'sandevistan_buff_icon', 'ShogunsEdge': 'kerenzikov_buff',
+    'HardenedRounds': 'buff_ranged', 'KillChain': 'refreshed_icon', 'Ordnance': 'burning_icon',
+    'QuickFuse': 'combat_booster_icon', 'Suppressive': 'discharge_connector_icon', 'KillCount': 'berserk_buff',
+    'SynapticOverclock': 'memory_booster_icon', 'GhostProtocol': 'cw_frontalcortex_memoryboost',
+    'BlackIce': 'discharge_connector_icon', 'ContagionSeed': 'generic_buff_icon', 'DataLeech': 'memory_booster_icon',
+    'LoasEmbrace': 'cw_frontalcortex_memoryboost',
+    'Bloodlust': 'regeneration_icon', 'ChromeFist': 'buff_melee', 'RedMist': 'berserk_buff',
+    'SubdermalPlating': 'armor_boost', 'VolatileKills': 'burning_icon', 'Cyberpsychosis': 'berserk_buff',
+    'ReinforcedFrame': 'health_booster_icon', 'FastFeet': 'energized_icon', 'RoadEndurance': 'stamina_booster_icon',
+    'ThickSkin': 'armor_boost', 'SecondWind': 'second_wind', 'FamilyTies': 'regeneration_icon',
+    'BountyHunter': 'casino_chip', 'LuckyShot': 'casino_chip', 'FixersCut': 'casino_chip',
+    'StimRig': 'inhaler_buff_icon', 'IronWill': 'immunity_icon', 'AfterlifeLegend': 'generic_buff_icon',
+    'SmartLink': 'perks_aim', 'DaemonPrecision': 'discharge_connector_icon', 'CorporateBounty': 'casino_chip',
+    'ShrapnelFrenzy': 'burning_icon', 'ConvoyArsenal': 'combat_booster_icon', 'ShortCircuit': 'discharge_connector_icon',
+    'DataBroker': 'casino_chip', 'DesertFury': 'rested_icon',
+}
+
+def fmt(v):
+    return str(int(v)) if float(v).is_integer() else str(v)
+
+boons_src = open(os.path.join(ROOT, 'r6/scripts/NightCityRoguelite/Rewards/Boons.reds')).read()
+BOONS = []
+for kind, args in re.findall(r'RLBoons\.(Core|Single|Legendary|Duo)\(list, (.*)\);', boons_src):
+    bid = re.match(r'n"(\w+)"', args).group(1)
+    name, text = re.findall(r'"((?:[^"\\]|\\.)*)"', args.split(', ', 2 if kind != 'Duo' else 3)[-1])[:2]
+    values = re.search(r'\[([0-9., ]+)\]', args)
+    if kind == 'Core' and values:
+        vals = [float(v) for v in values.group(1).split(',')]
+        shown = fmt(vals[0]) if vals[0] == vals[-1] else f'{fmt(min(vals))}-{fmt(max(vals))}'
+        text = text.replace('{v}', shown)
+    BOONS.append((bid, name, text, ICONS[bid]))
+assert len(BOONS) == 44, len(BOONS)
+
 b = [HEADER.format(title='boon buffs')]
-b.append("""# Each boon shows on the HUD buff bar while the run lasts (stack count included).
-# The effects carry no stats themselves: the scripts apply the bonuses, add a
-# stack here for every stack taken and remove them all when the run ends.
+b.append("""# Each boon shows on the HUD buff bar while the run lasts. The effects carry
+# no stats themselves: the scripts apply the bonuses and remove the buffs when
+# the run ends.
 
 """)
 for bid, name, desc, icon in BOONS:
@@ -130,6 +149,13 @@ t.append("""# The prompt shown on V's desk computer while it works as the roguel
 NCRoguelite.TerminalInteraction:
   $base: Interactions.EnterZoomInteraction
   caption: LocKey#NCRoguelite-Interaction-Terminal
+  action: Choice1
+
+# The armory's stash opens the kit picker. "Gear" is the game's own string.
+
+NCRoguelite.ArmoryInteraction:
+  $base: Interactions.EnterZoomInteraction
+  caption: LocKey#38734
   action: Choice1
 """)
 open(os.path.join(OUT, 'terminal.yaml'), 'w').write(''.join(t))

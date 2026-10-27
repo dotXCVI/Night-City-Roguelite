@@ -9,8 +9,11 @@
 //     level with every reward, so every level V earns makes V stronger.
 //   - Damage V takes is scaled from IncomingDamageFirstFloor (floor 1) to
 //     IncomingDamageLastFloor (floor 18) - early fights forgive mistakes.
+//   - Gates: from Act 2, bosses (and in Act 3 every enemy) shrug off part
+//     of V's damage, so a run without a build behind it stalls there while
+//     styles, mods and Overdrive carry a real one (EnemyToughness).
 //
-// Both curves live in Core/Config.reds.
+// The curves live in Core/Config.reds.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -19,6 +22,11 @@ public abstract class RLDifficulty {
   // Base enemy level for the run's current floor.
   public static func EnemyBaseLevel(run: ref<RLRunState>) -> Int32 {
     return Max(1, run.Depth() + RLConfig.EnemyLevelOffset(run.act));
+  }
+
+  // Multiplier on V's damage against an arena enemy (the act's gate).
+  public static func EnemyToughness(run: ref<RLRunState>, isBoss: Bool) -> Float {
+    return isBoss ? RLConfig.BossDamageTaken(run.act) : RLConfig.EnemyDamageTaken(run.act);
   }
 
   // Multiplier on damage V takes at the given floor (1-based).
@@ -31,7 +39,8 @@ public abstract class RLDifficulty {
 }
 
 // Damage V takes during a run: the curve above, the pacing director's
-// pressure and assist mode (RogueliteSystem.GetIncomingDamageScale).
+// pressure, assist mode, boons and event trade-offs
+// (RogueliteSystem.ScaleIncomingHit).
 @wrapMethod(DamageSystem)
 private final func ProcessPlayerIncomingDamageMultiplier(hitEvent: ref<gameHitEvent>) {
   wrappedMethod(hitEvent);
@@ -43,5 +52,12 @@ private final func ProcessPlayerIncomingDamageMultiplier(hitEvent: ref<gameHitEv
   if !IsDefined(system) || !system.IsInArenaFight() {
     return;
   }
-  hitEvent.attackComputed.MultAttackValue(system.GetIncomingDamageScale());
+  let scale = system.ScaleIncomingHit(player, hitEvent);
+  if scale <= 0.0 {
+    // V's own blast: no damage at all (the game's fixed-percentage
+    // explosion damage would otherwise apply later in the pipeline).
+    hitEvent.attackData.AddFlag(hitFlag.DealNoDamage, n"NCRogueliteSelfBlast");
+    return;
+  }
+  hitEvent.attackComputed.MultAttackValue(scale);
 }

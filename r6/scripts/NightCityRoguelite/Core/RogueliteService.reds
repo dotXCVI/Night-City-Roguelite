@@ -16,10 +16,13 @@ public class RogueliteService extends ScriptableService {
   private persistent let m_cred: Int32;
   private persistent let m_unlocks: array<CName>;
   private persistent let m_selectedKit: CName;
+  private let m_testFloor: Int32;
   // Assist mode (Hades' God Mode): less damage taken, a little more with every
   // run lost while it is on.
   private persistent let m_assistOn: Bool;
   private persistent let m_assistLevel: Int32;
+  // The how-it-works guide has been shown (UI/GuidePopup.reds).
+  private persistent let m_guideSeen: Bool;
 
   // Lifetime stats
   private persistent let m_runsStarted: Int32;
@@ -41,10 +44,14 @@ public class RogueliteService extends ScriptableService {
   // Numbered lines: the save format stores identical names once, so repeated
   // lines would otherwise collapse into one.
   private persistent let m_logSeq: Int32;
+  // Run telemetry records (Core/Telemetry.reds), oldest first.
+  private persistent let m_telemetry: array<CName>;
+  private persistent let m_telemetrySeq: Int32;
 
   // Content pools and the perk card catalog, built once per game process.
   private let m_pools: ref<RLTweakPools>;
   private let m_perkCatalog: array<ref<RLPerkDef>>;
+  private let m_boonCatalog: array<ref<RLBoonDef>>;
   private let m_perkCatalogBuilt: Bool;
 
   // Main menu -> new game hand-off (not persistent on purpose).
@@ -60,6 +67,17 @@ public class RogueliteService extends ScriptableService {
     // CName because Codeware can't persist strings; it stores the text as-is.
     this.m_logSeq += 1;
     ArrayPush(this.m_log, StringToName(s"[\(this.m_logSeq)] " + line));
+  }
+
+  // About 50 runs' worth of telemetry. Numbered for the same reason as the log
+  // (two rerolls on one floor are identical records); the number follows the
+  // version tag: T1|<seq>|<run id>|...
+  public func AppendTelemetry(const version: String, const record: String) {
+    while ArraySize(this.m_telemetry) >= 1500 {
+      ArrayErase(this.m_telemetry, 0);
+    }
+    this.m_telemetrySeq += 1;
+    ArrayPush(this.m_telemetry, StringToName(version + "|" + IntToString(this.m_telemetrySeq) + "|" + record));
   }
 
   public static func Get() -> ref<RogueliteService> {
@@ -86,7 +104,8 @@ public class RogueliteService extends ScriptableService {
     // 2.5's native InputTarget.Key has no press/release filter; OnKeyInput
     // filters for release itself so each key press fires once.
     callbacks.RegisterCallback(n"Input/Key", this, n"OnKeyInput")
-      .AddTarget(InputTarget.Key(RLConfig.TerminalKey()));
+      .AddTarget(InputTarget.Key(RLConfig.TerminalKey()))
+      .AddTarget(InputTarget.Key(RLConfig.BugKey()));
 
     if !IsNameValid(this.m_selectedKit) {
       this.m_selectedKit = n"Solo";
@@ -152,6 +171,8 @@ public class RogueliteService extends ScriptableService {
     }
     if Equals(event.GetKey(), RLConfig.TerminalKey()) {
       system.OnTerminalKey();
+    } else if Equals(event.GetKey(), RLConfig.BugKey()) {
+      system.MarkBug();
     }
   }
 
@@ -222,6 +243,12 @@ public class RogueliteService extends ScriptableService {
 
   public func IsAssistOn() -> Bool = this.m_assistOn
 
+  public func HasSeenGuide() -> Bool = this.m_guideSeen
+
+  public func MarkGuideSeen() {
+    this.m_guideSeen = true;
+  }
+
   public func SetAssist(on: Bool) {
     this.m_assistOn = on;
     RLLog(s"Assist mode \(on ? "on" : "off") (\(RoundF(this.AssistReduction() * 100.0))% less damage).");
@@ -232,7 +259,27 @@ public class RogueliteService extends ScriptableService {
     return MinF(0.8, 0.2 + 0.02 * Cast<Float>(this.m_assistLevel));
   }
 
-  public func GetSelectedKit() -> CName = this.m_selectedKit
+  // Solo until another kit is picked (and if the picked one isn't owned).
+  public func GetSelectedKit() -> CName {
+    if !IsNameValid(this.m_selectedKit) || !RLMeta.IsKitAvailable(this, this.m_selectedKit) {
+      return n"Solo";
+    }
+    return this.m_selectedKit;
+  }
+
+  // Test runs (terminal): the floor they start on. Session only.
+  public static func TestFloors() -> array<Int32> = [1, 5, 6, 7, 11, 12, 13, 17, 18]
+
+  public func GetTestFloor() -> Int32 = Max(1, this.m_testFloor)
+
+  public func CycleTestFloor() {
+    let floors = RogueliteService.TestFloors();
+    let i = 0;
+    while i < ArraySize(floors) && floors[i] != this.GetTestFloor() {
+      i += 1;
+    }
+    this.m_testFloor = floors[(i + 1) % ArraySize(floors)];
+  }
 
   public func SetSelectedKit(kit: CName) {
     this.m_selectedKit = kit;
@@ -293,6 +340,14 @@ public class RogueliteService extends ScriptableService {
       RLLog(s"Perk cards: \(ArraySize(this.m_perkCatalog)).");
     }
     return this.m_perkCatalog;
+  }
+
+  public func GetBoonCatalog() -> array<ref<RLBoonDef>> {
+    if ArraySize(this.m_boonCatalog) == 0 {
+      this.m_boonCatalog = RLBoons.Build();
+      RLLog(s"Boons: \(ArraySize(this.m_boonCatalog)).");
+    }
+    return this.m_boonCatalog;
   }
 
   public func RecordRunEnd(depth: Int32, kills: Int32, victory: Bool) {

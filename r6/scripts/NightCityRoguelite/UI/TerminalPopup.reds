@@ -2,8 +2,9 @@
 // Night City Roguelite - terminal
 // -----------------------------------------------------------------------------
 // One popup, three views:
-//   Hub         (home, no run): stats, kit cards (locked ones are bought by
-//               clicking them), START RUN, unlocks.
+//   Hub         (home, no run): stats, START RUN, the kit (picked in the
+//               armory, UI/ArmoryPopup.reds), assist, test runs, the guide,
+//               upgrades.
 //   DoorPicker  (between fights): one card per door - pick the next fight
 //               by its reward; reroll the doors, or abandon.
 //   InArena     (during a fight): run status, abandon.
@@ -70,12 +71,12 @@ public class RLTerminalPopup extends InGamePopup {
     let header = InGamePopupHeader.Create();
     switch this.m_view {
       case RLTerminalView.DoorPicker:
-        this.m_container.SetSize(Vector2(2200.0, 1000.0));
-        header.SetTitle(ArraySize(this.m_doors) == 1 ? "YOUR NEXT FIGHT" : "CHOOSE YOUR NEXT FIGHT");
+        this.m_container.SetSize(Vector2(2200.0, 1180.0));
+        header.SetTitle(ArraySize(this.m_doors) == 1 ? "NEXT FIGHT" : "PICK YOUR FIGHT");
         header.SetFluffRight(this.m_summary);
         break;
       case RLTerminalView.InArena:
-        this.m_container.SetSize(Vector2(1800.0, 700.0));
+        this.m_container.SetSize(Vector2(1800.0, 960.0));
         header.SetTitle("RUN IN PROGRESS");
         header.SetFluffRight("NIGHT CITY ROGUELITE");
         break;
@@ -102,6 +103,7 @@ public class RLTerminalPopup extends InGamePopup {
     root.RemoveAllChildren();
     let body = RLUI.VPanel(8.0);
     body.SetAnchor(inkEAnchor.Fill);
+    body.SetMargin(RLUI.ContentMargin());
     body.Reparent(root);
     switch this.m_view {
       case RLTerminalView.DoorPicker:
@@ -119,10 +121,30 @@ public class RLTerminalPopup extends InGamePopup {
 
   private func BuildInArena(body: ref<inkCompoundWidget>) {
     RLUI.WrappedText(this.m_summary, 34, n"MainColors.Blue", 1600.0).Reparent(body);
+    let run = IsDefined(this.m_system) ? this.m_system.GetRun() : null;
+    let styles = RLStyles.Summary(run, 5);
+    if StrLen(styles) > 0 {
+      RLUI.SectionLabel("STYLES").Reparent(body);
+      RLUI.WrappedText(styles, 28, n"MainColors.Gold", 1600.0).Reparent(body);
+    }
+    if IsDefined(run) && run.overdriveUnlocked {
+      RLUI.SectionLabel("OVERDRIVE").Reparent(body);
+      RLUI.WrappedText(RLOverdrive.Status(run) + " - " + RLOverdrive.Description(run.os), 28, n"MainColors.Blue", 1600.0).Reparent(body);
+    }
+    if IsDefined(run) && ArraySize(run.boons) > 0 {
+      RLUI.SectionLabel("BOONS").Reparent(body);
+      for patron in RLPatrons.All() {
+        let line = RLTerminalPopup.PatronBoons(run, patron.id);
+        if StrLen(line) > 0 {
+          RLUI.WrappedText(patron.name + "  " + line, 28, patron.accent, 1600.0).Reparent(body);
+        }
+      }
+    }
     let actions = RLUI.HPanel(14.0);
     actions.SetMargin(inkMargin(0.0, 40.0, 0.0, 0.0));
     actions.Reparent(body);
     this.AddActionCard(actions, n"resume", "RESUME", "", n"MainColors.Blue");
+    this.AddActionCard(actions, n"markbug", "MARK BUG", "F8 WORKS TOO", n"MainColors.Grey");
     this.AddAbandonCard(actions);
   }
 
@@ -155,19 +177,47 @@ public class RLTerminalPopup extends InGamePopup {
   }
 
   private func AddDoorCard(parent: ref<inkCompoundWidget>, door: ref<RLDoor>, index: Int32, width: Float) {
-    let accent = door.boss ? n"MainColors.Red" : RLIcons.CategoryAccent(door.category);
-    let card = RLCard.Create(StringToName(s"door_\(index)"), width, 520.0, accent);
-    card.SetAtlasIcon(RLIcons.HubAtlas(), RLIcons.CategoryPart(door.category), 104.0);
+    let isPatron = Equals(door.category, RLRewardCategory.Boons) && IsNameValid(door.patron);
+    let accent = door.boss ? n"MainColors.Red" : (isPatron ? RLPatrons.Accent(door.patron) : RLIcons.CategoryAccent(door.category));
+    let card = RLCard.Create(StringToName(s"door_\(index)"), width, 700.0, accent);
+    // The art is where the fight is; the badge is what it pays.
+    card.SetCompact();
+    card.SetBanner(IsDefined(RLArenas.Get(door.arena)) && NotEquals(door.category, RLRewardCategory.Event) ? RLArts.Arena(door.arena) : RLArts.Category(door.category));
+    if isPatron {
+      let patron = RLPatrons.Get(door.patron);
+      card.SetBadge(IsDefined(patron) && patron.isLogo ? RLIcons.LogoAtlas() : RLIcons.HubAtlas(), IsDefined(patron) ? patron.iconPart : n"ico_tarot");
+    } else {
+      card.SetBadge(RLIcons.HubAtlas(), RLIcons.CategoryPart(door.category));
+    }
     card.SetKicker(door.boss ? "BOSS" : RLRewards.ThreatName(door.threat));
     card.SetPips(door.threat, 3, RLIcons.ThreatAccent(door.threat));
-    card.SetTitle(RLRewards.CategoryName(door.category));
-    card.AddLine(RLRewards.CategoryDescription(door.category), n"MainColors.Blue", 28);
-    card.AddDivider();
+    card.SetTitle(RLRewards.DoorTitle(door));
+    if isPatron {
+      let patron = RLPatrons.Get(door.patron);
+      card.AddLine(IsDefined(patron) ? patron.tagline : "", n"MainColors.Blue", 28);
+    } else {
+      card.AddLine(RLRewards.CategoryDescription(door.category), n"MainColors.Blue", 28);
+    }
+    if Equals(door.category, RLRewardCategory.Bounty) {
+      card.AddLine("Pays in " + RLPatrons.Name(door.patron) + " boons", n"MainColors.Grey", 26);
+    }
+    if NotEquals(door.objective, RLObjectiveKind.None) {
+      card.AddLine(RLObjectives.Name(door.objective), n"MainColors.Yellow", 28);
+    }
     let arena = RLArenas.Get(door.arena);
     if IsDefined(arena) {
+      card.AddDivider();
       card.AddLine(arena.name, n"MainColors.Red", 30);
-      let enemies = IsDefined(door.faction) ? RLEncounters.FactionName(door.faction.faction) : RLTerminalPopup.FactionList(arena.factions);
-      card.AddLine("vs " + enemies, n"MainColors.Grey", 26);
+      if StrLen(arena.terrain) > 0 {
+        card.AddLine(arena.terrain, n"MainColors.Blue", 24);
+      }
+      if Equals(door.category, RLRewardCategory.Bounty) {
+        card.AddLine("vs a cyberpsycho", n"MainColors.Grey", 26);
+      } else if IsDefined(door.faction) {
+        card.AddIconLine(RLIcons.LogoAtlas(), RLIcons.FactionLogo(door.faction.faction), "vs " + RLEncounters.FactionName(door.faction.faction), n"MainColors.Grey", 26);
+      } else {
+        card.AddLine("vs " + RLTerminalPopup.FactionList(arena.factions), n"MainColors.Grey", 26);
+      }
     }
     this.Hook(card, parent);
     this.Intro(card, index);
@@ -188,6 +238,21 @@ public class RLTerminalPopup extends InGamePopup {
       text += RLEncounters.FactionName(faction);
     }
     return text;
+  }
+
+  // "Kenshin Protocol (RARE), Bushido (COMMON)" - the patron's boons V holds
+  // (duos under their first patron).
+  public static func PatronBoons(run: ref<RLRunState>, patron: CName) -> String {
+    let line = "";
+    for state in run.boons {
+      let def = RLBoons.Get(state.id);
+      if IsDefined(def) && Equals(def.patron, patron) {
+        let tag = Equals(def.kind, RLBoonKind.Core) ? RLBoons.RarityName(state.rarity) : (Equals(def.kind, RLBoonKind.Duo) ? "DUO" : "LEGENDARY");
+        let shown = Equals(def.kind, RLBoonKind.Core) && RLBoons.HighestRarity(def) == 0 ? def.name : def.name + " (" + tag + ")";
+        line += (StrLen(line) > 0 ? ", " : "") + shown;
+      }
+    }
+    return line;
   }
 
   private func AddAbandonCard(parent: ref<inkCompoundWidget>) -> ref<RLCard> {
@@ -219,62 +284,56 @@ public class RLTerminalPopup extends InGamePopup {
     RLUI.StatTile("RUNS", IntToString(service.GetRunsStarted()), n"MainColors.Blue").Reparent(stats);
     RLUI.StatTile("WINS", IntToString(service.GetVictories()), n"MainColors.Blue").Reparent(stats);
     RLUI.StatTile("BEST FLOOR", IntToString(service.GetBestDepth()), n"MainColors.Blue").Reparent(stats);
-    RLUI.StatTile("TOTAL KILLS", IntToString(service.GetTotalKills()), n"MainColors.Red").Reparent(stats);
+    RLUI.StatTile("BODY COUNT", IntToString(service.GetTotalKills()), n"MainColors.Red").Reparent(stats);
 
-    // Kits (two rows of four): locked kits are bought right here.
-    RLUI.SectionLabel("STARTING KIT").Reparent(body);
-    let kitRows = RLUI.VPanel(5.0);
-    kitRows.Reparent(body);
-    let kits: ref<inkHorizontalPanel>;
-    let k = 0;
-    for kit in RLMeta.Kits() {
-      if k % 4 == 0 {
-        kits = RLUI.HPanel(10.0);
-        kits.Reparent(kitRows);
-      }
-      k += 1;
-      let available = RLMeta.IsKitAvailable(service, kit);
-      let selected = Equals(service.GetSelectedKit(), kit);
-      let unlock = RLMeta.Get(StringToName("kit." + NameToString(kit)));
-      let affordable = IsDefined(unlock) && RLMeta.CanBuy(service, unlock);
-      let accent = selected ? n"MainColors.ActiveYellow" : (available ? n"MainColors.Blue" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
-      let card = RLCard.Create(StringToName("kit_" + NameToString(kit)), 495.0, 196.0, accent);
-      card.SetCompact();
-      card.SetAtlasIcon(RLIcons.CommonAtlas(), RLIcons.KitPart(kit), 48.0);
-      if selected {
-        card.SetKicker("SELECTED");
-      } else if available {
-        card.SetKicker("KIT");
-      } else if IsDefined(unlock) {
-        card.SetKicker(affordable ? s"BUY - \(unlock.cost) CRED" : s"LOCKED - \(unlock.cost) CRED");
-      } else {
-        card.SetKicker("LOCKED");
-      }
-      card.SetTitle(RLMeta.KitName(kit));
-      card.SetTitleSize(32);
-      card.AddLine(RLMeta.KitDescription(kit), n"MainColors.Grey", 22);
-      card.SetSelected(selected);
-      card.SetDisabled(!available && !affordable);
-      this.Hook(card, kits);
-    }
+    // The run, the kit it starts with, and the small switches.
+    let main = RLUI.HPanel(9.0);
+    main.SetMargin(inkMargin(0.0, 14.0, 0.0, 4.0));
+    main.Reparent(body);
 
-    // Start
-    let actions = RLUI.HPanel(10.0);
-    actions.SetMargin(inkMargin(0.0, 14.0, 0.0, 4.0));
-    actions.Reparent(body);
-    let start = this.AddActionCard(actions, n"start", "START RUN", "KIT: " + RLMeta.KitName(service.GetSelectedKit()), n"MainColors.Red");
-    start.SetTitleSize(48);
+    let kit = service.GetSelectedKit();
+    let start = RLCard.Create(n"start", 760.0, 600.0, n"MainColors.Red");
+    start.SetCompact();
+    start.SetBanner(RLArts.City());
+    start.SetKicker("THREE ACTS - EIGHTEEN FIGHTS");
+    start.SetTitle("START RUN");
+    start.SetTitleSize(60);
+    this.Hook(start, main);
+    this.Intro(start, 0);
+
+    // Kits are picked at the armory stash; the card opens the same screen.
+    let reachable = IsDefined(this.m_system) && this.m_system.IsArmoryReachable();
+    let kitCard = RLCard.Create(n"kit", 520.0, 600.0, n"MainColors.ActiveYellow");
+    kitCard.SetCompact();
+    kitCard.SetBanner(RLArts.Kit(kit));
+    kitCard.SetBadge(RLIcons.CommonAtlas(), RLIcons.KitPart(kit));
+    kitCard.SetKicker("YOUR KIT");
+    kitCard.SetTitle(RLMeta.KitName(kit));
+    kitCard.SetTitleSize(40);
+    kitCard.AddLine(RLMeta.KitTagline(kit), n"MainColors.ActiveWhite", 24);
+    kitCard.AddLine(RLMeta.KitDescription(kit), n"MainColors.Grey", 22);
+    kitCard.AddLine(reachable ? "Swap it at the armory stash, in the back." : "Click to swap.", n"MainColors.Blue", 22);
+    this.Hook(kitCard, main);
+    this.Intro(kitCard, 1);
+
+    let side = RLUI.VPanel(5.0);
+    side.Reparent(main);
     // Assist mode (Hades' God Mode): less damage taken, a little more with
     // every run lost while it is on.
     let reduction = RoundF(service.AssistReduction() * 100.0);
-    let assist = this.AddActionCard(actions, n"assist",
+    let assist = this.AddActionCard(side, n"assist",
       service.IsAssistOn() ? "ASSIST: ON" : "ASSIST: OFF",
-      s"\(reduction)% LESS DAMAGE TAKEN",
+      s"TAKE \(reduction)% LESS DAMAGE",
       service.IsAssistOn() ? n"MainColors.Green" : n"MainColors.Grey");
     assist.SetSelected(service.IsAssistOn());
+    // Test runs: start on any floor to try a boss, an act or the new door
+    // types without playing up to it. No Cred, no stats.
+    this.AddActionCard(side, n"test_floor", s"FLOOR \(service.GetTestFloor())", "TEST RUN STARTS ON", n"MainColors.Grey");
+    this.AddActionCard(side, n"test_start", "TEST RUN", "NO CRED, NO STATS", n"MainColors.Grey");
+    this.AddActionCard(side, n"guide", "HOW IT WORKS", "THE BASICS", n"MainColors.Blue");
 
-    // Unlocks (kits are bought from the kit rows): a 5-column grid.
-    RLUI.SectionLabel("UNLOCKS").Reparent(body);
+    // Unlocks (kits are bought in the armory): a 5-column grid.
+    RLUI.SectionLabel("UPGRADES - PAID IN CRED, KEPT FOREVER").Reparent(body);
     let grid = RLUI.VPanel(5.0);
     grid.Reparent(body);
     let row: ref<inkHorizontalPanel>;
@@ -287,7 +346,7 @@ public class RLTerminalPopup extends InGamePopup {
         }
         let owned = service.HasUnlock(def.id);
         let affordable = RLMeta.CanBuy(service, def);
-        let card = RLCard.Create(StringToName("buy_" + NameToString(def.id)), 398.0, 124.0, owned ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
+        let card = RLCard.Create(StringToName("buy_" + NameToString(def.id)), 392.0, 124.0, owned ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
         card.SetCompact();
         card.SetKicker(owned ? "OWNED" : s"\(def.cost) CRED");
         card.SetTitle(def.name);
@@ -317,6 +376,9 @@ public class RLTerminalPopup extends InGamePopup {
 
     if Equals(name, "resume") {
       this.Close();
+    } else if Equals(name, "markbug") {
+      this.Close();
+      this.m_system.MarkBug();
     } else if Equals(name, "abandon") {
       if this.m_confirmAbandon {
         this.Close();
@@ -334,19 +396,21 @@ public class RLTerminalPopup extends InGamePopup {
     } else if Equals(name, "start") {
       this.Close();
       this.m_system.StartRun(service.GetSelectedKit());
+    } else if Equals(name, "test_floor") {
+      service.CycleTestFloor();
+      this.Rebuild();
+    } else if Equals(name, "test_start") {
+      this.Close();
+      this.m_system.StartRun(service.GetSelectedKit(), service.GetTestFloor());
     } else if Equals(name, "assist") {
       service.SetAssist(!service.IsAssistOn());
       this.Rebuild();
-    } else if StrBeginsWith(name, "kit_") {
-      let kit = StringToName(StrAfterFirst(name, "_"));
-      if !RLMeta.IsKitAvailable(service, kit) {
-        if !RLMeta.TryBuy(service, StringToName("kit." + NameToString(kit))) {
-          return false;
-        }
-        this.PlaySound(n"Item", n"OnBuy");
-      }
-      service.SetSelectedKit(kit);
-      this.Rebuild();
+    } else if Equals(name, "kit") {
+      this.Close();
+      this.m_system.OpenArmoryLater();
+    } else if Equals(name, "guide") {
+      this.Close();
+      this.m_system.OpenGuideLater();
     } else if StrBeginsWith(name, "buy_") {
       if RLMeta.TryBuy(service, StringToName(StrAfterFirst(name, "_"))) {
         this.PlaySound(n"Item", n"OnBuy");

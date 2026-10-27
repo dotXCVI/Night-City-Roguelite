@@ -12,8 +12,15 @@
 //                 ApartmentHub.reds stays on as a safety net.
 //   Desk computer - its only prompt becomes "Roguelite Terminal" and using it
 //                 opens the terminal (F7 still works anywhere at home).
+//   Armory      - the weapon room at the back ("v_secret_room"). Its door is
+//                 unlocked and opened, and its stash (a quest node from
+//                 quest_5eb84e72f3942283, "pr_v_room_stash") becomes "Gear"
+//                 and opens the kit picker (UI/ArmoryPopup.reds). During a run
+//                 the stash stays shut (stashing gear between runs would carry
+//                 it over). If the stash isn't there on some character, F7 in
+//                 the room does the same and the HUD says so.
 //
-// Both are identified by their world node IDs from the 2.5 sector data
+// All are identified by their world node IDs from the 2.5 sector data
 // (exterior_-22_19_1_0.streamingsector), with their positions as a fallback.
 // -----------------------------------------------------------------------------
 
@@ -25,6 +32,17 @@ public abstract class RLHomeDevices {
   public static func ComputerID() -> EntityID = EntityID.FromHash(17553053729736241346ul)
   public static func ComputerPosition() -> Vector4 = Vector4(-1386.929, 1273.537, 124.4035, 1.0)
   public static func TerminalInteraction() -> TweakDBID = t"NCRoguelite.TerminalInteraction"
+  public static func ArmoryInteraction() -> TweakDBID = t"NCRoguelite.ArmoryInteraction"
+  public static func StashID() -> EntityID = EntityID.FromHash(16570246047455160070ul)
+  public static func ArmoryDoorID() -> EntityID = EntityID.FromHash(6373481765164401677ul)
+  public static func ArmoryDoorPosition() -> Vector4 = Vector4(-1382.88, 1266.31, 123.25, 1.0)
+  // The weapon room and its doorway (the weapon displays line its walls).
+  public static func ArmoryMin() -> Vector4 = Vector4(-1384.4, 1261.7, 121.8, 1.0)
+  public static func ArmoryMax() -> Vector4 = Vector4(-1379.2, 1267.4, 126.8, 1.0)
+
+  public static func InArmory(position: Vector4) -> Bool {
+    return RLApartmentHub.InBox(position, RLHomeDevices.ArmoryMin(), RLHomeDevices.ArmoryMax());
+  }
 
   // --- Front door ------------------------------------------------------------------------
 
@@ -58,6 +76,12 @@ public abstract class RLHomeDevices {
 
   public static func OnDoorAttached(door: ref<Door>) {
     let game = door.GetGame();
+    if door.GetEntityID() == RLHomeDevices.ArmoryDoorID() || Vector4.Distance(door.GetWorldPosition(), RLHomeDevices.ArmoryDoorPosition()) < 0.6 {
+      if RLHomeDevices.ShouldSealDoor(game) {
+        RLHomeDevices.OpenArmoryDoor(door.GetDevicePS());
+      }
+      return;
+    }
     let byID = door.GetEntityID() == RLHomeDevices.FrontDoorID();
     if !byID && Vector4.Distance(door.GetWorldPosition(), RLHomeDevices.FrontDoorPosition()) > 0.6 {
       return;
@@ -110,6 +134,96 @@ public abstract class RLHomeDevices {
       system.OnTerminalKey();
     }
   }
+
+  // --- Armory ------------------------------------------------------------------------------
+
+  // The weapon room's door opens like it would once the story has shown it to
+  // V; it stays open.
+  public static func OpenArmoryDoor(ps: ref<DoorControllerPS>) -> Bool {
+    if !IsDefined(ps) {
+      return false;
+    }
+    let locked = ps.IsLocked();
+    let sealed = ps.IsSealed();
+    if ps.RL_OpenUp() {
+      RLLog(s"Armory door opened (was locked \(locked), sealed \(sealed)).");
+      return true;
+    }
+    return false;
+  }
+
+  // Called while V is home (the door may stream in late); true when the door
+  // had to be opened.
+  public static func KeepArmoryOpen(game: GameInstance) -> Bool {
+    let psID = CreatePersistentID(RLHomeDevices.ArmoryDoorID(), n"controller");
+    let door = GameInstance.GetPersistencySystem(game).GetConstAccessToPSObject(psID, n"DoorControllerPS") as DoorControllerPS;
+    if !IsDefined(door) {
+      let entity = GameInstance.FindEntityByID(game, RLHomeDevices.ArmoryDoorID()) as Door;
+      if IsDefined(entity) {
+        door = entity.GetDevicePS();
+      }
+    }
+    return RLHomeDevices.OpenArmoryDoor(door);
+  }
+
+  public static func IsStashLoaded(game: GameInstance) -> Bool = IsDefined(GameInstance.FindEntityByID(game, RLHomeDevices.StashID()))
+
+  // Open, or not there to be shut (not a scripted door on this character).
+  public static func IsArmoryDoorOpen(game: GameInstance) -> Bool {
+    let door = GameInstance.FindEntityByID(game, RLHomeDevices.ArmoryDoorID()) as Door;
+    return !IsDefined(door) || !IsDefined(door.GetDevicePS()) || door.GetDevicePS().IsOpen();
+  }
+
+  // For the log: what the armory looks like on this character.
+  public static func Report(game: GameInstance) {
+    let door = GameInstance.FindEntityByID(game, RLHomeDevices.ArmoryDoorID()) as Door;
+    let doorState = "not loaded";
+    if IsDefined(door) && IsDefined(door.GetDevicePS()) {
+      let ps = door.GetDevicePS();
+      doorState = s"open \(ps.IsOpen()), locked \(ps.IsLocked()), sealed \(ps.IsSealed())";
+    }
+    RLLog("Armory: stash " + (RLHomeDevices.IsStashLoaded(game) ? "loaded" : "NOT loaded (F7 in the room instead)") + ", door " + doorState + ".");
+  }
+
+  public static func IsArmoryStash(ps: ref<ScriptableDeviceComponentPS>) -> Bool {
+    let game = ps.GetGameInstance();
+    let system = RogueliteSystem.Get(game);
+    if !IsDefined(system) || !system.IsHomeTerminalActive() {
+      return false;
+    }
+    let id = PersistentID.ExtractEntityID(ps.GetID());
+    if id == RLHomeDevices.StashID() {
+      return true;
+    }
+    let entity = GameInstance.FindEntityByID(game, id) as GameObject;
+    return IsDefined(entity) && RLHomeDevices.InArmory(entity.GetWorldPosition());
+  }
+
+  public static func UseStash(game: GameInstance) {
+    let system = RogueliteSystem.Get(game);
+    if IsDefined(system) {
+      system.OnArmoryUsed();
+    }
+  }
+}
+
+// Unseals, unlocks and opens; true when anything had to change.
+@addMethod(DoorControllerPS)
+public final func RL_OpenUp() -> Bool {
+  let changed = false;
+  if this.IsSealed() {
+    this.GetPersistencySystem().QueuePSEvent(this.GetID(), this.GetClassName(), this.ActionQuestForceUnseal());
+    changed = true;
+  }
+  if this.IsLocked() {
+    this.GetPersistencySystem().QueuePSEvent(this.GetID(), this.GetClassName(), this.ActionQuestForceUnlock());
+    changed = true;
+  }
+  if !this.IsOpen() {
+    this.GetPersistencySystem().QueuePSEvent(this.GetID(), this.GetClassName(), this.ActionQuestForceOpen());
+    changed = true;
+  }
+  return changed;
 }
 
 @addMethod(DoorControllerPS)
@@ -229,6 +343,29 @@ public func GetActions(out actions: array<ref<DeviceAction>>, context: GetAction
 public func OnToggleZoomInteraction(evt: ref<ToggleZoomInteraction>) -> EntityNotificationType {
   if RLHomeDevices.IsHubComputer(this) {
     RLHomeDevices.UseComputer(this.GetGameInstance());
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+// The armory's stash opens the kit picker instead.
+@wrapMethod(StashControllerPS)
+public func GetActions(out outActions: array<ref<DeviceAction>>, context: GetActionsContext) -> Bool {
+  if Equals(context.requestType, gamedeviceRequestType.Direct) && RLHomeDevices.IsArmoryStash(this)
+    && IsDefined(TweakDBInterface.GetInteractionBaseRecord(RLHomeDevices.ArmoryInteraction())) {
+    ArrayClear(outActions);
+    let action = this.ActionOpenStash();
+    action.OverrideInteractionRecord(RLHomeDevices.ArmoryInteraction(), RLHomeDevices.ArmoryInteraction());
+    ArrayPush(outActions, action);
+    return true;
+  }
+  return wrappedMethod(outActions, context);
+}
+
+@wrapMethod(StashControllerPS)
+private final func OnOpenStash(evt: ref<OpenStash>) -> EntityNotificationType {
+  if RLHomeDevices.IsArmoryStash(this) {
+    RLHomeDevices.UseStash(this.GetGameInstance());
     return EntityNotificationType.DoNotNotifyEntity;
   }
   return wrappedMethod(evt);

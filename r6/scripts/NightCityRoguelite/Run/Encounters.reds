@@ -9,8 +9,14 @@
 //   Mix      grunt / tough / elite odds by act (Act 1 opens with grunts only);
 //            heavy fights trade grunts for elites, light fights the reverse.
 //   Elite    the elite floor puts one elite in every wave.
-//   Boss     two regular waves, then the boss wave (faction elites in Act 1,
-//            MaxTac after that) with a few adds.
+//   Boss     two regular waves, then the boss wave with a few adds:
+//              Act 1  the faction's gang leader (or an outpost boss) and a
+//                     lieutenant
+//              Act 2  a MaxTac squad
+//              Act 3  a Minotaur mech with a MaxTac escort
+//            The boss calls reinforcements when hurt and enrages near death
+//            (Combat/WaveSpawner.reds).
+//   Bounty   one cyberpsycho, nobody else.
 //   Levels   from the run's curve (Run/Difficulty.reds): elites +1, bosses +2,
 //            heavy doors +1, light doors -1.
 //   Pacing   the pacing director's pressure (-1..1) scales wave size by up to
@@ -62,14 +68,17 @@ public abstract class RLEncounters {
 
     if run.IsBossFloor() {
       plan.BeginWave();
-      let bosses = RLEncounters.BossRecords(run.act);
+      let bosses = RLEncounters.BossRecords(run.act, faction.faction);
       if ArraySize(bosses) == 0 {
-        // Act 1, or no MaxTac records: faction elites lead the boss wave.
+        // No boss records: faction elites lead the boss wave.
         plan.Add(faction.Pick(2), true, baseLevel + 2, true);
         plan.Add(faction.Pick(2), true, baseLevel + 2, true);
       } else {
         for boss in bosses {
           plan.Add(boss, true, baseLevel + 2, true);
+        }
+        if run.act <= 1 {
+          plan.Add(faction.Pick(2), false, baseLevel + 1, true);
         }
       }
       let adds = run.act + 1;
@@ -77,6 +86,29 @@ public abstract class RLEncounters {
         plan.Add(faction.Pick(1), false, baseLevel, false);
         adds -= 1;
       }
+      // Called in when a boss is hurt.
+      let reinforcements = run.act + 1;
+      while reinforcements > 0 {
+        ArrayPush(plan.reinforcements, faction.Pick(run.act >= 3 ? 2 : 1));
+        reinforcements -= 1;
+      }
+      plan.reinforceLevel = baseLevel + 1;
+    }
+    return plan;
+  }
+
+  // A cyberpsycho bounty: one target, three levels up, alone.
+  public static func BuildBounty(run: ref<RLRunState>, faction: ref<RLFactionPool>) -> ref<RLEncounterPlan> {
+    let plan = new RLEncounterPlan();
+    plan.factionName = "Cyberpsycho";
+    let level = RLDifficulty.EnemyBaseLevel(run) + 3;
+    plan.BeginWave();
+    let psycho = RLRoster.PickUsable(RLRoster.Cyberpsychos());
+    if TDBID.IsValid(psycho) {
+      plan.Add(psycho, true, level, true);
+    } else {
+      plan.Add(faction.Pick(2), true, level, true);
+      plan.Add(faction.Pick(2), true, level, true);
     }
     return plan;
   }
@@ -124,12 +156,26 @@ public abstract class RLEncounters {
     return 2;
   }
 
-  // MaxTac lead the boss waves of acts 2 and 3; act 1's boss wave is led by
-  // faction elites (empty result).
-  public static func BossRecords(act: Int32) -> array<TweakDBID> {
+  // The boss wave's leaders: a gang boss in Act 1, a MaxTac squad in Act 2,
+  // a mech with a MaxTac escort in Act 3. Empty when no record is usable.
+  public static func BossRecords(act: Int32, faction: gamedataAffiliation) -> array<TweakDBID> {
     let result: array<TweakDBID>;
     if act <= 1 {
+      let gang = RLRoster.GangBoss(faction);
+      let boss = StrLen(gang) > 0 ? RLRoster.PickUsable([gang]) : TDBID.None();
+      if !TDBID.IsValid(boss) {
+        boss = RLRoster.PickUsable(RLRoster.OutpostBosses());
+      }
+      if TDBID.IsValid(boss) {
+        ArrayPush(result, boss);
+      }
       return result;
+    }
+    if act >= 3 {
+      let mech = RLRoster.PickUsable(RLRoster.Mechs(faction));
+      if TDBID.IsValid(mech) {
+        ArrayPush(result, mech);
+      }
     }
     let maxtac: array<TweakDBID>;
     for id in RLBosses.MaxTac() {
@@ -137,7 +183,7 @@ public abstract class RLEncounters {
         ArrayPush(maxtac, id);
       }
     }
-    let count = act >= 3 ? 3 : 2;
+    let count = 2;
     let i = 0;
     while i < count && ArraySize(maxtac) > 0 {
       ArrayPush(result, maxtac[RandRange(0, ArraySize(maxtac))]);

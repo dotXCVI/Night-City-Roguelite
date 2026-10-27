@@ -393,6 +393,52 @@ public class RLTweakPools {
     return this.m_iconics[RandRange(0, ArraySize(this.m_iconics))].id;
   }
 
+  // An iconic of the item type, else of the same family (an evolution).
+  public func PickIconicFor(itemType: gamedataItemType) -> TweakDBID {
+    let matches: array<TweakDBID>;
+    for entry in this.m_iconics {
+      if Equals(entry.itemType, itemType) {
+        ArrayPush(matches, entry.id);
+      }
+    }
+    if ArraySize(matches) == 0 {
+      let family = RLWeapons.FamilyOf(itemType);
+      for entry in this.m_iconics {
+        if RLWeapons.FamilyOf(entry.itemType) == family {
+          ArrayPush(matches, entry.id);
+        }
+      }
+    }
+    return ArraySize(matches) > 0 ? matches[RandRange(0, ArraySize(matches))] : TDBID.None();
+  }
+
+  // An Operating System of one kind (Sandevistan, Berserk or Cyberdeck),
+  // close to the wanted quality band.
+  public func PickOperatingSystem(kind: CName, band: Int32) -> TweakDBID {
+    let distance = 0;
+    while distance <= 4 {
+      let matches: array<TweakDBID>;
+      for entry in this.m_cyberware {
+        if Equals(entry.area, gamedataEquipmentArea.SystemReplacementCW) && Abs(entry.band - band) == distance && RLTweakPools.IsOperatingSystem(entry, kind) {
+          ArrayPush(matches, entry.id);
+        }
+      }
+      if ArraySize(matches) > 0 {
+        return matches[RandRange(0, ArraySize(matches))];
+      }
+      distance += 1;
+    }
+    return TDBID.None();
+  }
+
+  private static func IsOperatingSystem(entry: ref<RLItemEntry>, kind: CName) -> Bool {
+    if Equals(kind, n"Cyberdeck") {
+      return entry.cyberdeck;
+    }
+    let item = TweakDBInterface.GetItemRecord(entry.id);
+    return !entry.cyberdeck && IsDefined(item) && (item.TagsContains(kind) || StrContains(TDBID.ToStringDEBUG(entry.id), NameToString(kind)));
+  }
+
   // Picks cyberware close to the wanted quality band; `requireDeck` limits the
   // pick to cyberdecks, `excludeAreas` skips areas (e.g. already offered).
   public func PickCyberware(band: Int32, requireDeck: Bool, itemType: gamedataItemType, excludeIDs: array<TweakDBID>) -> TweakDBID {

@@ -318,6 +318,10 @@ public class RLTerminalPopup extends InGamePopup {
       s"\(reduction)% LESS DAMAGE TAKEN",
       service.IsAssistOn() ? n"MainColors.Green" : n"MainColors.Grey");
     assist.SetSelected(service.IsAssistOn());
+    // Test runs: start on any floor to try a boss, an act or the new door
+    // types without playing up to it. No Cred, no stats.
+    this.AddActionCard(actions, n"test_floor", s"FLOOR \(service.GetTestFloor())", "TEST RUN FROM", n"MainColors.Grey");
+    this.AddActionCard(actions, n"test_start", "TEST RUN", "NO CRED, NO STATS", n"MainColors.Grey");
 
     // Unlocks (kits are bought from the kit rows): a 5-column grid.
     RLUI.SectionLabel("UNLOCKS").Reparent(body);
@@ -380,6 +384,12 @@ public class RLTerminalPopup extends InGamePopup {
     } else if Equals(name, "start") {
       this.Close();
       this.m_system.StartRun(service.GetSelectedKit());
+    } else if Equals(name, "test_floor") {
+      service.CycleTestFloor();
+      this.Rebuild();
+    } else if Equals(name, "test_start") {
+      this.Close();
+      this.m_system.StartRun(service.GetSelectedKit(), service.GetTestFloor());
     } else if Equals(name, "assist") {
       service.SetAssist(!service.IsAssistOn());
       this.Rebuild();

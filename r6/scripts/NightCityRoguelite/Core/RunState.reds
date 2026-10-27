@@ -16,6 +16,9 @@ public class RLRunState {
   public let floorsCleared: Int32;
   public let kills: Int32;
   public let bossesKilled: Int32;
+  // A test run (terminal): starts on any floor, pays no Cred, doesn't count
+  // in the stats, and rolls the new door types every time.
+  public let isTest: Bool;
   // Boons held this run (Rewards/Boons.reds).
   public let boons: array<ref<RLBoonState>>;
   // Trade-offs taken at events (Run/Events.reds): extra damage V takes (0.15
@@ -84,8 +87,18 @@ public class RLRunState {
     }
   }
 
+  // Jumps to an overall floor (1-based), for test runs.
+  public func SetDepth(depth: Int32) {
+    let d = Clamp(depth, 1, this.TotalFloors()) - 1;
+    this.act = d / RLConfig.FloorsPerAct() + 1;
+    this.floor = d % RLConfig.FloorsPerAct() + 1;
+  }
+
   public func FloorLabel() -> String {
     let label = s"ACT \(this.act) - FLOOR \(this.floor)";
+    if this.isTest {
+      label = "TEST - " + label;
+    }
     if this.IsBossFloor() {
       label += " (BOSS)";
     } else if this.IsEliteFloor() {

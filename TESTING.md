@@ -61,6 +61,9 @@ entry at the top.
      fight is, and who you'll face.
    - **F7** reopens any screen you closed.
 5. Before each boss, the **Fixer** sells upgrades for the eddies you've earned.
+   - Want to try a boss or a later act without playing up to it? Use the
+     **FLOOR** card to pick where to start and press **TEST RUN**. Test runs
+     pay no Cred and don't count in your stats.
 6. When you die, you wake up back home. You keep the **Cred** you earned and
    spend it at the terminal on new kits and unlocks.
 

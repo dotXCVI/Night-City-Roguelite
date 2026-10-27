@@ -30,7 +30,9 @@ public enum RLObjectiveKind {
 
 public abstract class RLObjectives {
   public static func RollForDoor(run: ref<RLRunState>, arena: ref<RLArenaDef>) -> RLObjectiveKind {
-    if !IsDefined(arena) || run.Depth() < 3 || run.IsBossFloor() || RandF() >= RLConfig.ObjectiveChance() {
+    // Test runs get one more often, from the first floor.
+    let chance = run.isTest ? 0.6 : RLConfig.ObjectiveChance();
+    if !IsDefined(arena) || (run.Depth() < 3 && !run.isTest) || run.IsBossFloor() || RandF() >= chance {
       return RLObjectiveKind.None;
     }
     return IntEnum<RLObjectiveKind>(RandRange(1, 4));
@@ -210,8 +212,9 @@ public class RLObjective {
       tries += 1;
     }
     let data: MappinData;
-    data.mappinType = t"Mappins.QuestStaticMappinDefinition";
-    data.variant = gamedataMappinVariant.DefaultQuestVariant;
+    // The same static pin as a map waypoint: quest pins need a journal entry.
+    data.mappinType = t"Mappins.DefaultStaticMappin";
+    data.variant = gamedataMappinVariant.CustomPositionVariant;
     data.active = true;
     data.visibleThroughWalls = true;
     ArrayPush(this.m_points, point);

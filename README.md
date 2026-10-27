@@ -95,6 +95,12 @@ give none, and levels bring no attribute or perk points (see Character).
 | --- | --- | --- |
 | Terminal (kit, run start) | Run status, abandon | Reward, Fixer or next fight |
 
+**Test runs:** the terminal's FLOOR card picks a floor (1, 5, 6, 7, 11, 12, 13,
+17 or 18) and TEST RUN starts there, with the levels, eddies and three Rare
+boons a run would have by then. Every door screen offers an event and (from Act
+2) a bounty, and fights roll objectives more often. Test runs pay no Cred and
+don't count in the stats - they're for trying bosses and new content quickly.
+
 Closing a reward, Fixer or door screen (C / ESC) keeps it waiting - F7 brings it
 back. Saving is locked during a run. Normal story saves are never touched. For
 roguelite characters NCPD is switched off and the story stays out of the way:

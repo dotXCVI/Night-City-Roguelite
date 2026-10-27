@@ -14,13 +14,17 @@ public class RLRewardPopup extends InGamePopup {
   private let m_system: wref<RogueliteSystem>;
   private let m_offers: array<ref<RLOffer>>;
   private let m_title: String;
+  private let m_fluff: String;
   private let m_content: ref<InGamePopupContent>;
 
-  public static func Open(system: ref<RogueliteSystem>, offers: array<ref<RLOffer>>, const title: String) -> ref<RLRewardPopup> {
+  // `fluff`: the header's right-hand line (a patron's tagline); "CHOOSE ONE"
+  // when empty.
+  public static func Open(system: ref<RogueliteSystem>, offers: array<ref<RLOffer>>, const title: String, opt fluff: String) -> ref<RLRewardPopup> {
     let popup = new RLRewardPopup();
     popup.m_system = system;
     popup.m_offers = offers;
     popup.m_title = title;
+    popup.m_fluff = fluff;
     RLUI.Show(popup);
     return popup;
   }
@@ -43,7 +47,7 @@ public class RLRewardPopup extends InGamePopup {
 
     let header = InGamePopupHeader.Create();
     header.SetTitle(this.m_title);
-    header.SetFluffRight("CHOOSE ONE");
+    header.SetFluffRight(StrLen(this.m_fluff) > 0 ? this.m_fluff : "CHOOSE ONE");
     header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();

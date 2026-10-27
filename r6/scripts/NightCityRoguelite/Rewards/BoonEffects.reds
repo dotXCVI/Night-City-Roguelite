@@ -39,6 +39,8 @@ public class RLCombatState {
   // V's own blasts (boons, objectives) don't hurt V: hits from V until then
   // are ignored.
   public let selfBlastUntil: Float;
+  // Boosted hits logged this arena (the first few, to check boons apply).
+  public let loggedHits: Int32;
   // How each enemy was last hit by V (RLHitFlag bits).
   private let m_hitIDs: array<EntityID>;
   private let m_hitFlags: array<Int32>;
@@ -60,6 +62,7 @@ public class RLCombatState {
 
   public func ResetArena() {
     this.kills = 0;
+    this.loggedHits = 0;
     this.psychoKills = 0;
     this.berserkUntil = 0.0;
     this.familyUsed = false;
@@ -294,6 +297,10 @@ public abstract class RLBoonEffects {
     }
     // Elite affixes on the target.
     factor *= RLAffixes.DamageTakenFactor(combat.Affixes(targetID));
+    if factor != 1.0 && combat.loggedHits < 5 {
+      combat.loggedHits += 1;
+      RLDebug(s"Hit scaled x\(factor) (hit flags \(flags)).");
+    }
     return factor;
   }
 

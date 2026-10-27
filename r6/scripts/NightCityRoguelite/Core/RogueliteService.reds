@@ -16,6 +16,7 @@ public class RogueliteService extends ScriptableService {
   private persistent let m_cred: Int32;
   private persistent let m_unlocks: array<CName>;
   private persistent let m_selectedKit: CName;
+  private let m_testFloor: Int32;
   // Assist mode (Hades' God Mode): less damage taken, a little more with every
   // run lost while it is on.
   private persistent let m_assistOn: Bool;
@@ -234,6 +235,20 @@ public class RogueliteService extends ScriptableService {
   }
 
   public func GetSelectedKit() -> CName = this.m_selectedKit
+
+  // Test runs (terminal): the floor they start on. Session only.
+  public static func TestFloors() -> array<Int32> = [1, 5, 6, 7, 11, 12, 13, 17, 18]
+
+  public func GetTestFloor() -> Int32 = Max(1, this.m_testFloor)
+
+  public func CycleTestFloor() {
+    let floors = RogueliteService.TestFloors();
+    let i = 0;
+    while i < ArraySize(floors) && floors[i] != this.GetTestFloor() {
+      i += 1;
+    }
+    this.m_testFloor = floors[(i + 1) % ArraySize(floors)];
+  }
 
   public func SetSelectedKit(kit: CName) {
     this.m_selectedKit = kit;

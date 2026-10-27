@@ -703,7 +703,7 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     if ArraySize(this.m_offers) > 0 {
       this.m_popupOpen = true;
-      this.m_popup = RLRewardPopup.Open(this, this.m_offers, this.OfferTitle());
+      this.m_popup = RLRewardPopup.Open(this, this.m_offers, this.OfferTitle(), this.OfferTagline());
       return;
     }
     if IsDefined(this.m_event) {
@@ -760,7 +760,8 @@ public class RogueliteSystem extends ScriptableSystem {
 
   // --- Run start ---------------------------------------------------------------------------
 
-  public func StartRun(kit: CName) {
+  // `testFloor` > 0 starts a test run on that floor (no Cred, no stats).
+  public func StartRun(kit: CName, opt testFloor: Int32) {
     let game = this.GetGameInstance();
     let player = GetPlayer(game);
     if !Equals(this.m_state, RLState.Hub) || !IsDefined(player) {
@@ -777,7 +778,12 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     RLBoons.ClearBuffs(player);
     this.ApplyDifficulty();
-    this.m_run = RLRunState.Create(service.BeginRunToken(), kit);
+    let isTest = testFloor > 0;
+    this.m_run = RLRunState.Create(isTest ? 0 : service.BeginRunToken(), kit);
+    if isTest {
+      this.m_run.isTest = true;
+      this.m_run.SetDepth(testFloor);
+    }
     this.m_pacing.ResetRun();
     this.m_run.rerollsPerAct = RLMeta.RerollsPerAct(service);
     this.m_run.rerolls = this.m_run.rerollsPerAct;
@@ -790,7 +796,7 @@ public class RogueliteSystem extends ScriptableSystem {
 
     RLCharacterReset.ResetProgressionAndUnequip(player);
     this.After(n"prepareGear", 0.6);
-    RLLog("Run started: kit " + NameToString(kit) + ".");
+    RLLog("Run started: kit " + NameToString(kit) + (isTest ? s", test run from floor \(testFloor)." : "."));
   }
 
   private func PrepareRunGear() {
@@ -824,6 +830,10 @@ public class RogueliteSystem extends ScriptableSystem {
       RLBoons.Apply(player, this.m_run, n"ReinforcedFrame", 1);
     }
 
+    if this.m_run.isTest {
+      this.PrepareTestRun(player);
+    }
+
     RLCharacterReset.HealFull(player);
     this.m_deathGuard.Arm(player);
     FastTravelSystem.AddFastTravelLock(n"NightCityRoguelite", game);
@@ -834,8 +844,36 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_state = RLState.RunHome;
     this.m_apartment.StartLeash();
     this.ShowStepHud();
-    RLNotify(game, "Run started. Every reward you pick also grants a level.", 6.0);
+    RLNotify(game, this.m_run.isTest ? "Test run started. No Cred, no stats." : "Run started. Every reward you pick also grants a level.", 6.0);
     this.After(n"nextStep", 1.5);
+  }
+
+  // A test run starts where a real one would have got to: the levels and
+  // eddies of the floors skipped, and three Rare boons from different patrons.
+  private func PrepareTestRun(player: ref<PlayerPuppet>) {
+    let depth = this.m_run.Depth();
+    if depth > 1 {
+      PlayerDevelopmentSystem.GetData(player).RL_GrantLevels(depth - 1);
+      RLGear.GiveEddies(player, 300 * (depth - 1));
+    }
+    let patrons = RLPatrons.All();
+    let given = 0;
+    while given < 3 && ArraySize(patrons) > 0 {
+      let i = RandRange(0, ArraySize(patrons));
+      let options: array<CName>;
+      for def in RLBoons.All() {
+        if Equals(def.kind, RLBoonKind.Core) && Equals(def.patron, patrons[i].id) && !RLBoons.Has(this.m_run, def.id) {
+          ArrayPush(options, def.id);
+        }
+      }
+      if ArraySize(options) > 0 {
+        let pick = options[RandRange(0, ArraySize(options))];
+        RLBoons.Apply(player, this.m_run, pick, 1);
+        RLLog("Test run boon: " + NameToString(pick) + ".");
+        given += 1;
+      }
+      ArrayErase(patrons, i);
+    }
   }
 
   // --- Doors and trips ------------------------------------------------------------------------
@@ -1259,10 +1297,12 @@ public class RogueliteSystem extends ScriptableSystem {
     let game = this.GetGameInstance();
     let service = RogueliteService.Get();
     this.m_run.floorsCleared += 1;
-    service.UpdateActiveRun(this.m_run.floorsCleared, this.m_run.kills, this.m_run.bossesKilled);
+    if !this.m_run.isTest {
+      service.UpdateActiveRun(this.m_run.floorsCleared, this.m_run.kills, this.m_run.bossesKilled);
+    }
 
     // Cred is earned per cleared arena (and only then); eddies for the Fixer.
-    let cred = RLMeta.ArenaCred(this.m_run.act, this.m_run.Threat(), this.m_run.IsBossFloor());
+    let cred = this.m_run.isTest ? 0 : RLMeta.ArenaCred(this.m_run.act, this.m_run.Threat(), this.m_run.IsBossFloor());
     service.AddCred(cred);
     this.m_run.credEarned += cred;
     let player = GetPlayer(game);
@@ -1334,6 +1374,17 @@ public class RogueliteSystem extends ScriptableSystem {
     return RLRewards.CategoryName(this.m_offerCategory);
   }
 
+  // A patron's tagline over its boons.
+  private func OfferTagline() -> String {
+    if ArraySize(this.m_offers) > 0 && Equals(this.m_offers[0].kind, RLOfferKind.Boon) {
+      let patron = RLPatrons.Get(this.m_offers[0].patron);
+      if IsDefined(patron) {
+        return patron.tagline;
+      }
+    }
+    return "";
+  }
+
   // --- Events ------------------------------------------------------------------------------
 
   private func OpenEvent(door: ref<RLDoor>) {
@@ -1372,7 +1423,9 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_event = null;
     PlayerDevelopmentSystem.GetData(player).RL_GrantLevels(1);
     this.m_run.floorsCleared += 1;
-    RogueliteService.Get().UpdateActiveRun(this.m_run.floorsCleared, this.m_run.kills, this.m_run.bossesKilled);
+    if !this.m_run.isTest {
+      RogueliteService.Get().UpdateActiveRun(this.m_run.floorsCleared, this.m_run.kills, this.m_run.bossesKilled);
+    }
     this.m_run.advancePending = true;
     this.AdvanceFloor();
     RLNotify(this.GetGameInstance(), StrLen(result) > 0 ? result + " +1 level." : "+1 level.", 5.0);
@@ -1607,9 +1660,11 @@ public class RogueliteSystem extends ScriptableSystem {
 
     let service = RogueliteService.Get();
     // Cred was banked arena by arena; a completed run adds a bonus.
-    let payout = victory ? RLMeta.VictoryCred() : 0;
+    let payout = victory && !run.isTest ? RLMeta.VictoryCred() : 0;
     service.AddCred(payout);
-    service.RecordRunEnd(run.floorsCleared, run.kills, victory);
+    if !run.isTest {
+      service.RecordRunEnd(run.floorsCleared, run.kills, victory);
+    }
     service.ClearRunToken();
 
     this.m_deathGuard.Disarm();

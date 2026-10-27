@@ -181,7 +181,7 @@ public abstract class RLRewards {
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RandF() < 0.5 ? RLRewardCategory.Iconic : RLRewardCategory.Chrome, true, usedArenas));
       return doors;
     }
-    if run.floorsCleared == 0 {
+    if run.floorsCleared == 0 && !run.isTest {
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Training, false, usedArenas));
       return doors;
     }
@@ -195,11 +195,12 @@ public abstract class RLRewards {
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Workshop, false, usedArenas));
     }
     // Now and then a door is an event (no fight) or, from Act 2, a bounty.
-    if depth >= 2 && !run.IsEliteFloor() && ArraySize(doors) < count && RandF() < RLConfig.EventDoorChance() {
+    // Test runs always show both.
+    if (depth >= 2 || run.isTest) && !run.IsEliteFloor() && ArraySize(doors) < count && (run.isTest || RandF() < RLConfig.EventDoorChance()) {
       ArrayPush(used, RLRewardCategory.Event);
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Event, false, usedArenas));
     }
-    if run.act >= 2 && ArraySize(doors) < count && RandF() < RLConfig.BountyDoorChance() {
+    if run.act >= 2 && ArraySize(doors) < count && (run.isTest || RandF() < RLConfig.BountyDoorChance()) {
       ArrayPush(used, RLRewardCategory.Bounty);
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Bounty, false, usedArenas));
     }

@@ -46,6 +46,24 @@ What changed in each version: https://github.com/dotXCVI/night-city-roguelite/bl
 To check it worked: start the game. The main menu should have a **ROGUELITE**
 entry at the top.
 
+## Updating from an older version
+
+Your Cred, unlocks and stats carry over - they aren't stored in the mod's
+files.
+
+**Vortex:** drag the new ZIP into the Mods tab. When it asks, pick
+**Replace**, then Enable and Deploy.
+
+**By hand:**
+1. In your game folder, delete the `r6/scripts/NightCityRoguelite` folder.
+   (Old files that a new version dropped can cause errors if they stay.)
+2. Copy the new ZIP's `r6` and `archive` folders into the game folder,
+   letting it replace files when Windows asks.
+
+Then update the five framework mods above if any have a newer version, and
+start a **new** roguelite character - old ones may carry leftovers from the
+last build.
+
 ## Playing
 
 1. Main menu -> **ROGUELITE**. Pick a body type, make your V, and confirm.

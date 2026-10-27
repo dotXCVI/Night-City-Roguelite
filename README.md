@@ -53,6 +53,10 @@ folders into your game folder.
 
 Your story saves are never touched.
 
+**Updating?** Delete `r6/scripts/NightCityRoguelite` from your game folder
+first, then install the new build the same way. Your Cred and unlocks carry
+over. Full steps are in [TESTING.md](TESTING.md#updating-from-an-older-version).
+
 ## First run
 
 1. Main menu -> **ROGUELITE**. Make your V.

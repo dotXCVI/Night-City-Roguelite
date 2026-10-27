@@ -18,6 +18,9 @@ public class RLRunState {
   public let bossesKilled: Int32;
   // One entry per stack.
   public let boons: array<CName>;
+  // Every weapon the run handed out (kit and rewards): any other weapon V
+  // carries was picked up in an arena and is taken away on the next trip.
+  public let grantedWeapons: array<TweakDBID>;
   public let appliedMods: array<ref<gameStatModifierData>>;
   // Free reroll charges (refilled at the start of every act) and paid rerolls
   // bought on the current screen (each one costs more).

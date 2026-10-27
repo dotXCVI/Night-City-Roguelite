@@ -896,6 +896,7 @@ public class RogueliteSystem extends ScriptableSystem {
     if StrLen(upgraded) > 0 {
       RLLog("Health item upgraded: " + upgraded + ".");
     }
+    RLLoot.RemoveStrayWeapons(player, this.m_run.grantedWeapons);
     RLLoot.RefillForArena(player);
     this.m_waits = 0;
     this.After(n"travelSettle", 1.5);

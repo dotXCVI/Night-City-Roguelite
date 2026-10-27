@@ -22,6 +22,11 @@ public abstract class RLGear {
       RLLog(s"GiveItem failed for weapon \(TDBID.ToStringDEBUG(recordID))");
       return false;
     }
+    let system = RogueliteSystem.Get(game);
+    let run = IsDefined(system) ? system.GetRun() : null;
+    if IsDefined(run) {
+      ArrayPush(run.grantedWeapons, recordID);
+    }
     let itemData = transactionSystem.GetItemData(player, itemID);
     if IsDefined(itemData) && IsNameValid(tier) {
       RPGManager.ForceItemTier(player, itemData, tier);

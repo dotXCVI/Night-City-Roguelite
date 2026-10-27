@@ -3,6 +3,14 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.17 - Stray weapons removed, call tracing (2026-10-27)
+
+Finishing the v0.0.15 test notes.
+
+- **Picked-up weapons can't stay.** On every trip, any weapon the run didn't hand out (kit or rewards) is removed - a safety net behind the pickup filter for weapons enemies drop (the legendary hammer).
+- **Judy's call:** the log now records which story entries keep coming back, so the quest behind her forced call can be found and handled in the next build.
+- Checked against the game: the weather states used for arenas are the game's own `24h_weather_*` states.
+
 ## v0.0.16 - Rewards fixed, radio, weather, no softlocks (2026-10-27)
 
 From the v0.0.15 playtest.

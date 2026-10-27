@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.0.16)
+# Night City Roguelite (v0.0.17)
 
 > **Versions:** alpha builds are v0.0.X. v0.X.X starts once the foundation is
 > solid, v1.0.0 is the finished mod. (Builds before v0.0.8 were numbered
@@ -11,8 +11,8 @@ rewards after every floor, and bank meta Cred when you flatline. Home is where
 a run starts and ends; in between you go from arena to arena. The design rule:
 fights should be easy to read, and all the thinking happens between them.
 
-> **Status:** v0.0.15 was tested in game; v0.0.16 fixes what that test
-> turned up and is untested. See CHANGELOG.md for every version. Start a **new** roguelite character for this build. Compiles cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0
+> **Status:** v0.0.15 was tested in game; v0.0.16 and v0.0.17 fix what
+> that test turned up and are untested. See CHANGELOG.md for every version. Start a **new** roguelite character for this build. Compiles cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0
 > and TweakXL 1.12.0.
 
 ## Requirements
@@ -191,7 +191,8 @@ Every kit starts with a basic frag grenade. Bodies are emptied - there is
 nothing to search mid-fight. Ammo comes back as
 you clear waves, your MaxDoc is upgraded automatically as the run goes on, and
 grenades are Armory rewards. Anything you pick up in an arena anyway is
-taken away again right after.
+taken away again right after, and on every trip any weapon the run didn't
+hand out (one an enemy dropped) is taken away as well.
 
 ### Difficulty
 

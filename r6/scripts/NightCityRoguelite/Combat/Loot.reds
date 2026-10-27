@@ -116,6 +116,29 @@ public abstract class RLLoot {
 
   // --- Pickups ---------------------------------------------------------------------------
 
+  // Safety net behind the pickup filter (run on every trip): weapons the run
+  // didn't hand out - one an enemy dropped that slipped past the filter - are
+  // taken away. V's fists and default handgun slot are never touched.
+  public static func RemoveStrayWeapons(player: ref<PlayerPuppet>, granted: array<TweakDBID>) {
+    let transactionSystem = GameInstance.GetTransactionSystem(player.GetGame());
+    let items: array<wref<gameItemData>>;
+    transactionSystem.GetItemList(player, items);
+    let stray: array<ItemID>;
+    for item in items {
+      if IsDefined(item) && Equals(RPGManager.GetItemCategory(item.GetID()), gamedataItemCategory.Weapon) {
+        let area = EquipmentSystem.GetEquipAreaType(item.GetID());
+        if NotEquals(area, gamedataEquipmentArea.BaseFists) && NotEquals(area, gamedataEquipmentArea.VDefaultHandgun)
+          && !ArrayContains(granted, ItemID.GetTDBID(item.GetID())) && !RLCharacterReset.IsBodyItem(ItemID.GetTDBID(item.GetID())) {
+          ArrayPush(stray, item.GetID());
+        }
+      }
+    }
+    for itemID in stray {
+      transactionSystem.RemoveItem(player, itemID, 1);
+      RLLog("Removed a weapon picked up in an arena: " + RLRewards.ItemName(ItemID.GetTDBID(itemID)) + ".");
+    }
+  }
+
   // Arena pickups that are taken away again: everything except ammo, money,
   // quest items and hidden system items (V's own body parts).
   public static func ShouldDiscardPickup(itemID: ItemID, itemData: ref<gameItemData>) -> Bool {

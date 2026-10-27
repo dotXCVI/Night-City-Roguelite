@@ -192,6 +192,8 @@ public class RLJournalGuard extends RLDelayTarget {
           if IsDefined(entry) && Equals(journal.GetEntryState(entry), gameJournalEntryState.Active) {
             journal.ChangeEntryStateByHash(hash, gameJournalEntryState.Inactive, JournalNotifyOption.DoNotNotify);
             count += 1;
+            // Which story bits keep coming back (e.g. the quest behind a call).
+            RLDebug("Journal: quieted " + entry.GetId());
           }
         }
         if count > 0 {

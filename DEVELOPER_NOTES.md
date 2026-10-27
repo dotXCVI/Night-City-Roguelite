@@ -1,4 +1,4 @@
-# Night City Roguelite - developer handoff (v0.0.16)
+# Night City Roguelite - developer handoff (v0.0.17)
 
 You are picking up an in-progress Cyberpunk 2077 mod from another AI. Read this
 whole file before changing anything. The mod's source is the attached ZIP; the
@@ -35,7 +35,7 @@ built only from the game's own assets and systems (no new art, no new models).
 - Code must read like it was written by a very talented human engineer:
   clean, consistent, industry-standard, well-commented (comments explain *why*).
 - Versioning: alpha builds are **v0.0.X**. Bump X for every build you hand over
-  (next is v0.0.17). Update the README's title/status line and keep a short
+  (next is v0.0.18). Update the README's title/status line and keep a short
   changelog entry for each version.
 - Deliver: a ZIP of the full mod folder (README.md, r6/, archive/, source/),
   plus a plain summary of what changed and what is least certain. Every
@@ -250,10 +250,12 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 
 ## 10. Status and what's next
 
-- **v0.0.16 is untested in game.** It was built from the owner's v0.0.15
+- **v0.0.16 and v0.0.17 are untested in game.** It was built from the owner's v0.0.15
   playtest notes (see CHANGELOG.md). Still open from that test: a story call
   (Judy) that the quest force-starts after being declined still shows its
-  call card (it didn't interrupt anything); the quest is unknown. Least certain, check these first with the
+  call card (it didn't interrupt anything). v0.0.17 logs the id of every
+  journal entry it quiets (debug lines "Journal: quieted ...") so the quest
+  behind it can be identified from the next log. Least certain, check these first with the
   first test log:
   1. Death -> resurrection -> home sequence (Player/Death.reds).
   2. The fade overlay covering the screen (`inkGameNotificationsLayer`).

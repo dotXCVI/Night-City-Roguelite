@@ -142,16 +142,16 @@ public abstract class RLRewards {
   // What a door's reward is, where the name alone doesn't say.
   public static func CategoryDescription(category: RLRewardCategory) -> String {
     switch category {
-      case RLRewardCategory.Armory: return "Weapons and grenades";
-      case RLRewardCategory.Chrome: return "Cyberware";
-      case RLRewardCategory.Daemons: return "Quickhacks";
-      case RLRewardCategory.Boons: return "Run bonuses";
-      case RLRewardCategory.Training: return "Perks";
-      case RLRewardCategory.Iconic: return "Iconic weapons";
-      case RLRewardCategory.Workshop: return "Upgrade your gear";
+      case RLRewardCategory.Armory: return "Fresh iron and frags.";
+      case RLRewardCategory.Chrome: return "New chrome, straight off the table.";
+      case RLRewardCategory.Daemons: return "Quickhacks. Fry their optics.";
+      case RLRewardCategory.Boons: return "Someone powerful backs you.";
+      case RLRewardCategory.Training: return "Perks. Sharpen what works.";
+      case RLRewardCategory.Iconic: return "One-of-a-kind iron.";
+      case RLRewardCategory.Workshop: return "Tune up what you're packing.";
       case RLRewardCategory.Event: return "No fight. Something else.";
-      case RLRewardCategory.Bounty: return "A cyberpsycho. NCPD pays well.";
-      case RLRewardCategory.System: return "Your Operating System and Overdrive";
+      case RLRewardCategory.Bounty: return "Cyberpsycho loose. NCPD pays.";
+      case RLRewardCategory.System: return "Your operating system. And Overdrive.";
     }
     return "";
   }

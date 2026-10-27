@@ -150,34 +150,34 @@ public abstract class RLWeapons {
     }
     let text: String;
     switch item.ItemType().Type() {
-      case gamedataItemType.Wea_Handgun: text = "Fast, accurate shots. Pays off on headshots."; break;
-      case gamedataItemType.Wea_Revolver: text = "Slow, heavy shots. Every round counts."; break;
-      case gamedataItemType.Wea_AssaultRifle: text = "Steady automatic fire at any range."; break;
-      case gamedataItemType.Wea_SubmachineGun: text = "A hose of bullets. Best up close and moving."; break;
-      case gamedataItemType.Wea_Shotgun: text = "Devastating up close, useless far away."; break;
-      case gamedataItemType.Wea_ShotgunDual: text = "Two barrels, one enormous blast."; break;
-      case gamedataItemType.Wea_LightMachineGun: text = "Huge magazine. Plant your feet and shred."; break;
-      case gamedataItemType.Wea_PrecisionRifle: text = "Semi-auto marksman fire. Rewards aim."; break;
-      case gamedataItemType.Wea_SniperRifle: text = "One shot, one kill, from far away."; break;
+      case gamedataItemType.Wea_Handgun: text = "Quick and precise. Headshots pay."; break;
+      case gamedataItemType.Wea_Revolver: text = "Slow and heavy. Make every round count."; break;
+      case gamedataItemType.Wea_AssaultRifle: text = "Steady auto fire at any range."; break;
+      case gamedataItemType.Wea_SubmachineGun: text = "Bullet hose. Stay close, keep moving."; break;
+      case gamedataItemType.Wea_Shotgun: text = "Point blank or don't bother."; break;
+      case gamedataItemType.Wea_ShotgunDual: text = "Two barrels. One big problem."; break;
+      case gamedataItemType.Wea_LightMachineGun: text = "Big mag. Plant your feet and shred."; break;
+      case gamedataItemType.Wea_PrecisionRifle: text = "Semi-auto. Rewards a steady hand."; break;
+      case gamedataItemType.Wea_SniperRifle: text = "One shot, one kill. From way out."; break;
       case gamedataItemType.Wea_Katana:
       case gamedataItemType.Wea_Sword:
-      case gamedataItemType.Wea_LongBlade: text = "Fast slashes, deflect bullets, finishers."; break;
+      case gamedataItemType.Wea_LongBlade: text = "Fast cuts. Deflect bullets. Finishers."; break;
       case gamedataItemType.Wea_Knife:
       case gamedataItemType.Wea_ShortBlade: text = "Quick stabs, or throw it."; break;
       case gamedataItemType.Wea_Axe: text = "Heavy chops, or throw it."; break;
       case gamedataItemType.Wea_Machete:
-      case gamedataItemType.Wea_Chainsword: text = "Wide, bloody swings."; break;
+      case gamedataItemType.Wea_Chainsword: text = "Wide, messy swings."; break;
       case gamedataItemType.Wea_Hammer:
-      case gamedataItemType.Wea_TwoHandedClub: text = "Slow, crushing blows that send bodies flying."; break;
+      case gamedataItemType.Wea_TwoHandedClub: text = "Slow, crushing. Sends bodies flying."; break;
       case gamedataItemType.Wea_OneHandedClub: text = "Quick, blunt beatings."; break;
       default: text = "";
     }
     let weapon = item as WeaponItem_Record;
     if IsDefined(weapon) && IsDefined(weapon.Evolution()) {
       switch weapon.Evolution().Type() {
-        case gamedataWeaponEvolution.Smart: text += " Smart: bullets home in."; break;
-        case gamedataWeaponEvolution.Tech: text += " Tech: charge shots through cover."; break;
-        case gamedataWeaponEvolution.Power: text += " Power: ricochets."; break;
+        case gamedataWeaponEvolution.Smart: text += " Smart: rounds home in."; break;
+        case gamedataWeaponEvolution.Tech: text += " Tech: charge it, shoot through walls."; break;
+        case gamedataWeaponEvolution.Power: text += " Power: rounds ricochet."; break;
       }
     }
     return text;

@@ -48,7 +48,7 @@ git log --reverse --format='%H %s' | while read -r sha subject; do
   (
     cd "$work/tree"
     files=()
-    for f in README.md LICENSE TESTING.md DEVELOPER_NOTES.md CHANGELOG.md r6 archive source tools; do
+    for f in README.md LICENSE TESTING.md DEVELOPER_NOTES.md CHANGELOG.md docs r6 archive source tools; do
       if [ -e "$f" ]; then files+=("$f"); fi
     done
     zip -qr "$work/NightCityRoguelite-$tag.zip" "${files[@]}" -x '*__pycache__*'

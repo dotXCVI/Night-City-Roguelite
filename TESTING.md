@@ -51,21 +51,24 @@ entry at the top.
 1. Main menu -> **ROGUELITE**. Pick a body type, make your V, and confirm.
 2. The screen stays black for up to about 45 seconds while the mod sets things
    up. That's normal, so don't press anything. You'll fade in at V's apartment.
-3. Press **F7** (or use V's computer) to open the terminal. Pick a kit and press
+3. A guide pops up the first time. Read it - it's six pictures, not homework.
+4. Walk into the **armory** (the weapon room at the back of the apartment) and
+   press **F7** to pick your kit. Locked kits are bought there with Cred.
+5. Use **V's computer** (or press **F7** anywhere else at home) and hit
    **START RUN**. You can save at the apartment between runs; saving is locked
    during a run.
-4. In a run:
-   - Clear every wave in the arena.
-   - Pick a reward (each pick also gives +1 level).
-   - Pick your next fight. Each door shows the reward you'll get, how hard the
-     fight is, and who you'll face.
+6. In a run:
+   - Take a gig, then clear every wave in the arena.
+   - Pick a reward, then a level-up.
+   - Pick your next fight. Each door shows the place, what it pays, how hard
+     it is, and who's waiting.
    - **F7** reopens any screen you closed.
-5. Before each boss, the **Fixer** sells upgrades for the eddies you've earned.
+7. Before each boss, the **Fixer** sells upgrades for the eddies you've earned.
    - Want to try a boss or a later act without playing up to it? Use the
-     **FLOOR** card to pick where to start and press **TEST RUN**. Test runs
-     pay no Cred and don't count in your stats.
-6. When you die, you wake up back home. You keep the **Cred** you earned and
-   spend it at the terminal on new kits and unlocks.
+     **FLOOR** card on the terminal to pick where to start and press
+     **TEST RUN**. Test runs pay no Cred and don't count in your stats.
+8. When you die, you wake up back home. You keep the **Cred** you earned and
+   spend it on kits (armory) and upgrades (terminal).
 
 Your Cred and unlocks are stored outside your save files, so they carry over to
 new roguelite characters on the same PC.
@@ -101,8 +104,24 @@ The five framework mods are safe to keep, since lots of other mods use them.
 
 ## Things to keep an eye on in this build
 
-This build is a big one. Tell me how these feel:
+Big content patch plus a polish pass. Tell me how these feel:
 
+**Home**
+- Did the guide show up the first time? Did the pictures load?
+- Can you get into the armory? Does the HUD say ARMORY when you're in there,
+  and does F7 open the kit screen? If the room has a stash on the wall, does
+  it say "Gear" and open the same screen?
+- Does the terminal still open from the computer and from F7 elsewhere?
+
+**Menus**
+- Door, reward, kit and event cards now have pictures. Do they load, and do
+  they look right (not stretched, not blank)?
+- Hovering a card should lift it and light the frame - no color wash behind
+  the text. Easy to read now?
+- Anything that reads wrong, sounds off or is just too long? Screenshot it.
+- Does every menu fit on your screen? Tell me your resolution if one doesn't.
+
+**Builds**
 - **Level-ups:** after every reward there's a LEVEL UP screen. Too many
   screens, or does it feel good?
 - **Weapon cards:** do they show a DPS line ("DPS 312 +38% vs ...")? Do new
@@ -118,8 +137,8 @@ This build is a big one. Tell me how these feel:
 - **Overall:** did your build come together by the Act 2 boss? Was Act 3
   harder in a good way?
 
+**The basics**
 - Does dying play out properly: V goes down, the screen fades, and you come to
   at home?
 - Do the fades between arenas hide all the loading pop-in?
 - Did any story phone call (for example from Judy) get through during a run?
-- Does every menu fit on your screen? Tell me your resolution if one doesn't.

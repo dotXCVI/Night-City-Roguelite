@@ -70,11 +70,11 @@ public abstract class RLLevelUp {
   // What an attribute point does in 2.x, in a few words.
   public static func AttributeText(stat: gamedataStatType) -> String {
     switch stat {
-      case gamedataStatType.Strength: return "Health, stamina and melee damage. Shotguns, LMGs, blunt weapons.";
-      case gamedataStatType.Reflexes: return "Crit chance and mobility. Rifles, SMGs, blades.";
-      case gamedataStatType.TechnicalAbility: return "Armor and cyberware capacity. Tech weapons, explosives, chrome.";
-      case gamedataStatType.Intelligence: return "RAM and quickhack damage. Netrunning, smart weapons, monowire.";
-      case gamedataStatType.Cool: return "Crit damage and stealth. Pistols, precision rifles, throwing.";
+      case gamedataStatType.Strength: return "Health, stamina, melee. Shotguns, LMGs, blunt weapons.";
+      case gamedataStatType.Reflexes: return "Crit chance, mobility. Rifles, SMGs, blades.";
+      case gamedataStatType.TechnicalAbility: return "Armor, chrome capacity. Tech weapons, explosives.";
+      case gamedataStatType.Intelligence: return "RAM, quickhack damage. Netrunning, smart guns, monowire.";
+      case gamedataStatType.Cool: return "Crit damage, stealth. Pistols, precision rifles, throwing.";
     }
     return "";
   }
@@ -108,7 +108,7 @@ public abstract class RLLevelUp {
     offer.stat = stat;
     offer.title = RLLevelUp.AttributeName(stat) + " +1";
     offer.subtitle = s"ATTRIBUTE - \(value) > \(value + 1)";
-    offer.description = RLLevelUp.AttributeText(stat) + (value + 1 == 15 ? " Signature perks open at 15." : "");
+    offer.description = RLLevelUp.AttributeText(stat) + (value + 1 == 15 ? " Hits 15: signature perks open up." : "");
     offer.step = 4;
     return offer;
   }

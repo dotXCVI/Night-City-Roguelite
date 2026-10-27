@@ -7,6 +7,16 @@ release on GitHub with its ZIP attached.
 
 A big content patch: runs that build. Not released yet and untested in game.
 
+**Home and menus**
+
+- **The armory:** kits are picked in the weapon room at the back of the apartment - walk in and press F7, or use its stash. Locked kits are bought there.
+- **A guide** the first time you come home: six pictures covering the apartment, the terminal, the armory, the run, patrons and flatlining. HOW IT WORKS on the terminal brings it back.
+- **Pictures on the cards,** from the game's own codex: door cards show the arena with the reward as a badge, boon cards the patron's crew, gig cards the fixer, kit cards the weapon. Events open with whoever you're dealing with, and Misty deals real tarot cards.
+- **Hover is an animation now:** the card lifts and its frame lights up. No more colour fill behind the text.
+- **The terminal** is laid out around START RUN and your kit, with assist, test runs and the guide beside them.
+- **Text pass** across cards, doors and notifications.
+- **README** rewritten; the full reference moved to docs/MECHANICS.md.
+
 **Builds and choices**
 
 - **A level-up after every floor:** after the door's reward, pick one of three small upgrades - an attribute, a perk from a tree you're in, or a weapon mod, weapon tune-up, boon upgrade or capacity. Twice the picks per run; the level comes with it.

@@ -35,8 +35,8 @@ built only from the game's own assets and systems (no new art, no new models).
 - Code must read like it was written by a very talented human engineer:
   clean, consistent, industry-standard, well-commented (comments explain *why*).
 - Versioning: alpha builds are **v0.0.X**. Bump X for every build you hand over
-  (next is v0.0.18). Update the README's title/status line and keep a short
-  changelog entry for each version.
+  (next is v0.0.18). The README is a product page: no version or status line
+  in it - versions live in CHANGELOG.md.
 - Deliver: a ZIP of the full mod folder (README.md, r6/, archive/, source/),
   plus a plain summary of what changed and what is least certain. Every
   version also gets a CHANGELOG.md entry and a GitHub release (section 12).
@@ -344,7 +344,8 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 1. Ask for the latest log files and their notes after each test.
 2. Read the files you'll touch, plus their header comments, before writing.
 3. Make focused changes that match the existing style; keep comments current.
-4. Update README.md (and this file's section 10) with what changed.
+4. Update docs/MECHANICS.md (the full reference), this file's section 10, and
+   README.md only when a headline feature changes.
 5. Hand back a v0.0.X ZIP and a short, plain summary: what changed, what's
    least certain, and anything they should test.
 
@@ -364,8 +365,7 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 - Testers use the permanent link
   https://github.com/dotXCVI/night-city-roguelite/releases/latest/download/NightCityRoguelite.zip
   which always serves the newest release.
-- To publish a version: bump README.md's title/status, write the changelog
-  entry, then `tools/release.sh v0.0.16 "Short title" notes.md` (it adds the
+- To publish a version: write the changelog entry, then `tools/release.sh v0.0.16 "Short title" notes.md` (it adds the
   entry to CHANGELOG.md, commits as `v0.0.16: Short title` and pushes).
   Non-version commits (docs, tooling) must NOT start with `vX.Y.Z:`.
 - Without a shell: on github.com, edit/upload the changed files, add the

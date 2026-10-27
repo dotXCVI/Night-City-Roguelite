@@ -12,6 +12,11 @@
 //                 ApartmentHub.reds stays on as a safety net.
 //   Desk computer - its only prompt becomes "Roguelite Terminal" and using it
 //                 opens the terminal (F7 still works anywhere at home).
+//   Armory      - the weapon room at the back. Any stash in it becomes "Gear"
+//                 and opens the kit picker (UI/ArmoryPopup.reds); F7 does the
+//                 same while V stands in the room or its doorway. During a run
+//                 the stash stays shut (stashing gear between runs would carry
+//                 it over).
 //
 // Both are identified by their world node IDs from the 2.5 sector data
 // (exterior_-22_19_1_0.streamingsector), with their positions as a fallback.
@@ -25,6 +30,14 @@ public abstract class RLHomeDevices {
   public static func ComputerID() -> EntityID = EntityID.FromHash(17553053729736241346ul)
   public static func ComputerPosition() -> Vector4 = Vector4(-1386.929, 1273.537, 124.4035, 1.0)
   public static func TerminalInteraction() -> TweakDBID = t"NCRoguelite.TerminalInteraction"
+  public static func ArmoryInteraction() -> TweakDBID = t"NCRoguelite.ArmoryInteraction"
+  // The weapon room and its doorway (the weapon displays line its walls).
+  public static func ArmoryMin() -> Vector4 = Vector4(-1384.4, 1261.7, 121.8, 1.0)
+  public static func ArmoryMax() -> Vector4 = Vector4(-1379.2, 1267.4, 126.8, 1.0)
+
+  public static func InArmory(position: Vector4) -> Bool {
+    return RLApartmentHub.InBox(position, RLHomeDevices.ArmoryMin(), RLHomeDevices.ArmoryMax());
+  }
 
   // --- Front door ------------------------------------------------------------------------
 
@@ -108,6 +121,25 @@ public abstract class RLHomeDevices {
     let system = RogueliteSystem.Get(game);
     if IsDefined(system) {
       system.OnTerminalKey();
+    }
+  }
+
+  // --- Armory stash ------------------------------------------------------------------------
+
+  public static func IsArmoryStash(ps: ref<ScriptableDeviceComponentPS>) -> Bool {
+    let game = ps.GetGameInstance();
+    let system = RogueliteSystem.Get(game);
+    if !IsDefined(system) || !system.IsHomeTerminalActive() {
+      return false;
+    }
+    let entity = GameInstance.FindEntityByID(game, PersistentID.ExtractEntityID(ps.GetID())) as GameObject;
+    return IsDefined(entity) && RLHomeDevices.InArmory(entity.GetWorldPosition());
+  }
+
+  public static func UseStash(game: GameInstance) {
+    let system = RogueliteSystem.Get(game);
+    if IsDefined(system) {
+      system.OnArmoryUsed();
     }
   }
 }
@@ -229,6 +261,29 @@ public func GetActions(out actions: array<ref<DeviceAction>>, context: GetAction
 public func OnToggleZoomInteraction(evt: ref<ToggleZoomInteraction>) -> EntityNotificationType {
   if RLHomeDevices.IsHubComputer(this) {
     RLHomeDevices.UseComputer(this.GetGameInstance());
+    return EntityNotificationType.DoNotNotifyEntity;
+  }
+  return wrappedMethod(evt);
+}
+
+// The armory's stash opens the kit picker instead.
+@wrapMethod(StashControllerPS)
+public func GetActions(out outActions: array<ref<DeviceAction>>, context: GetActionsContext) -> Bool {
+  if Equals(context.requestType, gamedeviceRequestType.Direct) && RLHomeDevices.IsArmoryStash(this)
+    && IsDefined(TweakDBInterface.GetInteractionBaseRecord(RLHomeDevices.ArmoryInteraction())) {
+    ArrayClear(outActions);
+    let action = this.ActionOpenStash();
+    action.OverrideInteractionRecord(RLHomeDevices.ArmoryInteraction(), RLHomeDevices.ArmoryInteraction());
+    ArrayPush(outActions, action);
+    return true;
+  }
+  return wrappedMethod(outActions, context);
+}
+
+@wrapMethod(StashControllerPS)
+private final func OnOpenStash(evt: ref<OpenStash>) -> EntityNotificationType {
+  if RLHomeDevices.IsArmoryStash(this) {
+    RLHomeDevices.UseStash(this.GetGameInstance());
     return EntityNotificationType.DoNotNotifyEntity;
   }
   return wrappedMethod(evt);

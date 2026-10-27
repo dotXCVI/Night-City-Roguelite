@@ -28,16 +28,16 @@ public abstract class RLMeta {
     ArrayPush(list, RLMeta.Def(n"kit.Demolitions", "Kit: Demolitions", "SMG, frag grenades, Glutton for War.", 300, n""));
     ArrayPush(list, RLMeta.Def(n"kit.Juggernaut", "Kit: Juggernaut", "Light machine gun, pistol, Painkiller.", 350, n""));
     ArrayPush(list, RLMeta.Def(n"kit.Wireman", "Kit: Wireman", "Monowire, cyberdeck, a quickhack, pistol, Siphon.", 300, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts I", "+1 free reroll every act.", 200, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Reroll2", "Fixer Contacts II", "+1 more free reroll every act.", 450, n"perk.Reroll"));
-    ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Reward screens show 4 options.", 400, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.FourthDoor", "Street Map", "Choose between 4 doors instead of 3.", 350, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.StarterPick", "Quartermaster", "Every run opens with an Armory pick.", 300, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.StreetSmart", "Street Smart", "The Fixer charges 20% less.", 200, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts I", "Know a guy. +1 free reroll every act.", 200, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.Reroll2", "Fixer Contacts II", "Know a better guy. Another free reroll every act.", 450, n"perk.Reroll"));
+    ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Four cards on every reward screen.", 400, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.FourthDoor", "Street Map", "Four doors to pick from, not three.", 350, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.StarterPick", "Quartermaster", "Every run opens with a free gun pick.", 300, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.StreetSmart", "Street Smart", "The Fixer knocks 20% off.", 200, n""));
     ArrayPush(list, RLMeta.Def(n"perk.MedKit", "Med Kit", "Start every run with an Uncommon MaxDoc.", 150, n""));
     ArrayPush(list, RLMeta.Def(n"perk.HeadStart", "Head Start", "Start every run at level 3.", 300, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Vitality1", "Vitality I", "Start every run with Reinforced Frame.", 120, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Vitality2", "Vitality II", "A second stack of Reinforced Frame.", 240, n"perk.Vitality1"));
+    ArrayPush(list, RLMeta.Def(n"perk.Vitality2", "Vitality II", "Reinforced Frame, twice over.", 240, n"perk.Vitality1"));
     ArrayPush(list, RLMeta.Def(n"perk.Attribute1", "Edge I", "+1 to your kit's main attribute.", 100, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Attribute2", "Edge II", "Another +1 to it.", 200, n"perk.Attribute1"));
     ArrayPush(list, RLMeta.Def(n"perk.Attribute3", "Edge III", "Another +1 to it.", 350, n"perk.Attribute2"));
@@ -124,6 +124,22 @@ public abstract class RLMeta {
   }
 
   public static func KitName(kit: CName) -> String = NameToString(kit)
+
+  // One line of attitude above the loadout.
+  public static func KitTagline(kit: CName) -> String {
+    switch kit {
+      case n"Solo": return "Point. Shoot. Repeat.";
+      case n"Blade": return "Get close. Stay close.";
+      case n"Netrunner": return "Fry 'em from across the room.";
+      case n"Marksman": return "Pick your shots.";
+      case n"Brawler": return "Fists first. Questions never.";
+      case n"Gunslinger": return "Two guns, no waiting.";
+      case n"Demolitions": return "Everything's a fuse.";
+      case n"Juggernaut": return "Walk it in. Don't stop.";
+      case n"Wireman": return "Whip, hack, repeat.";
+    }
+    return "";
+  }
 
   public static func KitDescription(kit: CName) -> String {
     switch kit {

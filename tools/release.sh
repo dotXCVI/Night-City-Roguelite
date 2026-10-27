@@ -18,7 +18,7 @@
 # without a shell, a commit made on github.com with that message (and the
 # CHANGELOG.md entry) publishes the release the same way.
 #
-# Bump the version in README.md (title and status line) before running it.
+# Write the version's CHANGELOG.md notes before running it.
 # -----------------------------------------------------------------------------
 set -euo pipefail
 

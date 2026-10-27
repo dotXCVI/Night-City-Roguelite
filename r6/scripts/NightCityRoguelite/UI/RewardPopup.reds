@@ -2,8 +2,8 @@
 // Night City Roguelite - reward popup
 // -----------------------------------------------------------------------------
 // The cleared fight's offers as cards (UI/Card.reds), centred, with the item's
-// own icon (or the boon's buff icon, or the perk's tree icon) and a bar in the
-// item's quality colour. Weapon cards add their DPS against V's best weapon;
+// own icon (the perk's tree icon; the patron's or fixer's picture for boons
+// and gigs) and a bar in the item's quality colour. Weapon cards add their DPS against V's best weapon;
 // every card names the styles it feeds (gold when V already has a rank in
 // one). Below them: reroll (free while charges last, then eddies), banish
 // (one per act: click it, then a card) and, on a door's reward, skip for
@@ -50,7 +50,7 @@ public class RLRewardPopup extends InGamePopup {
 
   protected cb func OnCreate() {
     super.OnCreate();
-    this.m_container.SetSize(Vector2(2200.0, 1000.0));
+    this.m_container.SetSize(Vector2(2200.0, 1150.0));
 
     let header = InGamePopupHeader.Create();
     header.SetTitle(this.m_title);
@@ -148,7 +148,7 @@ public class RLRewardPopup extends InGamePopup {
 
   private func BuildCard(parent: ref<inkCompoundWidget>, offer: ref<RLOffer>, index: Int32, width: Float) {
     let accent = Equals(offer.kind, RLOfferKind.Boon) && IsNameValid(offer.patron) ? RLPatrons.Accent(offer.patron) : RLRewardPopup.KindAccent(offer.kind);
-    let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 620.0, accent);
+    let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 700.0, accent);
     RLRewardPopup.SetOfferIcon(card, offer, width);
     if RLRewardPopup.HasQuality(offer.kind) {
       card.SetQuality(offer.step);
@@ -214,10 +214,15 @@ public class RLRewardPopup extends InGamePopup {
         break;
       case RLOfferKind.Boon:
       case RLOfferKind.BoonUpgrade:
-        if card.SetRecordIcon(RLIcons.BoonIcon(offer.boon), 150.0, 150.0) {
-          return;
-        }
-        RLIcons.SetPatronIcon(card, offer.patron, 120.0);
+        // The patron's people, with their logo on it.
+        card.SetBanner(RLArts.Patron(offer.patron));
+        let patron = RLPatrons.Get(offer.patron);
+        card.SetBadge(IsDefined(patron) && patron.isLogo ? RLIcons.LogoAtlas() : RLIcons.HubAtlas(), IsDefined(patron) ? patron.iconPart : n"ico_tarot");
+        return;
+      case RLOfferKind.Gig:
+        // The fixer offering it.
+        card.SetBanner(RLArts.Fixer(offer.amount));
+        card.SetBadge(RLIcons.HubAtlas(), n"ico_journal");
         return;
       case RLOfferKind.Perk:
         if card.SetRecordIcon(RLPerkCatalog.Icon(offer.perk), 150.0, 150.0) {

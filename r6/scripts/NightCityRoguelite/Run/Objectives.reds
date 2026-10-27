@@ -49,8 +49,8 @@ public abstract class RLObjectives {
 
   public static func Description(kind: RLObjectiveKind) -> String {
     switch kind {
-      case RLObjectiveKind.Survive: return "Hold out against endless waves";
-      case RLObjectiveKind.Uplink: return "Stay in the zone until the upload completes";
+      case RLObjectiveKind.Survive: return "Hold out. They keep coming.";
+      case RLObjectiveKind.Uplink: return "Stay in the zone till the upload's done.";
       case RLObjectiveKind.Sabotage: return "Plant charges at three spots";
     }
     return "";

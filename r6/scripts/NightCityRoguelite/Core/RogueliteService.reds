@@ -21,6 +21,8 @@ public class RogueliteService extends ScriptableService {
   // run lost while it is on.
   private persistent let m_assistOn: Bool;
   private persistent let m_assistLevel: Int32;
+  // The how-it-works guide has been shown (UI/GuidePopup.reds).
+  private persistent let m_guideSeen: Bool;
 
   // Lifetime stats
   private persistent let m_runsStarted: Int32;
@@ -240,6 +242,12 @@ public class RogueliteService extends ScriptableService {
   // --- Assist mode ------------------------------------------------------------------
 
   public func IsAssistOn() -> Bool = this.m_assistOn
+
+  public func HasSeenGuide() -> Bool = this.m_guideSeen
+
+  public func MarkGuideSeen() {
+    this.m_guideSeen = true;
+  }
 
   public func SetAssist(on: Bool) {
     this.m_assistOn = on;

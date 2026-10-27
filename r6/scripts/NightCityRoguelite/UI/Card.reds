@@ -7,6 +7,7 @@
 // from TweakDB) so it reads like the game's menus:
 //
 //   +--------------------------------+
+//   | [banner art]           (opt.)  |
 //   | ====  accent bar               |
 //   | [icon]                         |
 //   | KICKER                  pips   |
@@ -16,8 +17,9 @@
 //   | FOOTER                         |
 //   +--------------------------------+
 //
-// Hover brightens the frame and fills the card with its accent colour; a
-// selected card keeps a thick frame; disabled cards are dimmed.
+// Hover lifts the card a little and lights its frame and art in the accent
+// colour - the text never sits on a tint, so it reads the same either way.
+// A selected card keeps a thick frame; disabled cards are dimmed.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -28,11 +30,18 @@ public class RLCard extends CustomButton {
   protected let m_height: Float;
   protected let m_accent: CName;
   protected let m_bg: wref<inkImage>;
-  protected let m_fill: wref<inkImage>;
   protected let m_frame: wref<inkImage>;
   protected let m_hoverFrame: wref<inkImage>;
   protected let m_selectedFrame: wref<inkImage>;
   protected let m_bar: wref<inkRectangle>;
+  protected let m_bannerBox: wref<inkCanvas>;
+  protected let m_banner: wref<inkImage>;
+  protected let m_badge: wref<inkCanvas>;
+  protected let m_badgeIcon: wref<inkImage>;
+  protected let m_bannerHeight: Float;
+  protected let m_compact: Bool;
+  // The card is (being) lifted by a hover.
+  protected let m_lifted: Bool;
   protected let m_body: wref<inkVerticalPanel>;
   protected let m_iconBox: wref<inkCanvas>;
   protected let m_icon: wref<inkImage>;
@@ -43,8 +52,11 @@ public class RLCard extends CustomButton {
   protected let m_disabledAnimDef: ref<inkAnimDef>;
   protected let m_disabledAnimProxy: ref<inkAnimProxy>;
   protected let m_hoverAnimDef: ref<inkAnimDef>;
-  protected let m_hoverFillProxy: ref<inkAnimProxy>;
+  protected let m_liftAnimDef: ref<inkAnimDef>;
+  protected let m_bannerAnimDef: ref<inkAnimDef>;
   protected let m_hoverFrameProxy: ref<inkAnimProxy>;
+  protected let m_liftProxy: ref<inkAnimProxy>;
+  protected let m_bannerProxy: ref<inkAnimProxy>;
 
   public static func Create(name: CName, width: Float, height: Float, accent: CName) -> ref<RLCard> {
     let card = new RLCard();
@@ -63,14 +75,51 @@ public class RLCard extends CustomButton {
     root.SetName(n"card");
     root.SetSize(Vector2(this.m_width, this.m_height));
     root.SetInteractive(true);
+    root.SetRenderTransformPivot(Vector2(0.5, 0.5));
 
     let bg = RLCard.Shape(n"cell_bg", n"MainColors.Fullscreen_PrimaryBackgroundDarkest");
-    bg.SetOpacity(0.92);
+    bg.SetOpacity(0.94);
     bg.Reparent(root);
 
-    let fill = RLCard.Shape(n"cell_bg", this.m_accent);
-    fill.SetOpacity(0.0);
-    fill.Reparent(root);
+    // Art across the top of the card (SetBanner), with an icon badge in its
+    // lower left corner (SetBadge).
+    let bannerBox = new inkCanvas();
+    bannerBox.SetName(n"bannerBox");
+    bannerBox.SetAnchor(inkEAnchor.TopLeft);
+    bannerBox.SetMargin(inkMargin(6.0, 6.0, 0.0, 0.0));
+    bannerBox.SetVisible(false);
+    bannerBox.Reparent(root);
+
+    let banner = new inkImage();
+    banner.SetName(n"banner");
+    banner.SetAnchor(inkEAnchor.Fill);
+    banner.SetOpacity(0.78);
+    banner.Reparent(bannerBox);
+
+    let badge = new inkCanvas();
+    badge.SetName(n"badge");
+    badge.SetSize(Vector2(92.0, 92.0));
+    badge.SetAnchor(inkEAnchor.BottomLeft);
+    badge.SetAnchorPoint(Vector2(0.0, 1.0));
+    badge.SetMargin(inkMargin(16.0, 0.0, 0.0, 14.0));
+    badge.SetVisible(false);
+    badge.Reparent(bannerBox);
+
+    let plate = RLCard.Shape(n"cell_bg", n"MainColors.Fullscreen_PrimaryBackgroundDarkest");
+    plate.SetOpacity(0.88);
+    plate.Reparent(badge);
+
+    let plateFrame = RLCard.Shape(n"cell_fg", this.m_accent);
+    plateFrame.SetOpacity(0.6);
+    plateFrame.Reparent(badge);
+
+    let badgeIcon = new inkImage();
+    badgeIcon.SetName(n"badgeIcon");
+    badgeIcon.SetAnchor(inkEAnchor.Fill);
+    badgeIcon.SetMargin(inkMargin(12.0, 12.0, 12.0, 12.0));
+    badgeIcon.SetStyle(RLUI.Style());
+    badgeIcon.BindProperty(n"tintColor", this.m_accent);
+    badgeIcon.Reparent(badge);
 
     let frame = RLCard.Shape(n"cell_fg", n"MainColors.Red");
     frame.SetOpacity(0.45);
@@ -96,7 +145,7 @@ public class RLCard extends CustomButton {
     let body = new inkVerticalPanel();
     body.SetName(n"body");
     body.SetAnchor(inkEAnchor.Fill);
-    body.SetMargin(inkMargin(28.0, 34.0, 28.0, 64.0));
+    body.SetMargin(inkMargin(28.0, 34.0, 28.0, 24.0));
     body.SetChildMargin(inkMargin(0.0, 4.0, 0.0, 4.0));
     body.Reparent(root);
 
@@ -154,7 +203,10 @@ public class RLCard extends CustomButton {
     this.m_root = root;
     this.m_label = title;
     this.m_bg = bg;
-    this.m_fill = fill;
+    this.m_bannerBox = bannerBox;
+    this.m_banner = banner;
+    this.m_badge = badge;
+    this.m_badgeIcon = badgeIcon;
     this.m_frame = frame;
     this.m_hoverFrame = hoverFrame;
     this.m_selectedFrame = selectedFrame;
@@ -183,6 +235,31 @@ public class RLCard extends CustomButton {
     hover.SetDuration(this.m_useAnimations ? 0.15 : 0.0001);
     this.m_hoverAnimDef = new inkAnimDef();
     this.m_hoverAnimDef.AddInterpolator(hover);
+
+    // The card rises a few pixels and grows a hair.
+    let lift = new inkAnimTranslation();
+    lift.SetStartTranslation(Vector2(0.0, 0.0));
+    lift.SetEndTranslation(Vector2(0.0, -10.0));
+    lift.SetDuration(this.m_useAnimations ? 0.16 : 0.0001);
+    lift.SetMode(inkanimInterpolationMode.EasyOut);
+    lift.SetType(inkanimInterpolationType.Quadratic);
+    let grow = new inkAnimScale();
+    grow.SetStartScale(Vector2(1.0, 1.0));
+    grow.SetEndScale(Vector2(1.025, 1.025));
+    grow.SetDuration(this.m_useAnimations ? 0.16 : 0.0001);
+    grow.SetMode(inkanimInterpolationMode.EasyOut);
+    grow.SetType(inkanimInterpolationType.Quadratic);
+    this.m_liftAnimDef = new inkAnimDef();
+    this.m_liftAnimDef.AddInterpolator(lift);
+    this.m_liftAnimDef.AddInterpolator(grow);
+
+    // The art comes up to full brightness.
+    let light = new inkAnimTransparency();
+    light.SetStartTransparency(0.78);
+    light.SetEndTransparency(1.0);
+    light.SetDuration(this.m_useAnimations ? 0.16 : 0.0001);
+    this.m_bannerAnimDef = new inkAnimDef();
+    this.m_bannerAnimDef.AddInterpolator(light);
   }
 
   protected func ApplyDisabledState() {
@@ -196,18 +273,35 @@ public class RLCard extends CustomButton {
 
   protected func ApplyHoveredState() {
     let on = this.m_isHovered && !this.m_isDisabled;
+    if Equals(on, this.m_lifted) {
+      return;
+    }
+    this.m_lifted = on;
     let options: inkAnimOptions;
     options.playReversed = !on;
     if IsDefined(this.m_hoverFrameProxy) {
       this.m_hoverFrameProxy.Stop();
     }
     this.m_hoverFrameProxy = this.m_hoverFrame.PlayAnimationWithOptions(this.m_hoverAnimDef, options);
-    // The fill only goes to a faint tint.
-    this.m_fill.SetOpacity(on ? 0.12 : 0.0);
+    if IsDefined(this.m_liftProxy) {
+      this.m_liftProxy.Stop();
+    }
+    this.m_liftProxy = this.m_root.PlayAnimationWithOptions(this.m_liftAnimDef, options);
+    if this.m_bannerHeight > 0.0 {
+      if IsDefined(this.m_bannerProxy) {
+        this.m_bannerProxy.Stop();
+      }
+      this.m_bannerProxy = this.m_banner.PlayAnimationWithOptions(this.m_bannerAnimDef, options);
+    }
   }
 
+  // A press settles the card back down for a moment.
   protected func ApplyPressedState() {
-    this.m_fill.SetOpacity(this.m_isPressed && !this.m_isDisabled ? 0.22 : (this.m_isHovered && !this.m_isDisabled ? 0.12 : 0.0));
+    if this.m_isDisabled {
+      return;
+    }
+    let scale = this.m_isPressed ? 0.99 : (this.m_lifted ? 1.025 : 1.0);
+    this.m_root.SetScale(Vector2(scale, scale));
   }
 
   // --- Content ---------------------------------------------------------------------------
@@ -222,10 +316,44 @@ public class RLCard extends CustomButton {
 
   // For short cards without a footer: tighter padding.
   public func SetCompact() {
-    this.m_body.SetMargin(inkMargin(24.0, 22.0, 24.0, 10.0));
+    this.m_compact = true;
     this.m_body.SetChildMargin(inkMargin(0.0, 1.0, 0.0, 1.0));
-    this.m_bar.SetMargin(inkMargin(24.0, 10.0, 60.0, 0.0));
     this.m_iconBox.SetMargin(inkMargin(0.0, 0.0, 0.0, 4.0));
+    this.Layout();
+  }
+
+  // Codex art across the top of the card, at the art's own 16:9.
+  public func SetBanner(art: RLArt) {
+    if !RLArts.IsValid(art) {
+      return;
+    }
+    let width = this.m_width - 12.0;
+    this.m_bannerHeight = width * RLArts.Ratio();
+    this.m_banner.SetAtlasResource(RLArts.Atlas(art.sheet));
+    this.m_banner.SetTexturePart(art.part);
+    this.m_bannerBox.SetSize(Vector2(width, this.m_bannerHeight));
+    this.m_bannerBox.SetVisible(true);
+    this.Layout();
+  }
+
+  // An icon on a small plate in the banner's corner (the reward type, a
+  // faction logo).
+  public func SetBadge(atlas: ResRef, part: CName) {
+    this.m_badgeIcon.SetAtlasResource(atlas);
+    this.m_badgeIcon.SetTexturePart(part);
+    this.m_badge.SetVisible(true);
+  }
+
+  // Body and accent bar sit under the banner when there is one.
+  private func Layout() {
+    let top = this.m_bannerHeight > 0.0 ? this.m_bannerHeight + 6.0 : 0.0;
+    if this.m_compact {
+      this.m_body.SetMargin(inkMargin(24.0, top + 22.0, 24.0, 10.0));
+      this.m_bar.SetMargin(inkMargin(24.0, top + 10.0, 60.0, 0.0));
+    } else {
+      this.m_body.SetMargin(inkMargin(28.0, top + 34.0, 28.0, 24.0));
+      this.m_bar.SetMargin(inkMargin(24.0, top + 14.0, 60.0, 0.0));
+    }
   }
 
   public func SetTitleSize(size: Int32) {
@@ -293,6 +421,12 @@ public class RLCard extends CustomButton {
       pip.Reparent(this.m_pips);
       i += 1;
     }
+  }
+
+  // Information only: no hover, no clicks.
+  public func SetStatic() {
+    this.m_root.SetInteractive(false);
+    this.m_banner.SetOpacity(1.0);
   }
 
   public func SetSelected(selected: Bool) {

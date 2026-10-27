@@ -30,7 +30,7 @@ public class RLEventPopup extends InGamePopup {
 
   protected cb func OnCreate() {
     super.OnCreate();
-    this.m_container.SetSize(Vector2(2200.0, 1000.0));
+    this.m_container.SetSize(Vector2(2200.0, Equals(this.m_event.id, n"Tarot") ? 1280.0 : 1140.0));
 
     let header = InGamePopupHeader.Create();
     header.SetTitle(this.m_event.title);
@@ -51,9 +51,17 @@ public class RLEventPopup extends InGamePopup {
     column.SetAnchor(inkEAnchor.Fill);
     column.Reparent(this.m_content.GetRootCompoundWidget());
 
-    let flavor = RLUI.Text(this.m_event.flavor, 34, n"MainColors.Blue");
-    flavor.SetHAlign(inkEHorizontalAlign.Center);
-    flavor.Reparent(column);
+    // Who's talking, and what they say.
+    let intro = RLUI.HPanel(0.0);
+    intro.SetHAlign(inkEHorizontalAlign.Center);
+    intro.SetChildMargin(inkMargin(0.0, 0.0, 30.0, 0.0));
+    intro.Reparent(column);
+    let portrait = RLArts.Image(RLArts.Event(this.m_event.id), 320.0);
+    portrait.SetVAlign(inkEVerticalAlign.Center);
+    portrait.Reparent(intro);
+    let flavor = RLUI.Text("\"" + this.m_event.flavor + "\"", 38, n"MainColors.Blue");
+    flavor.SetVAlign(inkEVerticalAlign.Center);
+    flavor.Reparent(intro);
 
     let cards = RLUI.HPanel(18.0);
     cards.SetHAlign(inkEHorizontalAlign.Center);
@@ -71,8 +79,12 @@ public class RLEventPopup extends InGamePopup {
 
   private func BuildCard(parent: ref<inkCompoundWidget>, choice: ref<RLEventChoice>, index: Int32, width: Float) {
     let leave = Equals(choice.id, n"Leave");
-    let card = RLCard.Create(StringToName("choice_" + IntToString(index)), width, leave ? 300.0 : 500.0, choice.accent);
-    if !leave && !this.SetOfferIcon(card, choice, width) {
+    let tarot = Equals(this.m_event.id, n"Tarot");
+    let card = RLCard.Create(StringToName("choice_" + IntToString(index)), width, leave ? 300.0 : (tarot ? 640.0 : 500.0), choice.accent);
+    if tarot && !leave {
+      // Misty's own deck.
+      card.SetRecordIcon(TDBID.Create("UIIcon.TarotCard_" + NameToString(choice.id) + "_BIG"), 190.0, 320.0);
+    } else if !leave && !this.SetOfferIcon(card, choice, width) {
       card.SetAtlasIcon(RLIcons.HubAtlas(), RLEventPopup.EventPart(this.m_event.id), 110.0);
     }
     card.SetKicker(choice.kicker);

@@ -150,6 +150,13 @@ NCRoguelite.TerminalInteraction:
   $base: Interactions.EnterZoomInteraction
   caption: LocKey#NCRoguelite-Interaction-Terminal
   action: Choice1
+
+# The armory's stash opens the kit picker. "Gear" is the game's own string.
+
+NCRoguelite.ArmoryInteraction:
+  $base: Interactions.EnterZoomInteraction
+  caption: LocKey#38734
+  action: Choice1
 """)
 open(os.path.join(OUT, 'terminal.yaml'), 'w').write(''.join(t))
 

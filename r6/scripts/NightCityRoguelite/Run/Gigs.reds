@@ -85,7 +85,7 @@ public abstract class RLGigs {
       offer.amount = style;
       offer.title = RLStyle.Name(style) + " GIG";
       offer.subtitle = "GIG FROM " + RLGigs.Fixer(style);
-      offer.description = s"\(RLGigs.Target(style)) \(RLGigs.KillWords(style)) before the Act 2 boss falls. Pays \(RLGigs.Payout()) eddies and +2 \(RLStyle.Name(style)).";
+      offer.description = s"\(RLGigs.Target(style)) \(RLGigs.KillWords(style)) before the Act 2 boss drops. Pays \(RLGigs.Payout()) eddies, plus +2 \(RLStyle.Name(style)) for the rest of the run.";
       offer.step = 4;
       ArrayPush(offers, offer);
     }
@@ -112,7 +112,7 @@ public abstract class RLGigs {
       run.gigDone = true;
       RLGear.GiveEddies(player, RLGigs.Payout());
       RLStyles.Refresh(player, run, true);
-      RLNotify(player.GetGame(), s"GIG COMPLETE - +\(RLGigs.Payout()) eddies, +2 \(RLStyle.Name(run.gigStyle))", 6.0);
+      RLNotify(player.GetGame(), s"GIG DONE - +\(RLGigs.Payout()) eddies, +2 \(RLStyle.Name(run.gigStyle))", 6.0);
       RLLog("Gig complete.");
     }
   }
@@ -121,7 +121,7 @@ public abstract class RLGigs {
   public static func OnFloorCleared(run: ref<RLRunState>, game: GameInstance) {
     if RLGigs.IsActive(run) && run.Depth() >= RLGigs.Deadline() {
       run.gigFailed = true;
-      RLNotify(game, "GIG FAILED - the client went elsewhere.", 5.0);
+      RLNotify(game, "GIG FAILED - client walked.", 5.0);
       RLLog("Gig failed.");
     }
   }

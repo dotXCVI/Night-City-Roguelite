@@ -53,6 +53,9 @@ public class RLApartmentHub extends RLDelayTarget {
 
   public func IsBroken() -> Bool = this.m_broken
 
+  // V lives in the apartment proper this session (not the hallway fallback).
+  public func IsInApartment() -> Bool = this.IsEnabled() && Equals(this.m_mode, RLHomeMode.Apartment)
+
   // --- Session ----------------------------------------------------------------------
 
   public func OnSessionStart() {
@@ -258,6 +261,9 @@ public class RLApartmentHub extends RLDelayTarget {
     }
     if this.IsInside(player) {
       this.m_outsideSeconds = 0.0;
+      if IsDefined(this.m_system) {
+        this.m_system.OnHomeTick(player);
+      }
       return;
     }
     this.m_outsideSeconds += 1.0;

@@ -206,6 +206,21 @@ public class RLWaveSpawner extends RLDelayTarget {
     }
   }
 
+  // Living enemies within `radius` of a spot (Overdrive, style signatures).
+  public func LivingNear(position: Vector4, radius: Float) -> array<ref<ScriptedPuppet>> {
+    let result: array<ref<ScriptedPuppet>>;
+    let entities = GameInstance.GetDynamicEntitySystem();
+    for enemy in this.m_tracked {
+      if !enemy.done {
+        let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
+        if IsDefined(puppet) && !puppet.IsDead() && Vector4.Distance(puppet.GetWorldPosition(), position) <= radius {
+          ArrayPush(result, puppet);
+        }
+      }
+    }
+    return result;
+  }
+
   public func GetAliveCount() -> Int32 {
     let count = 0;
     for enemy in this.m_tracked {

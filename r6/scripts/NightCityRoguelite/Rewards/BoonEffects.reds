@@ -27,6 +27,36 @@ public abstract class RLHitFlag {
   public static func Quickhack() -> Int32 = 32
 
   public static func Has(flags: Int32, flag: Int32) -> Bool = (flags & flag) != 0
+
+  // The bit for a style (Rewards/Styles.reds) above the hit kinds.
+  public static func Style(style: Int32) -> Int32 {
+    let bit = 256;
+    let i = 0;
+    while i < style {
+      bit *= 2;
+      i += 1;
+    }
+    return bit;
+  }
+
+  public static func WithStyles(flags: Int32, styles: array<Int32>) -> Int32 {
+    for style in styles {
+      flags |= RLHitFlag.Style(style);
+    }
+    return flags;
+  }
+
+  public static func Styles(flags: Int32) -> array<Int32> {
+    let styles: array<Int32>;
+    let i = 0;
+    while i < RLStyle.Count() {
+      if RLHitFlag.Has(flags, RLHitFlag.Style(i)) {
+        ArrayPush(styles, i);
+      }
+      i += 1;
+    }
+    return styles;
+  }
 }
 
 public class RLCombatState {
@@ -43,9 +73,28 @@ public class RLCombatState {
   public let lastAttacker: String;
   // Boosted hits logged this arena (the first few, to check boons apply).
   public let loggedHits: Int32;
-  // How each enemy was last hit by V (RLHitFlag bits).
+  // Overdrive (Run/Overdrive.reds) and capacity overclock episodes.
+  public let rampageUntil: Float;
+  public let psychoUntil: Float;
+  public let psychoTimer: Float;
+  public let overdriveFiredAt: Float;
+  // Style signatures and weapon mods (Rewards/Styles.reds, WeaponMods.reds).
+  public let gunslingerShots: Int32;
+  public let demoKills: Int32;
+  public let sigSlowUntil: Float;
+  public let killWeapon: ItemID;
+  private let m_rampTarget: EntityID;
+  private let m_rampCount: Int32;
+  private let m_momentum: Int32;
+  private let m_momentumUntil: Float;
+  private let m_markIDs: array<EntityID>;
+  private let m_markUntil: array<Float>;
+  private let m_markBonus: array<Float>;
+  // How each enemy was last hit by V (RLHitFlag bits), with what and when.
   private let m_hitIDs: array<EntityID>;
   private let m_hitFlags: array<Int32>;
+  private let m_hitWeapons: array<ItemID>;
+  private let m_hitTimes: array<Float>;
   // Enemies V shot recently (Suppressive Fire).
   private let m_suppressedIDs: array<EntityID>;
   private let m_suppressedUntil: array<Float>;
@@ -70,8 +119,23 @@ public class RLCombatState {
     this.berserkUntil = 0.0;
     this.familyUsed = false;
     this.ramTimer = 0.0;
+    this.rampageUntil = 0.0;
+    this.psychoUntil = 0.0;
+    this.psychoTimer = 0.0;
+    this.gunslingerShots = 0;
+    this.demoKills = 0;
+    this.sigSlowUntil = 0.0;
+    this.m_rampTarget = EntityID();
+    this.m_rampCount = 0;
+    this.m_momentum = 0;
+    this.m_momentumUntil = 0.0;
+    ArrayClear(this.m_markIDs);
+    ArrayClear(this.m_markUntil);
+    ArrayClear(this.m_markBonus);
     ArrayClear(this.m_hitIDs);
     ArrayClear(this.m_hitFlags);
+    ArrayClear(this.m_hitWeapons);
+    ArrayClear(this.m_hitTimes);
     ArrayClear(this.m_suppressedIDs);
     ArrayClear(this.m_suppressedUntil);
     ArrayClear(this.m_enemyIDs);
@@ -117,26 +181,92 @@ public class RLCombatState {
     return true;
   }
 
-  public func RecordHit(id: EntityID, flags: Int32) {
+  public func RecordHit(id: EntityID, flags: Int32, weapon: ItemID, now: Float) {
     let i = this.IndexOf(this.m_hitIDs, id);
     if i >= 0 {
       this.m_hitFlags[i] = flags;
+      this.m_hitWeapons[i] = weapon;
+      this.m_hitTimes[i] = now;
       return;
     }
     ArrayPush(this.m_hitIDs, id);
     ArrayPush(this.m_hitFlags, flags);
+    ArrayPush(this.m_hitWeapons, weapon);
+    ArrayPush(this.m_hitTimes, now);
   }
 
-  // How the enemy was last hit (0 if V never hit it); forgets it.
+  public func HasHit(id: EntityID) -> Bool = this.IndexOf(this.m_hitIDs, id) >= 0
+
+  // V hit the enemy within the last `seconds`.
+  public func HitWithin(id: EntityID, now: Float, seconds: Float) -> Bool {
+    let i = this.IndexOf(this.m_hitIDs, id);
+    return i >= 0 && now - this.m_hitTimes[i] <= seconds;
+  }
+
+  // How the enemy was last hit (0 if V never hit it); forgets it. The weapon
+  // of that hit is left in killWeapon.
   public func TakeHitFlags(id: EntityID) -> Int32 {
     let i = this.IndexOf(this.m_hitIDs, id);
     if i < 0 {
+      this.killWeapon = ItemID.None();
       return 0;
     }
     let flags = this.m_hitFlags[i];
+    this.killWeapon = this.m_hitWeapons[i];
     ArrayErase(this.m_hitIDs, i);
     ArrayErase(this.m_hitFlags, i);
+    ArrayErase(this.m_hitWeapons, i);
+    ArrayErase(this.m_hitTimes, i);
     return flags;
+  }
+
+  // Consecutive hits on the same target (Rifles, Sustained Fire).
+  public func UpdateRamp(id: EntityID) {
+    if this.m_rampTarget == id {
+      this.m_rampCount += 1;
+    } else {
+      this.m_rampTarget = id;
+      this.m_rampCount = 0;
+    }
+  }
+
+  public func RampCount(id: EntityID) -> Int32 = this.m_rampTarget == id ? this.m_rampCount : 0
+
+  // Momentum: a stack per hit, lost after 3 s without one; returns the stacks.
+  public func AddMomentum(now: Float) -> Int32 {
+    if now > this.m_momentumUntil {
+      this.m_momentum = 0;
+    }
+    this.m_momentum = Min(8, this.m_momentum + 1);
+    this.m_momentumUntil = now + 3.0;
+    return this.m_momentum;
+  }
+
+  // Marked enemies take extra damage from everything (Tracer, Smart).
+  public func Mark(id: EntityID, until: Float, bonus: Float) {
+    let i = this.IndexOf(this.m_markIDs, id);
+    if i >= 0 {
+      this.m_markUntil[i] = MaxF(this.m_markUntil[i], until);
+      this.m_markBonus[i] = MaxF(this.m_markBonus[i], bonus);
+      return;
+    }
+    ArrayPush(this.m_markIDs, id);
+    ArrayPush(this.m_markUntil, until);
+    ArrayPush(this.m_markBonus, bonus);
+  }
+
+  public func MarkBonus(id: EntityID, now: Float) -> Float {
+    let i = this.IndexOf(this.m_markIDs, id);
+    if i < 0 {
+      return 0.0;
+    }
+    if this.m_markUntil[i] < now {
+      ArrayErase(this.m_markIDs, i);
+      ArrayErase(this.m_markUntil, i);
+      ArrayErase(this.m_markBonus, i);
+      return 0.0;
+    }
+    return this.m_markBonus[i];
   }
 
   public func Suppress(id: EntityID, until: Float) {
@@ -243,15 +373,32 @@ public abstract class RLBoonEffects {
   public static func OnOutgoingHit(run: ref<RLRunState>, combat: ref<RLCombatState>, player: ref<PlayerPuppet>, target: ref<ScriptedPuppet>, hitEvent: ref<gameHitEvent>) -> Float {
     let game = player.GetGame();
     let now = RLBoonEffects.Now(game);
-    let flags = RLBoonEffects.HitFlags(hitEvent);
+    let styles = RLStyles.HitStyles(hitEvent);
+    let flags = RLHitFlag.WithStyles(RLBoonEffects.HitFlags(hitEvent), styles);
     let targetID = target.GetEntityID();
-    // Burn, bleed and poison ticks keep how the enemy was really hit.
-    if NotEquals(hitEvent.attackData.GetAttackType(), gamedataAttackType.Effect) {
-      combat.RecordHit(targetID, flags);
-    }
+    let weapon = hitEvent.attackData.GetWeapon();
+    let weaponID = IsDefined(weapon) ? weapon.GetItemID() : ItemID.None();
     let pools = GameInstance.GetStatPoolsSystem(game);
     let targetHealth = pools.GetStatPoolValue(Cast<StatsObjectID>(targetID), gamedataStatPoolType.Health, true);
     let playerHealth = pools.GetStatPoolValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatPoolType.Health, true);
+    let context = new RLHitContext();
+    context.player = player;
+    context.target = target;
+    context.hitEvent = hitEvent;
+    context.flags = flags;
+    context.now = now;
+    context.distance = Vector4.Distance(player.GetWorldPosition(), target.GetWorldPosition());
+    context.targetHealth = targetHealth;
+    context.firstHit = !combat.HasHit(targetID);
+    context.recentHit = combat.HitWithin(targetID, now, 1.0);
+    context.isBoss = combat.IsBoss(targetID);
+    context.isElite = combat.IsElite(targetID);
+    context.affixes = combat.Affixes(targetID);
+    // Burn, bleed and poison ticks keep how the enemy was really hit.
+    if NotEquals(hitEvent.attackData.GetAttackType(), gamedataAttackType.Effect) {
+      combat.RecordHit(targetID, flags, weaponID, now);
+      combat.UpdateRamp(targetID);
+    }
 
     let factor = 1.0;
     if RLHitFlag.Has(flags, RLHitFlag.Headshot()) {
@@ -298,8 +445,17 @@ public abstract class RLBoonEffects {
     if RLHitFlag.Has(flags, RLHitFlag.Crit()) && targetHealth < 25.0 && RLBoons.Has(run, n"ShogunsEdge") && !combat.IsBoss(targetID) {
       factor *= 10.0;
     }
-    // Elite affixes on the target.
+    // Styles, weapon mods, marks, the weapon's quality against the floor.
+    factor *= 1.0 + RLStyles.DamageBonus(RLStyles.BestRank(run, styles));
+    factor *= RLStyles.OnHit(run, combat, context, styles);
+    factor *= RLWeaponMods.OnHit(run, combat, context);
+    factor *= 1.0 + combat.MarkBonus(targetID, now);
+    factor *= RLWeapons.CurveFactor(run, weapon);
+    // Overdrive and cyberpsychosis episodes.
+    factor *= RLOverdrive.OutgoingFactor(combat, game);
+    // Elite affixes on the target, and the act's gate.
     factor *= RLAffixes.DamageTakenFactor(combat.Affixes(targetID));
+    factor *= RLDifficulty.EnemyToughness(run, context.isBoss);
     if factor != 1.0 && combat.loggedHits < 5 {
       combat.loggedHits += 1;
       RLDebug(s"Hit scaled x\(factor) (hit flags \(flags)).");
@@ -326,6 +482,7 @@ public abstract class RLBoonEffects {
     if RLBoonEffects.IsBerserk(combat, game) {
       factor *= 0.5;
     }
+    factor *= RLOverdrive.IncomingFactor(combat, game);
     return MaxF(0.05, factor);
   }
 
@@ -391,6 +548,14 @@ public abstract class RLBoonEffects {
         RLNotify(game, "CYBERPSYCHOSIS", 3.0);
       }
     }
+
+    // Style signatures, the killing weapon's mods, Overdrive charge, the gig.
+    let styles = RLHitFlag.Styles(hitFlags);
+    RLStyles.OnKill(run, combat, player, body, styles, hitFlags);
+    RLWeaponMods.OnKill(run, player, combat.killWeapon, body);
+    RLOverdrive.RampageHeal(combat, player);
+    RLOverdrive.OnKill(run, combat, game, isBoss, isElite);
+    RLGigs.OnKill(run, player, styles);
   }
 
   // --- Lethal hits -------------------------------------------------------------------------
@@ -423,5 +588,6 @@ public abstract class RLBoonEffects {
         GameInstance.GetStatPoolsSystem(player.GetGame()).RequestChangingStatPoolValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatPoolType.Memory, 1.0, null, false, false);
       }
     }
+    RLOverdrive.OnTick(run, combat, player);
   }
 }

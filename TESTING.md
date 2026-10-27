@@ -101,6 +101,23 @@ The five framework mods are safe to keep, since lots of other mods use them.
 
 ## Things to keep an eye on in this build
 
+This build is a big one. Tell me how these feel:
+
+- **Level-ups:** after every reward there's a LEVEL UP screen. Too many
+  screens, or does it feel good?
+- **Weapon cards:** do they show a DPS line ("DPS 312 +38% vs ...")? Do new
+  weapons feel like upgrades now?
+- **Weapon mods and evolutions:** did a mod change how a gun played? Did you
+  get a weapon to evolve into an iconic, and did it equip properly?
+- **Styles:** do the style lines on cards and the footer make sense? Did you
+  hit a rank III signature?
+- **The Act 1 boss:** pick an Operating System. Fill the Overdrive meter (on
+  the HUD), then activate your OS. Did ZERO HOUR / RAMPAGE / BLACKWALL fire?
+- **Gigs:** take one at the start; does the counter on the HUD go up?
+- **Skip, banish, sell back:** do they work?
+- **Overall:** did your build come together by the Act 2 boss? Was Act 3
+  harder in a good way?
+
 - Does dying play out properly: V goes down, the screen fades, and you come to
   at home?
 - Do the fades between arenas hide all the loading pop-in?

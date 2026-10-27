@@ -3,7 +3,8 @@
 // -----------------------------------------------------------------------------
 // The Fixer's stock as cards (UI/Card.reds). The eddie balance sits on top and
 // every card says what it costs: affordable in gold, out of reach in grey with
-// how much is missing, bought ones marked SOLD. Once nothing else is
+// how much is missing, bought ones marked SOLD; gear V can sell back is in
+// blue with what the Fixer pays. Once nothing else is
 // affordable, LEAVE lights up. Closing (C / ESC) doesn't leave: F7 brings the
 // Fixer back.
 // -----------------------------------------------------------------------------
@@ -56,7 +57,7 @@ public class RLFixerPopup extends InGamePopup {
     }
     let anyAffordable = false;
     for item in stock {
-      if !item.sold && balance >= item.price {
+      if !item.sold && !item.sell && balance >= item.price {
         anyAffordable = true;
       }
     }
@@ -79,7 +80,7 @@ public class RLFixerPopup extends InGamePopup {
     let row: ref<inkHorizontalPanel>;
     let i = 0;
     for item in stock {
-      if i % 3 == 0 {
+      if i % 4 == 0 {
         row = RLUI.HPanel(18.0);
         row.SetHAlign(inkEHorizontalAlign.Center);
         row.Reparent(rows);
@@ -106,12 +107,14 @@ public class RLFixerPopup extends InGamePopup {
   }
 
   private func AddItemCard(parent: ref<inkCompoundWidget>, item: ref<RLFixerItem>, index: Int32, balance: Int32) {
-    let affordable = !item.sold && balance >= item.price;
-    let accent = item.sold ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey");
-    let card = RLCard.Create(StringToName("item_" + IntToString(index)), 600.0, 250.0, accent);
+    let affordable = !item.sold && (item.sell || balance >= item.price);
+    let accent = item.sold ? n"MainColors.Green" : (item.sell ? n"MainColors.Blue" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
+    let card = RLCard.Create(StringToName("item_" + IntToString(index)), 500.0, 250.0, accent);
     card.SetCompact();
     if item.sold {
       card.SetKicker("SOLD");
+    } else if item.sell {
+      card.SetKicker(s"+\(item.price) EDDIES");
     } else if affordable {
       card.SetKicker(s"\(item.price) EDDIES");
     } else {
@@ -124,7 +127,7 @@ public class RLFixerPopup extends InGamePopup {
     if StrLen(description) > 0 {
       card.AddLine(description, n"MainColors.Grey", 22);
     }
-    if !item.contact && IsDefined(item.offer) && item.offer.step > 0 {
+    if !item.contact && !item.sell && IsDefined(item.offer) && item.offer.step > 0 {
       card.SetQuality(item.offer.step);
     }
     card.SetDisabled(!affordable);

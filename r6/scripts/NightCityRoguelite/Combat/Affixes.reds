@@ -181,16 +181,16 @@ public abstract class RLExplosions {
     }
   }
 
-  // Pending blasts are held by the fight's state, so their delay callbacks
-  // (weak references) still find them.
-  public static func Keep(blast: ref<RLDelayedBlast>) {
+  // Pending delay targets (blasts, episode ends) are held by the fight's
+  // state, so their delay callbacks (weak references) still find them.
+  public static func Keep(blast: ref<IScriptable>) {
     let combat = RLExplosions.Combat();
     if IsDefined(combat) {
       combat.Keep(blast);
     }
   }
 
-  public static func Release(blast: ref<RLDelayedBlast>) {
+  public static func Release(blast: ref<IScriptable>) {
     let combat = RLExplosions.Combat();
     if IsDefined(combat) {
       combat.Release(blast);

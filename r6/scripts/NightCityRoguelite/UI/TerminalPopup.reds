@@ -120,6 +120,15 @@ public class RLTerminalPopup extends InGamePopup {
   private func BuildInArena(body: ref<inkCompoundWidget>) {
     RLUI.WrappedText(this.m_summary, 34, n"MainColors.Blue", 1600.0).Reparent(body);
     let run = IsDefined(this.m_system) ? this.m_system.GetRun() : null;
+    let styles = RLStyles.Summary(run, 5);
+    if StrLen(styles) > 0 {
+      RLUI.SectionLabel("STYLES").Reparent(body);
+      RLUI.WrappedText(styles, 28, n"MainColors.Gold", 1600.0).Reparent(body);
+    }
+    if IsDefined(run) && run.overdriveUnlocked {
+      RLUI.SectionLabel("OVERDRIVE").Reparent(body);
+      RLUI.WrappedText(RLOverdrive.Status(run) + " - " + RLOverdrive.Description(run.os), 28, n"MainColors.Blue", 1600.0).Reparent(body);
+    }
     if IsDefined(run) && ArraySize(run.boons) > 0 {
       RLUI.SectionLabel("BOONS").Reparent(body);
       for patron in RLPatrons.All() {
@@ -193,6 +202,9 @@ public class RLTerminalPopup extends InGamePopup {
     if IsDefined(arena) {
       card.AddDivider();
       card.AddLine(arena.name, n"MainColors.Red", 30);
+      if StrLen(arena.terrain) > 0 {
+        card.AddLine(arena.terrain, n"MainColors.Blue", 24);
+      }
       if Equals(door.category, RLRewardCategory.Bounty) {
         card.AddLine("vs a cyberpsycho", n"MainColors.Grey", 26);
       } else if IsDefined(door.faction) {
@@ -268,14 +280,14 @@ public class RLTerminalPopup extends InGamePopup {
     RLUI.StatTile("BEST FLOOR", IntToString(service.GetBestDepth()), n"MainColors.Blue").Reparent(stats);
     RLUI.StatTile("TOTAL KILLS", IntToString(service.GetTotalKills()), n"MainColors.Red").Reparent(stats);
 
-    // Kits (two rows of four): locked kits are bought right here.
+    // Kits (two rows of five): locked kits are bought right here.
     RLUI.SectionLabel("STARTING KIT").Reparent(body);
     let kitRows = RLUI.VPanel(5.0);
     kitRows.Reparent(body);
     let kits: ref<inkHorizontalPanel>;
     let k = 0;
     for kit in RLMeta.Kits() {
-      if k % 4 == 0 {
+      if k % 5 == 0 {
         kits = RLUI.HPanel(10.0);
         kits.Reparent(kitRows);
       }
@@ -285,7 +297,7 @@ public class RLTerminalPopup extends InGamePopup {
       let unlock = RLMeta.Get(StringToName("kit." + NameToString(kit)));
       let affordable = IsDefined(unlock) && RLMeta.CanBuy(service, unlock);
       let accent = selected ? n"MainColors.ActiveYellow" : (available ? n"MainColors.Blue" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
-      let card = RLCard.Create(StringToName("kit_" + NameToString(kit)), 495.0, 196.0, accent);
+      let card = RLCard.Create(StringToName("kit_" + NameToString(kit)), 394.0, 196.0, accent);
       card.SetCompact();
       card.SetAtlasIcon(RLIcons.CommonAtlas(), RLIcons.KitPart(kit), 48.0);
       if selected {

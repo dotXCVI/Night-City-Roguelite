@@ -12,15 +12,22 @@ module NightCityRoguelite
 
 public abstract class RLGear {
   public static func GiveWeapon(player: ref<PlayerPuppet>, recordID: TweakDBID, tier: CName, equip: Bool) -> Bool {
+    return ItemID.IsValid(RLGear.GiveWeaponItem(player, recordID, tier, equip));
+  }
+
+  // Gives a weapon and returns its item ID (ItemID.FromTDBID seeds unique
+  // items afresh on every call, so this is the only handle on the new copy);
+  // an invalid ID when it fails.
+  public static func GiveWeaponItem(player: ref<PlayerPuppet>, recordID: TweakDBID, tier: CName, equip: Bool) -> ItemID {
     if !TDBID.IsValid(recordID) {
-      return false;
+      return ItemID.None();
     }
     let game = player.GetGame();
     let transactionSystem = GameInstance.GetTransactionSystem(game);
     let itemID = ItemID.FromTDBID(recordID);
     if !transactionSystem.GiveItem(player, itemID, 1) {
       RLLog(s"GiveItem failed for weapon \(TDBID.ToStringDEBUG(recordID))");
-      return false;
+      return ItemID.None();
     }
     let system = RogueliteSystem.Get(game);
     let run = IsDefined(system) ? system.GetRun() : null;
@@ -38,7 +45,7 @@ public abstract class RLGear {
       request.blockUpdateWeaponActiveSlots = true;
       EquipmentSystem.GetInstance(player).QueueRequest(request);
     }
-    return true;
+    return itemID;
   }
 
   // Gives one of the item and puts it in its slot (health item, grenade...).
@@ -73,6 +80,35 @@ public abstract class RLGear {
     request.slotIndex = RLGear.FindFreeSlot(player, area);
     EquipmentSystem.GetInstance(player).QueueRequest(request);
     return true;
+  }
+
+  // What installing into the area would replace: the item in slot 0 when
+  // every slot is taken (see FindFreeSlot), else none.
+  public static func ReplacedBy(player: ref<PlayerPuppet>, recordID: TweakDBID) -> ItemID {
+    let data = EquipmentSystem.GetData(player);
+    let area = EquipmentSystem.GetEquipAreaType(ItemID.FromTDBID(recordID));
+    if !IsDefined(data) {
+      return ItemID.None();
+    }
+    let slots = data.GetNumberOfSlots(area, false);
+    let i = 0;
+    while i < slots {
+      if !ItemID.IsValid(data.GetItemInEquipSlot(area, i)) {
+        return ItemID.None();
+      }
+      i += 1;
+    }
+    return slots > 0 ? data.GetItemInEquipSlot(area, 0) : ItemID.None();
+  }
+
+  // Capacity an install really adds: its cost less what it replaces.
+  public static func NetCapacityCost(player: ref<PlayerPuppet>, recordID: TweakDBID) -> Float {
+    let cost = RLGear.CapacityCost(player, recordID);
+    let replaced = RLGear.ReplacedBy(player, recordID);
+    if ItemID.IsValid(replaced) {
+      cost -= RLGear.CapacityCost(player, ItemID.GetTDBID(replaced));
+    }
+    return cost;
   }
 
   // First empty slot in the area, or 0 (replace) when all are taken.
@@ -159,6 +195,7 @@ public abstract class RLKits {
       case n"Gunslinger": return gamedataStatType.Cool;
       case n"Demolitions": return gamedataStatType.TechnicalAbility;
       case n"Juggernaut": return gamedataStatType.Strength;
+      case n"Wireman": return gamedataStatType.Intelligence;
     }
     return gamedataStatType.Reflexes;
   }
@@ -172,6 +209,7 @@ public abstract class RLKits {
       case n"Gunslinger": return gamedataStatType.Reflexes;
       case n"Demolitions": return gamedataStatType.Strength;
       case n"Juggernaut": return gamedataStatType.TechnicalAbility;
+      case n"Wireman": return gamedataStatType.TechnicalAbility;
     }
     return gamedataStatType.Strength;
   }
@@ -214,6 +252,14 @@ public abstract class RLKits {
         RLKits.Weapon(player, pools, [gamedataItemType.Wea_SubmachineGun], basic);
         RLConsumables.SetGrenade(player, RLConsumables.PickGrenadeOfFamily("Frag", 2));
         perk = gamedataNewPerkType.Tech_Left_Milestone_1;
+        break;
+      case n"Wireman":
+        // Monowire with a deck behind it: Siphon turns every lash into RAM.
+        RLGear.InstallCyberware(player, pools.PickCyberware(0, false, gamedataItemType.Cyb_NanoWires, noIDs));
+        RLGear.InstallCyberware(player, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
+        RLGear.GiveQuickhacks(player, [pools.PickQuickhack(0, noIDs)]);
+        RLKits.Weapon(player, pools, pistols, basic);
+        perk = gamedataNewPerkType.Intelligence_Inbetween_Left_2;
         break;
       case n"Juggernaut":
         if !RLKits.Weapon(player, pools, [gamedataItemType.Wea_LightMachineGun], basic) {

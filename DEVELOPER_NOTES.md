@@ -111,10 +111,10 @@ Every file starts with a header comment explaining its design - read it.
 | Area | Files |
 | --- | --- |
 | Core | `Config.reds` (all tunables), `Runtime.reds` (RLLog/RLDebug/RLNotify, RLDelay timers, RLDelayTarget), `RogueliteService.reds` (meta progression persisted outside saves, F7 key, session hooks), `RogueliteSystem.reds` (per-save state machine - the orchestrator), `RunState.reds`, `Story.reds` (quiet story) |
-| Run | `Difficulty.reds` (enemy level + damage curves, incoming damage hook), `Encounters.reds` (wave plans, bosses, bounties), `Pacing.reds` (L4D director), `Fixer.reds`, `Objectives.reds` (survive / uplink / sabotage), `Events.reds` ("?" doors) |
-| Rewards | `RewardSystem.reds` (doors, offers, granting), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Patrons.reds`, `Boons.reds` (catalogue, rarities, stat boons), `BoonEffects.reds` (RLCombatState + scripted boons) |
+| Run | `Difficulty.reds` (enemy level + damage curves, act gates, incoming damage hook), `Encounters.reds` (wave plans, bosses, bounties), `Pacing.reds` (L4D director), `Fixer.reds` (+ buy-backs), `Objectives.reds` (survive / uplink / sabotage), `Events.reds` ("?" doors), `Overdrive.reds` (the ultimate, overclock episodes), `Gigs.reds` |
+| Rewards | `RewardSystem.reds` (doors, offers, granting, skip/banish), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Patrons.reds`, `Boons.reds` (catalogue, rarities, stat boons), `BoonEffects.reds` (RLCombatState + the hit/kill/tick hooks everything plugs into), `Styles.reds`, `Weapons.reds` (families, DPS previews, evolution, quality curve), `WeaponMods.reds`, `LevelUp.reds` |
 | Combat | `Arenas.reds` (8 arenas), `ArenaDirector.reds` (teleport, walls tick, bounds), `ArenaWalls.reds`, `ArenaCleaner.reds`, `WaveSpawner.reds` (+ boss phases, objective hold-open), `Affixes.reds` (elite affixes, `RLExplosions`), `DamageHooks.reds` (outgoing hit + NPC death hooks), `Loot.reds` |
-| Player | `CharacterReset.reds`, `Kits.reds`, `Perks.reds`, `Consumables.reds` (quality steps, MaxDoc ladder, grenades), `DeathGuard.reds`, `Death.reds` |
+| Player | `CharacterReset.reds`, `Kits.reds`, `Perks.reds`, `Consumables.reds` (quality steps, MaxDoc ladder, grenades), `DeathGuard.reds`, `Death.reds`, `OSHooks.reds` (OS activation -> Overdrive) |
 | Hub/Menu/Audio | `ApartmentHub.reds`, `HomeDevices.reds`, `MainMenuEntry.reds`, `Music.reds` |
 | UI | `Card.reds` (the one card widget everything uses; `RLIcons` incl. the gang logo atlas), `Widgets.reds`, `Hud.reds` (+ boss bar), `Transition.reds`, `TerminalPopup.reds`, `RewardPopup.reds`, `EventPopup.reds`, `FixerPopup.reds` |
 
@@ -222,6 +222,15 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 17. **V's own blasts** (Volatile Kills, sabotage charges) set
     `RLCombatState.selfBlastUntil`; hits from V in that window are zeroed so
     they can't hurt V. Keep that when adding new player explosions.
+18. **Hit flags carry styles:** `RLHitFlag` bits 1-32 are how a hit landed,
+    bits from 256 up are its styles (`RLHitFlag.Style`). The last hit's
+    flags and weapon are what the kill hook sees, so style signatures,
+    weapon mods' kill effects and gig counts all read the killing hit. Keep
+    new hit kinds below 256.
+19. **Between fights, the floor advances on the level-up**, not the reward:
+    reward (or event, or skip) -> `BeginLevelUp` -> level-up pick ->
+    `AdvanceFloor`. Gig and starter-pick screens come before the first door
+    and never advance anything (`advancePending` is false then).
 
 ## 8. Balance (all numbers live in Config.reds or the named file)
 
@@ -280,6 +289,23 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 
 ## 10. Status and what's next
 
+- **The content patch (dev, untested in game):** level-ups after every floor,
+  styles, the weapons rework (DPS on cards, mods, evolutions), Overdrive from
+  an OS at the Act 1 boss, gigs, capacity overclock, skip/banish/buy-back,
+  act gates, the Wireman kit and 33 more perks. Design: the "Runs That Build"
+  doc. Least certain - check first:
+  1. The between-fights flow: reward -> level-up -> (Fixer) -> doors, after
+     events too; skip and banish (log "Banished: ...").
+  2. Weapon DPS previews (`RLWeapons.PreviewDPS`: a dry item via
+     `Inventory.CreateItemData` + `ForceItemTier`) - a card without a DPS line
+     means the stat came back 0.
+  3. Overdrive firing on OS activation (status effects in
+     `Player/OSHooks.reds`; log "Overdrive: ..."), and ZERO HOUR's time
+     dilation leaving V at full speed.
+  4. Evolution swapping the weapon and equipping the iconic.
+  5. Capacity overclock: the Humanity modifier keeps the game from refusing
+     over-capacity chrome.
+  6. Relic perks (Espionage_*) being granted outside Phantom Liberty's quest.
 - **Unreleased (on the `dev` branch, untested in game):** patrons and boon
   rarities, bosses with phases, elite affixes, objectives, events, bounties,
   gang logos in menus. Least certain - check first in the next test log:
@@ -307,9 +333,9 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   3. Campaign screen fully hidden.
   4. Judy's call (and other story calls) staying declined.
   5. Card intro animations / centred layouts at 1080p and 1440p.
-- Ideas discussed but not built (ask before doing big ones): a "skip reward
-  for eddies" option (Slay the Spire); Banish (Vampire Survivors); a run
-  summary screen at home; more arenas; more boons; signature card synergies.
+- Ideas discussed but not built (ask before doing big ones): a run summary
+  screen at home; tighter city arenas (Dogtown); more boons; Overdrive boons
+  from patrons; the "Never Fade Away" narrative.
 - Known design decision to keep: the Fixer appears after the elite floor,
   before the boss door (Hades' Charon placement).
 

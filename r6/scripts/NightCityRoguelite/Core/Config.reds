@@ -135,6 +135,14 @@ public abstract class RLConfig {
     if act == 2 { return 0; }
     return 1;
   }
+  // The act gates: damage arena enemies take from V (1.0 = full). Bosses
+  // from Act 2, everyone in Act 3.
+  public static func BossDamageTaken(act: Int32) -> Float {
+    if act >= 3 { return 0.75; }
+    if act == 2 { return 0.85; }
+    return 1.0;
+  }
+  public static func EnemyDamageTaken(act: Int32) -> Float = act >= 3 ? 0.9 : 1.0
   // Share of each ammo type's carry limit refilled when a wave is cleared.
   public static func WaveAmmoRefill() -> Float = 0.4
 

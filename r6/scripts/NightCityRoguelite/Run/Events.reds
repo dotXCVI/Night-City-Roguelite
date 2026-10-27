@@ -3,12 +3,13 @@
 // -----------------------------------------------------------------------------
 // A "?" door is a stop without a fight (Hades' chaos gates and wells, Slay the
 // Spire's ? rooms): one screen, one choice, then the next doors. It counts as
-// a floor and, like every reward, brings a level.
+// a floor and is followed by a level-up.
 //
 //   RIPPERDOC   a back-alley clinic: a free MaxDoc patch-up, or paid chrome
 //   BOOKIE      double or nothing with eddies, or trade a boon for an Epic one
 //   TAROT       Misty reads three cards - each a blessing with a price
 //   STRANGER    an iconic weapon that makes V a target, or sell a boon
+//               (Act 2 on)
 //
 // Prices and trade-offs are fixed when the screen opens (RLEventChoice), so
 // what the card says is what happens.
@@ -37,8 +38,13 @@ public class RLEvent {
 }
 
 public abstract class RLEvents {
+  // The stranger's iconic is the one iconic that isn't earned by evolving a
+  // weapon, so he only shows up from Act 2.
   public static func Pick(run: ref<RLRunState>) -> CName {
-    let events = [n"Ripperdoc", n"Bookie", n"Tarot", n"Stranger"];
+    let events = [n"Ripperdoc", n"Bookie", n"Tarot"];
+    if run.act >= 2 {
+      ArrayPush(events, n"Stranger");
+    }
     return events[RandRange(0, ArraySize(events))];
   }
 

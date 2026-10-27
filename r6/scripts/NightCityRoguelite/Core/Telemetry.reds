@@ -14,7 +14,9 @@
 //   FLOOR    a fight ended: door, arena, enemies, time, damage, outcome
 //   OFFER    a reward screen was rolled: every card (kind:title:quality step)
 //   PICK     what was taken (or rerolled, bought, chosen at an event)
-//   BUILD    after each pick: level, attributes, build tags, boons
+//   BUILD    after each pick: level, attributes, build tags, styles, OS,
+//            weapon mods, overclock, gig progress, boons
+//   ULT      Overdrive fired: the OS and the wave
 //   DEATH    what landed the last hit before V went down
 //   END      the run ended: result, floors, kills, minutes
 //   MARK     the player pressed MARK BUG (see RogueliteSystem.MarkBug)
@@ -79,9 +81,20 @@ public abstract class RLTelemetry {
     for state in run.boons {
       boons += (StrLen(boons) > 0 ? "," : "") + NameToString(state.id) + ":" + IntToString(state.rarity);
     }
+    let mods = "";
+    for weapon in run.weapons {
+      for mod in weapon.mods {
+        mods += (StrLen(mods) > 0 ? "," : "") + NameToString(mod);
+      }
+    }
     return RLTelemetry.IntField("lvl", RoundF(stats.GetStatValue(id, gamedataStatType.Level)))
       + RLTelemetry.Field("attr", attrs)
       + RLTelemetry.Field("tags", RLBuildProfile.Read(player).Describe())
+      + RLTelemetry.Field("styles", RLStyles.Telemetry(run))
+      + RLTelemetry.Field("os", NameToString(run.os))
+      + RLTelemetry.Field("mods", mods)
+      + RLTelemetry.IntField("overclock", run.overclock)
+      + RLTelemetry.Field("gig", run.gigStyle >= 0 ? RLStyle.Name(run.gigStyle) + s" \(run.gigProgress)/\(run.gigTarget)" : "")
       + RLTelemetry.Field("boons", boons);
   }
 }

@@ -8,7 +8,8 @@
 //              tree are owned (requirements outside the catalog - vehicle and
 //              stealth perks - are granted silently along with it).
 //   Signature  Master perks (power 4) only show up for a build that uses that
-//              style (Hades' Duo and Legendary boons work the same way).
+//              style, with its attribute at 15 (Hades' Duo and Legendary
+//              boons work the same way).
 //   Weighting  perks near the floor's expected power are common, stronger ones
 //              rarer; the build profile raises matching perks (Director.reds).
 //   Growth     taking a perk also raises its attribute by 1 (up to 20).
@@ -73,10 +74,18 @@ public abstract class RLPerkCatalog {
         return false;
       }
     }
-    if def.power >= 4 && (!IsDefined(profile) || !profile.HasAny(def.tags)) {
+    if def.power >= 4 && (!IsDefined(profile) || !profile.HasAny(def.tags) || !RLPerkCatalog.MeetsSignatureAttribute(data, def.perk)) {
       return false;
     }
     return true;
+  }
+
+  // Signature perks need their attribute at 15, like the game's own tree.
+  public static func SignatureAttribute() -> Float = 15.0
+
+  public static func MeetsSignatureAttribute(data: ref<PlayerDevelopmentData>, perk: gamedataNewPerkType) -> Bool {
+    let stat = RLPerks.AttributeStat(perk);
+    return Equals(stat, gamedataStatType.Invalid) || data.GetAttributeValue(stat) >= RLPerkCatalog.SignatureAttribute();
   }
 
   // Grants the perk at its max level, plus any requirement outside the catalog,
@@ -179,6 +188,7 @@ public abstract class RLPerkCatalog {
         case gamedataAttributeDataType.TechnicalAbilityAttributeData: return "TECHNICAL ABILITY";
         case gamedataAttributeDataType.IntelligenceAttributeData: return "INTELLIGENCE";
         case gamedataAttributeDataType.CoolAttributeData: return "COOL";
+        case gamedataAttributeDataType.EspionageAttributeData: return "RELIC";
       }
     }
     return "PERK";

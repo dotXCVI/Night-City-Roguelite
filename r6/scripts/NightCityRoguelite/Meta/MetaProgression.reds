@@ -27,6 +27,7 @@ public abstract class RLMeta {
     ArrayPush(list, RLMeta.Def(n"kit.Gunslinger", "Kit: Gunslinger", "Revolver, pistol, Double Trouble.", 250, n""));
     ArrayPush(list, RLMeta.Def(n"kit.Demolitions", "Kit: Demolitions", "SMG, frag grenades, Glutton for War.", 300, n""));
     ArrayPush(list, RLMeta.Def(n"kit.Juggernaut", "Kit: Juggernaut", "Light machine gun, pistol, Painkiller.", 350, n""));
+    ArrayPush(list, RLMeta.Def(n"kit.Wireman", "Kit: Wireman", "Monowire, cyberdeck, a quickhack, pistol, Siphon.", 300, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts I", "+1 free reroll every act.", 200, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Reroll2", "Fixer Contacts II", "+1 more free reroll every act.", 450, n"perk.Reroll"));
     ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Reward screens show 4 options.", 400, n""));
@@ -119,7 +120,7 @@ public abstract class RLMeta {
   // --- Kits -------------------------------------------------------------------------
 
   public static func Kits() -> array<CName> {
-    return [n"Solo", n"Blade", n"Netrunner", n"Marksman", n"Brawler", n"Gunslinger", n"Demolitions", n"Juggernaut"];
+    return [n"Solo", n"Blade", n"Netrunner", n"Marksman", n"Brawler", n"Gunslinger", n"Demolitions", n"Juggernaut", n"Wireman"];
   }
 
   public static func KitName(kit: CName) -> String = NameToString(kit)
@@ -134,6 +135,7 @@ public abstract class RLMeta {
       case n"Gunslinger": return "Revolver, pistol, Double Trouble.";
       case n"Demolitions": return "SMG, frag grenades, Glutton for War.";
       case n"Juggernaut": return "Light machine gun, pistol, Painkiller.";
+      case n"Wireman": return "Monowire, cyberdeck, a quickhack, pistol, Siphon.";
     }
     return "";
   }

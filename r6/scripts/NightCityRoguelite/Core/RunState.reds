@@ -52,6 +52,30 @@ public class RLRunState {
   // Fixer stop after the elite floor, before the boss door.
   public let fixerPending: Bool;
 
+  // Styles (Rewards/Styles.reds): points per style, recounted after picks.
+  public let stylePoints: array<Int32>;
+  // Weapons with mods (Rewards/Weapons.reds).
+  public let weapons: array<ref<RLWeaponState>>;
+  // Cards banished for the rest of the run (RLRewards.OfferKey) and banishes
+  // left (one per act).
+  public let banished: array<String>;
+  public let banishes: Int32;
+  // The Operating System taken at the Act 1 boss, and Overdrive
+  // (Run/Overdrive.reds): unlocked with it, charged 0..100.
+  public let os: CName;
+  public let overdriveUnlocked: Bool;
+  public let overdrive: Float;
+  // Capacity overclock: points of cyberware over capacity (each one raises
+  // the odds of a cyberpsychosis episode in fights).
+  public let overclock: Int32;
+  // The gig taken at the start (Run/Gigs.reds): its style (-1 none), kills
+  // needed and made, and how it ended.
+  public let gigStyle: Int32;
+  public let gigTarget: Int32;
+  public let gigProgress: Int32;
+  public let gigDone: Bool;
+  public let gigFailed: Bool;
+
   // The floor was cleared and its reward is waiting: the run moves on to the
   // next floor once it has been picked.
   public let advancePending: Bool;
@@ -65,6 +89,8 @@ public class RLRunState {
     run.act = 1;
     run.floor = 1;
     run.offerCount = 3;
+    run.banishes = 1;
+    run.gigStyle = -1;
     return run;
   }
 
@@ -87,6 +113,7 @@ public class RLRunState {
       this.floor = 1;
       this.act += 1;
       this.rerolls = Max(this.rerolls, this.rerollsPerAct);
+      this.banishes = Max(this.banishes, 1);
     }
   }
 

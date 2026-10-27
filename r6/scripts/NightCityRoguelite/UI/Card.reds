@@ -450,6 +450,7 @@ public abstract class RLIcons {
       case RLRewardCategory.Workshop: return n"ico_cafting_upgrading";
       case RLRewardCategory.Event: return n"ico_journal";
       case RLRewardCategory.Bounty: return n"ico_money";
+      case RLRewardCategory.System: return n"ico_cyberware";
     }
     return n"ico_map";
   }
@@ -465,6 +466,7 @@ public abstract class RLIcons {
       case RLRewardCategory.Workshop: return n"MainColors.Yellow";
       case RLRewardCategory.Event: return n"MainColors.Blue";
       case RLRewardCategory.Bounty: return n"MainColors.Red";
+      case RLRewardCategory.System: return n"MainColors.Blue";
     }
     return n"MainColors.Red";
   }
@@ -479,6 +481,7 @@ public abstract class RLIcons {
       case n"Gunslinger": return n"weapon_revolver";
       case n"Demolitions": return n"grenade_regular";
       case n"Juggernaut": return n"weapon_lmg";
+      case n"Wireman": return n"ico_int";
     }
     return n"ico_body";
   }

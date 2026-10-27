@@ -38,7 +38,7 @@ public class RLEventPopup extends InGamePopup {
     header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
-    footer.SetFluffText("COUNTS AS A FLOOR - +1 LEVEL");
+    footer.SetFluffText("COUNTS AS A FLOOR - LEVEL-UP AFTER");
     footer.Reparent(this);
 
     this.m_content = InGamePopupContent.Create();

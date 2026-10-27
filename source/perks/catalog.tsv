@@ -123,3 +123,36 @@ Tech_Central_Perk_3_1	Extended Warranty	2	chrome	Cyberware effects last 15% long
 Tech_Central_Perk_3_2	Ambidextrous	2	chrome	An extra hands cyberware slot.
 Tech_Central_Perk_3_4	Cyborg	2	chrome	Cyberware cooldowns 15% shorter with every slot filled.
 Tech_Master_Perk_3	Edgerunner	4	chrome	Go past your cyberware capacity at a Health cost; kills can trigger Fury.
+Intelligence_Inbetween_Left_2	Siphon	2	monowire,netrunner	Monowire attacks recover RAM, more against a hacked enemy.
+Intelligence_Left_Perk_3_4	Finisher: Live Wire	3	monowire	A Monowire finisher on low-health enemies; easier the more hacks they carry. Restores health and RAM.
+Espionage_Central_Milestone_1	Jailbreak	3	monowire,chrome	Relic: new abilities for Mantis Blades, Gorilla Arms, Monowire and the Projectile Launch System.
+Espionage_Central_Perk_1_3	Data Tunneling	2	monowire	Relic: a quickhack uploaded by Monowire spreads to every enemy the same sweep hits.
+Espionage_Central_Perk_1_4	Spatial Mapping	2	blade	Relic: Mantis Blades leap attacks cripple enemies and make them easier to dismember.
+Espionage_Central_Perk_1_2	Limiter Removal	2	blunt	Relic: the shockwave from a charged Gorilla Arms attack knocks down everyone nearby.
+Espionage_Central_Perk_1_1	Launch Capacity Override	2	explosive	Relic: +1 charge for the Projectile Launch System.
+Espionage_Right_Milestone_1	Vulnerability Analytics	3	precision	Relic: spot weak points on enemies. Hits there always crit and pierce armor.
+Espionage_Right_Perk_1_1	Machine Learning	2	precision	Relic: destroying weak points makes them show up more and raises crit damage.
+Espionage_Left_Milestone_Perk	Emergency Cloaking	3	stealth	Relic: Optical Camo in combat makes enemies lose track of you.
+Espionage_Left_Perk_1_2	Sensory Protocol	2	stealth	Relic: detected while crouched, time slows; dash out of sight to vanish.
+Tech_Inbetween_Left_3	Doomlauncher	2	explosive	More charges and damage for the Projectile Launch System.
+Tech_Master_Perk_2	Ticking Time Bomb	4	chrome	Activating your Operating System charges an EMP that hits nearby enemies.
+Cool_Right_Perk_2_2	Neurotoxin	1	throwable	Scorpion Sting's poison also blinds and stops enemies sprinting.
+Cool_Right_Perk_2_3	Accelerated Toxin Absorption	1	throwable	Strong attacks and throws on poisoned enemies deal all the poison at once.
+Cool_Right_Perk_3_1	Pay It Forward	2	throwable	After you pick up a thrown knife or axe, your next melee hit with it deals more damage.
+Cool_Right_Perk_3_2	Finisher: Act of Mercy	3	throwable	A finisher with throwable weapons on low-health enemies.
+Cool_Inbetween_Right_3	Pounce	2	throwable	Finishers from further away on enemies you've hit with a throw.
+Cool_Central_Milestone_3	Ninjutsu	3	stealth	Faster crouch movement. The start of the stealth branch.
+Cool_Central_Perk_3_1	Serpentine	2	stealth,survival	Mitigation chance while crouch-sprinting.
+Cool_Central_Perk_3_2	Creeping Death	2	stealth	Kills while cloaked or undetected restore health and stamina.
+Cool_Inbetween_Left_3	Vanishing Act	2	stealth	Optical Camo switches on by itself while you crouch-sprint or slide.
+Cool_Central_Perk_2_3	Splash of Love	1	dual	Heywood Hurricane fires faster, and longer at full Triple Tequila.
+Body_Left_Perk_3_2	Skullcracker	2	shotgun,lmg	Quick melee hits harder the less stamina you have.
+Body_Right_Perk_2_3	Clapback	1	blunt	Defensive attacks can knock enemies down.
+Body_Right_Perk_3_1	Epicenter	2	blunt	Quake from midair grows with the fall.
+Body_Inbetween_Left_3	Bloodlust	2	shotgun,lmg	During Adrenaline Rush, dismembering an enemy nearby adds Adrenaline.
+Reflexes_Right_Perk_2_3	Bullet Time	2	blade	While time is slowed, deflected bullets crit and cost no stamina.
+Reflexes_Inbetween_Left_3	Air Kerenzikov	2	rifle,mobility	Kerenzikov in midair keeps you in the air longer.
+Intelligence_Left_Perk_3_2	Queue Prioritization	2	netrunner	The first of several queued quickhacks uploads faster.
+Intelligence_Inbetween_Left_3	Blood Daemon	2	netrunner,survival	During Overclock, kills heal you for every quickhack queued on the enemy.
+Tech_Central_Perk_2_2	Renaissance Punk	1	chrome	More cyberware capacity for every attribute at a threshold.
+Tech_Left_Perk_3_3	Flash Sale	1	explosive	Double charges and recharge for flash, smoke and recon grenades.

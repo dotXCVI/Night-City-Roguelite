@@ -5,7 +5,27 @@ release on GitHub with its ZIP attached.
 
 ## Unreleased (dev branch)
 
-Built overnight as one batch; not released yet and untested in game.
+A big content patch: runs that build. Not released yet and untested in game.
+
+**Builds and choices**
+
+- **A level-up after every floor:** after the door's reward, pick one of three small upgrades - an attribute, a perk from a tree you're in, or a weapon mod, weapon tune-up, boon upgrade or capacity. Twice the picks per run; the level comes with it.
+- **Styles:** every reward feeds one of 12 styles (Blades, Brawler, Monowire, Gunslinger, Heavy, Rifles, Marksman, Netrunner, Smart, Tech, Demolitions, Ninja). Ranks at 3, 6 and 9 points add +10/+20/+35% damage, and rank III a signature effect. Cards show the styles they feed; the reward footer and the F7 screen show yours.
+- **Weapons rework:** weapon cards show DPS against your best equipped weapon, the class, its attribute and how it plays. New weapons are never worse than what you have, and every Armory screen offers an upgrade or mod for your own gun.
+- **Weapon mods:** 22 mods (Hades' hammers) in two slots per weapon - three on iconics.
+- **Iconics are earned:** a Legendary weapon with both mod slots filled evolves into an iconic of its type. The ICONIC door and random Armory iconics are gone; the stranger's deal waits until Act 2.
+- **Overdrive:** the Act 1 boss now pays out a choice of Operating System (Sandevistan, Berserk or a cyberdeck with Overclock). It unlocks Overdrive, a meter that fills from kills and damage taken; activating your OS at full charge triggers ZERO HOUR, RAMPAGE or BLACKWALL.
+- **Gigs:** a run opens with three gigs from Night City's fixers - a style kill count before the Act 2 boss, paying eddies and style points.
+- **Capacity overclock:** chrome that doesn't fit can go in anyway, at the risk of cyberpsychosis episodes.
+- **Saying no:** skip a reward screen for eddies, banish one card per act, and the Fixer buys back gear you don't use. The Fixer also sells a weapon mod.
+- **Workshop** on floors 4, 10 and 16, with mods and evolutions.
+- **Build weighting** leans much harder towards your build once you've taken an Operating System, and Signature perks need their attribute at 15.
+- **Gates:** from Act 2, bosses take 15% less damage (25% in Act 3), and every Act 3 enemy 10% less. A weapon far below the floor's quality deals less damage.
+- **New kit, Wireman:** Monowire, a cyberdeck, a quickhack and Siphon.
+- **33 more perks in Training:** the monowire perks (Siphon, Finisher: Live Wire), the Relic tree (Jailbreak, Data Tunneling, Spatial Mapping, Vulnerability Analytics, Emergency Cloaking...), Ticking Time Bomb, Doomlauncher, the throwing and stealth branches.
+- **Door cards say what the ground is like:** OPEN GROUND, MIXED or CLOSE QUARTERS.
+
+**Patrons and the rest**
 
 - **Patrons.** Boons now come from six of Night City's powers - Arasaka, Militech, the Voodoo Boys, Maelstrom, the Aldecaldos and the Afterlife - each with its own style. A patron door offers three of that patron's boons. 44 boons in all.
 - **Boon rarities and upgrades.** Boons come as Common, Rare, Epic or Heroic, and a boon you hold is offered again as an upgrade. Three boons from one patron unlock its legendary; boons from two patrons unlock their duo (eight duos).

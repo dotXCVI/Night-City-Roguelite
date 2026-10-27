@@ -7,8 +7,11 @@
 // bosses) and the Bounty Hunter boon; they are wiped with the rest of the
 // gear when the run ends.
 //
-//   MaxDoc upgrade, a better grenade, a boon, a perk card, an upgrade for the
-//   equipped weapon, and a fixer contact (two free rerolls).
+//   MaxDoc upgrade, a better grenade, a boon, a perk card, an upgrade and a
+//   mod for an equipped weapon, and a fixer contact (two free rerolls).
+//
+// The Fixer also buys back gear V carries but doesn't use (weapons and
+// cyberware that aren't equipped) - Cyberpunk's card removal.
 //
 // Prices scale with the floor; the Street Smart unlock takes 20% off, and the
 // Fixer's Cut boon more.
@@ -21,6 +24,10 @@ public class RLFixerItem {
   public let contact: Bool;
   public let price: Int32;
   public let sold: Bool;
+  // Buy-back: the item V sells (the price is what the Fixer pays).
+  public let sell: Bool;
+  public let sellItem: ItemID;
+  public let sellName: String;
 }
 
 public abstract class RLFixer {
@@ -54,19 +61,62 @@ public abstract class RLFixer {
     if ArraySize(perks) > 0 {
       RLFixer.AddItem(stock, run, RLRewards.PerkOffer(run, perks[0]), 500 + 80 * depth);
     }
-    let weapons = RLRewards.WeaponUpgradeOffers(player, 1);
+    let weapons = RLRewards.WeaponUpgradeOffers(player, 1, 2);
     if ArraySize(weapons) > 0 {
       RLFixer.AddItem(stock, run, weapons[0], 450 + 70 * depth);
+    }
+    let mods = RLWeaponMods.Offers(player, run, 1);
+    if ArraySize(mods) > 0 {
+      RLFixer.AddItem(stock, run, mods[0], 400 + 60 * depth);
     }
     let contact = new RLFixerItem();
     contact.contact = true;
     contact.price = RLFixer.Discounted(run, 400 + 40 * depth);
     ArrayPush(stock, contact);
+    RLFixer.AddBuyBacks(stock, player);
     return stock;
+  }
+
+  // Weapons and cyberware V carries without using them, up to three.
+  private static func AddBuyBacks(out stock: array<ref<RLFixerItem>>, player: ref<PlayerPuppet>) {
+    let equipment = EquipmentSystem.GetData(player);
+    let items: array<wref<gameItemData>>;
+    GameInstance.GetTransactionSystem(player.GetGame()).GetItemList(player, items);
+    let count = 0;
+    for item in items {
+      if IsDefined(item) && IsDefined(equipment) && count < 3 && !equipment.IsEquipped(item.GetID()) {
+        let itemID = item.GetID();
+        let isGear = RLWeapons.IsRealWeapon(itemID) || (Equals(RPGManager.GetItemCategory(itemID), gamedataItemCategory.Cyberware) && RLTweakPools.IsCyberwareArea(EquipmentSystem.GetEquipAreaType(itemID)));
+        if isGear {
+          let entry = new RLFixerItem();
+          entry.sell = true;
+          entry.sellItem = itemID;
+          entry.sellName = RLRewards.ItemName(ItemID.GetTDBID(itemID));
+          entry.price = 80 + 40 * RLRewards.ItemStep(item);
+          ArrayPush(stock, entry);
+          count += 1;
+        }
+      }
+    }
   }
 
   // Buys an item: pays, grants, marks it sold. False when it can't be bought.
   public static func Buy(player: ref<PlayerPuppet>, run: ref<RLRunState>, item: ref<RLFixerItem>) -> Bool {
+    if item.sell {
+      // The Fixer's list was made when the screen opened: the item must
+      // still be there, and still unused.
+      let transactions = GameInstance.GetTransactionSystem(player.GetGame());
+      let equipment = EquipmentSystem.GetData(player);
+      if item.sold || !transactions.HasItem(player, item.sellItem) || (IsDefined(equipment) && equipment.IsEquipped(item.sellItem))
+        || !transactions.RemoveItem(player, item.sellItem, 1) {
+        return false;
+      }
+      RLWeapons.Forget(run, item.sellItem);
+      RLGear.GiveEddies(player, item.price);
+      item.sold = true;
+      RLLog(s"Fixer: bought back \(item.sellName) for \(item.price).");
+      return true;
+    }
     if item.sold || RLFixer.Balance(player) < item.price {
       return false;
     }
@@ -82,14 +132,23 @@ public abstract class RLFixer {
   }
 
   public static func ItemTitle(item: ref<RLFixerItem>) -> String {
+    if item.sell {
+      return item.sellName;
+    }
     return item.contact ? "Fixer Contact" : item.offer.title;
   }
 
   public static func ItemSubtitle(item: ref<RLFixerItem>) -> String {
+    if item.sell {
+      return "SELL BACK";
+    }
     return item.contact ? "SERVICE" : item.offer.subtitle;
   }
 
   public static func ItemDescription(item: ref<RLFixerItem>) -> String {
+    if item.sell {
+      return "You carry it but don't use it.";
+    }
     return item.contact ? "Two free rerolls." : item.offer.description;
   }
 

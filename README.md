@@ -6,8 +6,9 @@
 
 A run-based arena mode for Cyberpunk 2077 2.5, built only from the game's own
 assets and systems. Start a new roguelite character from the main menu, fight
-through 3 acts of 6 arenas (bosses on floors 6, 12 and 18), pick one of three
-rewards after every floor, and bank meta Cred when you flatline. Home is where
+through 3 acts of 6 arenas (bosses on floors 6, 12 and 18), pick a reward and
+a level-up after every floor, build into a style, and bank meta Cred when you
+flatline. Home is where
 a run starts and ends; in between you go from arena to arena. The design rule:
 fights should be easy to read, and all the thinking happens between them.
 
@@ -51,16 +52,17 @@ works: it just waits for the opening call to end before taking over.
    level 1 (clothes kept) and moves V into **V's apartment in Megabuilding
    H10**, then fades in with V standing inside. The front door is sealed.
 3. Use **V's computer** (prompt: "Roguelite Terminal") or press **F7** for the
-   terminal: pick one of 8 kits (locked kits are bought by clicking them), buy
+   terminal: pick one of 9 kits (locked kits are bought by clicking them), buy
    unlocks, toggle **ASSIST**, then **START RUN**.
-4. The first fight is a light fight in a random arena. Every trip fades to
+4. A run opens with a choice of three **gigs** (see Gigs). The first fight is
+   a light fight in a random arena. Every trip fades to
    black with the destination on screen and fades back in once the area has
    loaded; the first wave comes after a 5-second countdown. The arena is
    ringed by a solid wall that lights up as red NCPD holo-tape as you walk up
    to it.
 5. Clearing a wave refills part of your ammo and one health charge. Clear the
    last one and the reward screen opens right there: pick one of three rewards
-   of that fight's type - every pick also grants +1 level.
+   of that fight's type, then a **level-up** (see Level-ups).
 6. Then pick your next fight by its reward, Hades-style, and travel straight
    there (V patches up on the way). Each door shows the reward type, the
    threat, the arena and the gang you'll face:
@@ -68,19 +70,19 @@ works: it just waits for the opening call to end before taking over.
    | Reward | What you choose from | Threat |
    | --- | --- | --- |
    | TRAINING | Perks, granted outright | Light |
-   | ARMORY | Weapons and grenades (sometimes an iconic) | Standard |
+   | ARMORY | A better weapon, an upgrade or mod for yours, grenades | Standard |
    | PATRON | Boons from one of Night City's powers (see Patrons) | Standard |
    | DAEMONS | Quickhacks | Standard |
-   | WORKSHOP | Upgrade a weapon, your MaxDoc or your grenade | Standard |
+   | WORKSHOP | Evolve or upgrade a weapon, a weapon mod, your MaxDoc or grenade (floors 4, 10, 16) | Standard |
    | CHROME | Cyberware, installed on the spot (from floor 3) | Heavy |
-   | ICONIC | Iconic weapons (rare door, from floor 3) | Heavy |
    | BOUNTY | A lone cyberpsycho; pays eddies and a patron's boons (Act 2+) | Heavy |
    | ? | An event instead of a fight (from floor 2) | - |
 
    Light fights have smaller waves of weaker enemies; heavy fights have bigger
    waves (an extra wave in Act 3) and roll better rewards. From floor 3 some
    fights come with an **objective** (see Objectives). Before a boss floor
-   there is a single boss door.
+   there is a single boss door; the Act 1 boss pays out an Operating System
+   (see Overdrive).
 7. After each elite floor, before the boss door, the **Fixer** is in: spend
    the eddies you've earned.
 8. When health hits zero V dies - for real, the game's own death - and comes
@@ -88,8 +90,8 @@ works: it just waits for the opening call to end before taking over.
    a flatline too. A run won ends with the trip home as well.
 
 Cred is earned for every arena you clear (never for a lost one), plus a bonus
-for completing a run. Experience comes only from rewards: kills and skill use
-give none, and levels bring no attribute or perk points (see Character).
+for completing a run. Experience comes only from level-ups: kills and skill
+use give none, and levels bring no attribute or perk points (see Character).
 
 | Computer or F7 at home | F7 during a fight | F7 between fights |
 | --- | --- | --- |
@@ -126,10 +128,16 @@ A director keeps the rolls interesting without choosing for you:
   screens in a row one card is guaranteed to stand out. Taking a big upgrade
   resets it, and every big upgrade you take makes the next one a bit rarer.
 - **Build nudges.** The director reads your build (weapons, cyberware, perks,
-  attributes) and gives matching rewards up to 40% more weight. At least one
-  card on every screen is something off-build, so you can always pivot.
+  attributes) and gives matching rewards up to 40% more weight - up to 150%
+  once you've taken an Operating System at the Act 1 boss. At least one card
+  on every screen is something off-build, so you can always pivot.
 - **Signature perks.** Master perks only show up once your build uses their
-  style, and a perk is only offered once its tree prerequisites are owned.
+  style and their attribute is at 15, and a perk is only offered once its
+  tree prerequisites are owned.
+
+**Saying no.** A door's reward screen can be skipped for eddies (Slay the
+Spire's skip). Once per act you can **banish** a card: click BANISH, then the
+card - it's replaced and never offered again this run.
 
 A screen never offers the same item twice (in any quality), shows at most one
 grenade, and never offers a weapon or grenade you already carry - the Workshop
@@ -144,26 +152,124 @@ more each, and the Fixer sells two). Out of free ones, a reroll costs eddies:
 the price grows with the run and by half again for each paid reroll on the
 same screen.
 
+### Level-ups
+
+Every floor pays twice: the door's reward (the big pick), then a **level-up**
+(the small pick) - one of three cards that deepen what you already have:
+
+- **+1 to an attribute**, usually one of your two best.
+- **A perk from a tree you're already in.**
+- **One more:** an evolution when a weapon is ready for one, otherwise a
+  weapon mod, a quality step for an equipped weapon, a boon one rarity up, or
+  +4 cyberware capacity.
+
+The level-up is the only way V gains levels. Event doors are followed by one
+too.
+
 ### Character
 
 There are no points to spend. Each kit sets two attributes (+4 to its main
-one, +3 to the second; the Edge unlocks add to the main one), and every perk
-you take raises its attribute by 1, up to 20. The Character menu can't buy,
-sell or reset anything for roguelite characters.
+one, +3 to the second; the Edge unlocks add to the main one); every perk you
+take raises its attribute by 1, and level-ups add more, up to 20. Signature
+perks need their attribute at 15. The Character menu can't buy, sell or reset
+anything for roguelite characters.
+
+### Weapons
+
+- **Weapon cards say what you're getting:** the class and the attribute it
+  leans on ("Revolver · COOL"), its DPS against the best weapon you have
+  equipped ("DPS 312 +38% vs Lexington"), and a line on how it plays.
+- **New weapons never step down:** an Armory weapon is at least the quality of
+  your best equipped one. Every Armory screen also has one card that improves a
+  weapon you carry (two quality steps, or a mod).
+- **Weapon mods** (the mod's own, Hades' hammers): two slots per weapon, three
+  on iconics. Each weapon family has its own (pistols: Quickdraw, Deadshot,
+  Double Tap; rifles: Sustained Fire, Hollow Point, Tracer; heavy: Point Blank,
+  Shrapnel, Slug; precision: Long Shot, Pierce, Spotter; blades: Momentum,
+  Bloodletting, Vampiric Edge; blunt: Haymaker, Concussive, Rebound), plus four
+  for any weapon (Executioner, Incendiary, Shock, Toxic).
+- **Iconics are earned.** A Legendary weapon with both mod slots filled can
+  **evolve** into an iconic of its type (Workshop or level-up), keeping its
+  mods and gaining a third slot. There's no ICONIC door any more; the
+  stranger's iconic (Act 2 on) is the only other way to one.
+- **Keep your main gun up:** a weapon well below the floor's expected quality
+  deals up to 30% less damage (a little more when it's ahead).
+
+### Styles
+
+Every reward feeds a **style**: BLADES, BRAWLER, MONOWIRE, GUNSLINGER, HEAVY,
+RIFLES, MARKSMAN, NETRUNNER, SMART, TECH, DEMOLITIONS or NINJA. An equipped
+weapon or arm cyberware counts 2 points; every perk, boon and weapon mod with
+the style counts 1 (a cyberdeck 2 for Netrunner, quickhacks 1 each up to 3, a
+grenade 1 for Demolitions). Cards show which styles they feed, in gold when
+you already have a rank.
+
+At 3, 6 and 9 points a style reaches rank I, II and III: hits of that style
+deal +10%, +20% and +35% damage (the best style a hit belongs to counts), and
+rank III adds a signature:
+
+| Style | Rank III signature |
+| --- | --- |
+| BLADES | Blade kills slow time for a second |
+| BRAWLER | Blunt and fist kills send out a shockwave |
+| MONOWIRE | Monowire hits electrocute; kills restore RAM |
+| GUNSLINGER | Headshot kills: the next 3 hits deal double damage |
+| HEAVY | Kills blow enemies apart, hitting those nearby |
+| RIFLES | Hits on the same target ramp up to +45% damage |
+| MARKSMAN | +60% damage beyond 20 m |
+| NETRUNNER | Quickhack kills restore RAM and jolt enemies nearby |
+| SMART | Kills mark nearby enemies: +25% damage taken for 5 s |
+| TECH | Kills electrocute enemies nearby |
+| DEMOLITIONS | Every 5 kills recharge a grenade |
+| NINJA | Throwing kills make you invisible for a moment |
+
+The reward footer and the F7 screen in a fight list your styles.
+
+### Overdrive
+
+The Act 1 boss pays out a choice of **Operating System**: a Sandevistan, a
+Berserk or a cyberdeck (which comes with the Overclock perk). It brings its
+own capacity and unlocks **Overdrive**, the run's ultimate. The meter (on the
+HUD) fills from kills - more from elites and bosses - and from damage you
+take, and carries over between fights. When it's full, activate your OS as
+usual and it overdrives:
+
+| OS | Overdrive |
+| --- | --- |
+| Sandevistan | **ZERO HOUR** - time nearly stops for 7 s, +50% damage |
+| Berserk | **RAMPAGE** - a shockwave, then 8 s of +60% damage, 70% less damage taken, kills heal |
+| Cyberdeck | **BLACKWALL** - every enemy within 40 m loses half its health (bosses 15%), is electrocuted and stunned; RAM refills |
+
+### Gigs
+
+A run opens with three gigs from the city's fixers; take one. Each is a kill
+count in one style (e.g. 40 pistol kills) to finish before the Act 2 boss
+falls. A finished gig pays 1,000 eddies and 2 points in its style for the rest
+of the run. Its progress is on the HUD.
+
+### Capacity overclock
+
+Chrome that doesn't fit your capacity can be installed anyway: the card says
+how far over it goes. Every point over capacity raises the odds of a
+**cyberpsychosis episode** in a fight - 6 seconds of 30% more damage dealt and
+taken. Capacity level-ups pay the overclock down.
 
 ### Workshop
 
-Workshop doors show up on floors 4 and 10 (if you pass one over, it comes back
-on the next screen once). They upgrade what you already have: a weapon one or
-two quality steps, your MaxDoc, or your grenade.
+Workshop doors show up on floors 4, 10 and 16 (if you pass one over, it comes
+back on the next screen once). They work on what you already have: an
+evolution when a weapon is ready, a weapon two quality steps up, a weapon mod,
+your MaxDoc, or your grenade.
 
 ### The Fixer
 
 Clearing arenas also pays eddies (more on heavy fights and bosses). After each
 elite floor, before the boss, the Fixer sells a short stock - a MaxDoc upgrade,
-a grenade, a boon, a perk, a weapon upgrade, or a contact (two free rerolls).
-Your balance is on top, and every card says what it costs (or how much you're
-short). Prices rise with the run; the Street Smart unlock takes 20% off.
+a grenade, a boon, a perk, a weapon upgrade, a weapon mod, or a contact (two
+free rerolls) - and buys back weapons and cyberware you carry but don't have
+equipped. Your balance is on top, and every card says what it costs (or how
+much you're short). Prices rise with the run; the Street Smart unlock takes
+20% off.
 
 ### Health, grenades and movement
 
@@ -195,8 +301,9 @@ rerolls (Fixer Contacts I/II), a fourth reward card (Wide Net), a fourth door
 (Street Map), an Armory pick at the start of every run (Quartermaster), Fixer
 discounts (Street Smart), plus a few head starts (Med Kit, Head Start,
 Vitality, Edge). Kits: Solo and Blade from the start; Netrunner, Marksman,
-Brawler, Gunslinger, Demolitions and Juggernaut to unlock - each with its own
-starting perk.
+Brawler, Gunslinger, Demolitions, Juggernaut and Wireman (Monowire, a
+cyberdeck, a quickhack and Siphon) to unlock - each with its own starting
+perk.
 
 ### No looting
 
@@ -210,7 +317,10 @@ hand out (one an enemy dropped) is taken away as well.
 ### Difficulty
 
 Enemy levels follow the floor, not V: Act 1 enemies are a level below the
-floor number, Act 3 a level above, and V gains a level with every reward. Damage
+floor number, Act 3 a level above, and V gains a level with every level-up.
+From Act 2 bosses shrug off part of your damage (15%, 25% in Act 3), and in
+Act 3 every enemy does (10%): a run without a build behind it stalls there.
+Damage
 V takes scales from 55% on floor 1 to 100% on floor 18 (on top of the game's
 Hard difficulty), adjusted a little by the pacing director and cut by assist
 mode. Waves grow with depth: two waves per fight in Act 1, three later; the
@@ -249,7 +359,8 @@ Without TweakXL the game's original records are used.
 Each act ends with a boss: Act 1 the gang's own leader (or an outpost boss)
 with a lieutenant, Act 2 a MaxTac squad, Act 3 a Minotaur mech with a MaxTac
 escort. A boss's health shows under the HUD line; hurt, it calls in
-reinforcements, and near death it enrages.
+reinforcements, and near death it enrages. The Act 1 boss pays out an
+Operating System (see Overdrive), the others chrome.
 
 Elites (and bosses from Act 2) roll **affixes**, announced when they appear:
 ARMORED (takes 35% less damage), BERSERK (hits harder, moves faster),
@@ -271,8 +382,8 @@ last one standing. A finished objective pays bonus eddies.
 
 ### Events
 
-A "?" door is a stop without a fight. It counts as a floor and brings a
-level, like a reward:
+A "?" door is a stop without a fight. It counts as a floor and is followed by a
+level-up:
 
 - **Back-Alley Ripperdoc** - a free MaxDoc patch-up, paid street chrome, or
   bone lacing (+10% max health).
@@ -280,8 +391,8 @@ level, like a reward:
   Epic one.
 - **Misty's Reading** - three tarot cards, each a blessing with a price (more
   eddies but more damage taken, upgraded boons for less health...).
-- **A Stranger's Offer** - an iconic weapon that makes you a target (15% more
-  damage taken for the run), or sell a boon for eddies.
+- **A Stranger's Offer** (Act 2 on) - an iconic weapon that makes you a target
+  (15% more damage taken for the run), or sell a boon for eddies.
 
 ### Patrons
 
@@ -328,7 +439,9 @@ at the end of a wave is brought back near you.
 
 Petrochem Off-Limits, Industrial Park, Grand Imperial Mall, Oil Fields, Old
 Drive-In, Junkyard, Wind Farm and The Crater. Each has a gang that fits the
-location. Edit `Combat/Arenas.reds` to change radii, start points or disable one.
+location, and the door says what the ground is like (OPEN GROUND, MIXED or
+CLOSE QUARTERS): long guns like the open ones, shotguns and blades the tight
+ones. Edit `Combat/Arenas.reds` to change radii, start points or disable one.
 
 The walls are built from the game's own holo-tape hologram and a "Player
 Blocker" collider. They stop V (and gunfire through them). An enemy that ends
@@ -382,7 +495,8 @@ The record format is documented in `Core/Telemetry.reds`.
 | `Hub/HomeDevices.reds` | Sealed front door, desk computer as the terminal |
 | `Menu/MainMenuEntry.reds` | ROGUELITE menu item, skipped campaign/origin screens |
 | `Player/CharacterReset.reds` | Level-1 reset (keeps clothes and V's body items), no XP or points from the game, body repair |
-| `Player/Kits.reds` | The 8 starting kits, gear granting |
+| `Player/Kits.reds` | The 9 starting kits, gear granting |
+| `Player/OSHooks.reds` | Sees Operating System activations (Overdrive) |
 | `Player/Perks.reds` | Direct perk grants, baseline Dash and Slippery, perk attributes |
 | `Player/Consumables.reds` | Quality steps, MaxDoc ladder, grenades |
 | `Player/DeathGuard.reds` | Immortal god mode + health listener |
@@ -394,7 +508,9 @@ The record format is documented in `Core/Telemetry.reds`.
 | `Run/Objectives.reds` | Survive, uplink and sabotage objectives |
 | `Run/Events.reds` | "?" doors: ripperdoc, bookie, tarot, stranger |
 | `Run/Pacing.reds` | Pacing director (intensity, relax, pressure) |
-| `Run/Fixer.reds` | Eddie payouts and the Fixer's stock |
+| `Run/Fixer.reds` | Eddie payouts, the Fixer's stock and buy-backs |
+| `Run/Overdrive.reds` | Overdrive (the ultimate) and capacity overclock episodes |
+| `Run/Gigs.reds` | The gig taken at the start of a run |
 | `Combat/Arenas.reds` | The arena list |
 | `Combat/ArenaDirector.reds` | Arena teleport, wall tick, safety-net position check |
 | `Combat/ArenaWalls.reds` | Collision walls with proximity holo-tape visuals |
@@ -412,7 +528,11 @@ The record format is documented in `Core/Telemetry.reds`.
 | `Rewards/PerkCatalogData.reds` | The perk list (generated from `source/perks/catalog.tsv`) |
 | `Rewards/Patrons.reds` | The six patrons |
 | `Rewards/Boons.reds` | The boon catalogue, rarities, upgrades |
-| `Rewards/BoonEffects.reds` | What boons do in fights (hits, kills, saves) |
+| `Rewards/BoonEffects.reds` | What boons do in fights (hits, kills, saves); the hit and kill hooks |
+| `Rewards/Styles.reds` | Styles: points, ranks, damage bonuses, signatures |
+| `Rewards/Weapons.reds` | Weapon families, DPS previews, evolution, the quality curve |
+| `Rewards/WeaponMods.reds` | Weapon mods and their effects |
+| `Rewards/LevelUp.reds` | The level-up after every floor |
 | `Meta/MetaProgression.reds` | Unlocks, kits, Cred payout |
 | `UI/Card.reds` | The card used by every menu, icon helpers |
 | `UI/Transition.reds` | Fade to black with the destination (trips, death) |

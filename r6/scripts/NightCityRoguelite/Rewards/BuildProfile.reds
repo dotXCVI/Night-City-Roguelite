@@ -13,9 +13,10 @@
 //   attributes  each point spent above the baseline leans towards that
 //               attribute's styles
 //
-// Offers whose tags match get up to +40% weight (RLBuildProfile.Multiplier);
-// the reward director keeps at least one card per screen off-build, so the
-// profile nudges and never decides.
+// Offers whose tags match get up to +40% weight (RLBuildProfile.Multiplier),
+// +150% once the run has committed with an Operating System at the Act 1
+// boss; the reward director keeps at least one card per screen off-build, so
+// the profile nudges and never decides.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -23,12 +24,17 @@ module NightCityRoguelite
 public class RLBuildProfile {
   private let m_tags: array<CName>;
   private let m_weights: array<Float>;
+  // The run has an Operating System: rewards lean harder towards the build.
+  private let m_committed: Bool;
 
   public static func Read(player: ref<PlayerPuppet>) -> ref<RLBuildProfile> {
     let profile = new RLBuildProfile();
     if !IsDefined(player) {
       return profile;
     }
+    let system = RogueliteSystem.Get(player.GetGame());
+    let run = IsDefined(system) ? system.GetRun() : null;
+    profile.m_committed = IsDefined(run) && run.overdriveUnlocked;
     let transactionSystem = GameInstance.GetTransactionSystem(player.GetGame());
     let equipment = EquipmentSystem.GetData(player);
     let items: array<wref<gameItemData>>;
@@ -63,7 +69,7 @@ public class RLBuildProfile {
     profile.AddAttribute(player, gamedataStatType.Strength, [n"shotgun", n"lmg", n"blunt", n"survival"]);
     profile.AddAttribute(player, gamedataStatType.Reflexes, [n"rifle", n"blade", n"mobility"]);
     profile.AddAttribute(player, gamedataStatType.TechnicalAbility, [n"tech", n"chrome", n"gear", n"explosive"]);
-    profile.AddAttribute(player, gamedataStatType.Intelligence, [n"netrunner", n"smart"]);
+    profile.AddAttribute(player, gamedataStatType.Intelligence, [n"netrunner", n"smart", n"monowire"]);
     profile.AddAttribute(player, gamedataStatType.Cool, [n"handgun", n"precision", n"throwable", n"dual"]);
     return profile;
   }
@@ -136,7 +142,7 @@ public class RLBuildProfile {
         ArrayPush(tags, n"blunt");
         return tags;
       case gamedataItemType.Cyb_NanoWires:
-        ArrayPush(tags, n"netrunner");
+        ArrayPush(tags, n"monowire");
         return tags;
       case gamedataItemType.Cyb_Launcher:
         ArrayPush(tags, n"explosive");
@@ -169,7 +175,7 @@ public class RLBuildProfile {
         switch RPGManager.GetItemType(itemID) {
           case gamedataItemType.Cyb_MantisBlades: ArrayPush(tags, n"blade"); return tags;
           case gamedataItemType.Cyb_StrongArms: ArrayPush(tags, n"blunt"); return tags;
-          case gamedataItemType.Cyb_NanoWires: ArrayPush(tags, n"netrunner"); return tags;
+          case gamedataItemType.Cyb_NanoWires: ArrayPush(tags, n"monowire"); return tags;
           case gamedataItemType.Cyb_Launcher: ArrayPush(tags, n"explosive"); return tags;
         }
         ArrayPush(tags, IsDefined(item.EquipArea()) && Equals(item.EquipArea().Type(), gamedataEquipmentArea.LegsCW) ? n"mobility" : n"chrome");
@@ -181,12 +187,14 @@ public class RLBuildProfile {
     return tags;
   }
 
-  // 1.0 for no match, up to 1.4 for the build's main style.
+  // 1.0 for no match, up to 1.4 for the build's main style (2.5 once the run
+  // has committed).
   public static func Multiplier(profile: ref<RLBuildProfile>, tags: array<CName>) -> Float {
     if !IsDefined(profile) {
       return 1.0;
     }
-    return 1.0 + 0.4 * MinF(profile.Affinity(tags), 3.0) / 3.0;
+    let reach = profile.m_committed ? 1.5 : 0.4;
+    return 1.0 + reach * MinF(profile.Affinity(tags), 3.0) / 3.0;
   }
 
   // The strongest weight among the tags.

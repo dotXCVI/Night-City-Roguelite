@@ -108,13 +108,18 @@ def print_run(run_id, records):
         print(f"Killed on floor {death.get('depth')}, wave {death.get('wave')} by {death.get('by') or 'unknown'}")
     if builds:
         last = builds[-1]
-        print(f"Last build: level {last.get('lvl')}, {last.get('attr')}, tags [{last.get('tags')}], boons [{last.get('boons')}]")
+        print(f"Last build: level {last.get('lvl')}, {last.get('attr')}, OS {last.get('os', '-')}, styles [{last.get('styles', '')}]")
+        print(f"            mods [{last.get('mods', '')}], boons [{last.get('boons')}], overclock {last.get('overclock', 0)}, gig {last.get('gig') or '-'}")
     secs = [int(f['secs']) for f in floors if f.get('secs', '').isdigit()]
     if secs:
         print(f"Fighting time {sum(secs) // 60} min {sum(secs) % 60} s over {len(secs)} floors ({sum(secs) // len(secs)} s a floor)")
-    kinds = Counter(p.get('took', '').split(':')[0] for p in picks if p.get('screen') in ('reward', 'fixer') and p.get('took') != 'reroll')
+    kinds = Counter(p.get('took', '').split(':')[0] for p in picks
+                    if p.get('screen') in ('reward', 'levelup', 'os', 'fixer') and p.get('took') not in ('reroll', 'skip'))
     if kinds:
         print('Picks by kind: ' + ', '.join(f'{k} {n}' for k, n in kinds.most_common()))
+    ults = [f for k, f in records if k == 'ULT']
+    if ults:
+        print(f"Overdrive fired {len(ults)} times: " + ', '.join(f"floor {u.get('depth')} ({u.get('os')})" for u in ults))
     print()
 
 

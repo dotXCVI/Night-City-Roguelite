@@ -12,7 +12,7 @@
 
 module NightCityRoguelite
 
-public class RLArenaDirector extends IScriptable {
+public class RLArenaDirector extends RLDelayTarget {
   private let m_system: wref<RogueliteSystem>;
   private let m_arena: ref<RLArenaDef>;
   private let m_walls: ref<RLArenaWalls>;
@@ -35,10 +35,6 @@ public class RLArenaDirector extends IScriptable {
   public func GetArena() -> ref<RLArenaDef> = this.m_arena
 
   public func GetCleaner() -> ref<RLArenaCleaner> = this.m_cleaner
-
-  public func GetCenter() -> Vector4 {
-    return IsDefined(this.m_arena) ? this.m_arena.position : Vector4(0.0, 0.0, 0.0, 1.0);
-  }
 
   public func OnSessionEnd() {
     this.StopWalls();

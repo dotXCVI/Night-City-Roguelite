@@ -3,6 +3,21 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.13 - Balance pass, part 2 (2026-10-26)
+
+- Code cleanup: runtime helpers in one place, and a Run/ folder for encounters, pacing and the Fixer.
+- Pacing director (Left 4 Dead style): breathers after rough waves, and pressure nudges wave size and damage between arenas.
+- Reward director:
+  - quality rolls with pity and spikes;
+  - big picks get rarer the more you take;
+  - build-aware weighting (max +40%), with one off-build card on every screen.
+- Perk cards: Training doors offer perks from a catalogue of 124, granted outright. Signature perks need a matching build.
+- Workshop doors on floors 4 and 10: upgrade a weapon, your MaxDoc or your grenade.
+- The Fixer shop, paid in eddies earned per arena.
+- MaxDoc drops from bosses and elites; new boons Quick Fuse, Stim Rig and Demolitionist.
+- 8 kits with identity perks; meta unlocks focused on choice (rerolls, a 4th card, a 4th door, Quartermaster and more).
+- Assist mode: 20% less damage taken, +2% per run lost while it's on (max 80%).
+
 ## v0.0.12 - Balance pass, part 1 (2026-10-26)
 
 - Runs are 3 acts of 6 arenas: an elite on floor 5 and a boss on floor 6 of each act (bosses on floors 6, 12 and 18).

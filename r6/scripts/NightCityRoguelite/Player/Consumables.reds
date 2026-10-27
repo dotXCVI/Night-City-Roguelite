@@ -139,6 +139,22 @@ public abstract class RLConsumables {
     return RLQuality.DisplayName(RLQuality.StepOfRecord(ladder[wanted]));
   }
 
+  // One ladder step up, but never past `maxStep` (drops from elites and bosses).
+  // Returns the new item's quality name, or "" when nothing changed.
+  public static func UpgradeHealthOnce(player: ref<PlayerPuppet>, maxStep: Int32) -> String {
+    let ladder = RLConsumables.HealthLadder();
+    let next = RLConsumables.CurrentHealthIndex(player, ladder) + 1;
+    if next <= 0 || next >= ArraySize(ladder) || RLQuality.StepOfRecord(ladder[next]) > maxStep {
+      return "";
+    }
+    let system = RogueliteSystem.Get(player.GetGame());
+    if IsDefined(system) {
+      system.ExpectGrant(ladder[next]);
+    }
+    RLConsumables.SwapHealth(player, ladder, next);
+    return RLQuality.DisplayName(RLQuality.StepOfRecord(ladder[next]));
+  }
+
   private static func SwapHealth(player: ref<PlayerPuppet>, ladder: array<TweakDBID>, index: Int32) {
     let transactionSystem = GameInstance.GetTransactionSystem(player.GetGame());
     for id in ladder {
@@ -166,7 +182,8 @@ public abstract class RLConsumables {
 
   // --- Grenades ------------------------------------------------------------------------
 
-  public static func GrenadeRecords() -> array<TweakDBID> {
+  // Every grenade record, or one family's ("Frag", "EMP", "Incendiary"...).
+  public static func GrenadeRecords(opt family: String) -> array<TweakDBID> {
     let names = [
       "FragRegular", "FragCommonPlus", "FragUncommon", "FragUncommonPlus", "FragRarePlus", "FragEpic", "FragEpicPlus", "FragLegendary", "FragLegendaryPlus", "FragSticky",
       "EMPRegular", "EMPCommonPlus", "EMPUncommon", "EMPUncommonPlus", "EMPRare", "EMPRarePlus", "EMPEpicPlus", "EMPLegendary", "EMPLegendaryPlus", "EMPSticky",
@@ -177,7 +194,7 @@ public abstract class RLConsumables {
     let result: array<TweakDBID>;
     for name in names {
       let id = TDBID.Create("Items.Grenade" + name);
-      if IsDefined(TweakDBInterface.GetItemRecord(id)) {
+      if (StrLen(family) == 0 || StrBeginsWith(name, family)) && IsDefined(TweakDBInterface.GetItemRecord(id)) {
         ArrayPush(result, id);
       }
     }
@@ -199,6 +216,32 @@ public abstract class RLConsumables {
         return matches[RandRange(0, ArraySize(matches))];
       }
       distance += 1;
+    }
+    return TDBID.None();
+  }
+
+  // A grenade of one family ("Frag", "EMP"...) close to the wanted quality.
+  public static func PickGrenadeOfFamily(const family: String, step: Int32) -> TweakDBID {
+    let best = TDBID.None();
+    let bestDistance = 99;
+    for id in RLConsumables.GrenadeRecords(family) {
+      let distance = Abs(RLQuality.StepOfRecord(id) - step);
+      if distance < bestDistance {
+        best = id;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
+  // The grenade V carries, or none.
+  public static func CurrentGrenade(player: ref<PlayerPuppet>) -> TweakDBID {
+    let items: array<wref<gameItemData>>;
+    GameInstance.GetTransactionSystem(player.GetGame()).GetItemList(player, items);
+    for item in items {
+      if IsDefined(item) && Equals(RPGManager.GetItemType(item.GetID()), gamedataItemType.Gad_Grenade) {
+        return ItemID.GetTDBID(item.GetID());
+      }
     }
     return TDBID.None();
   }

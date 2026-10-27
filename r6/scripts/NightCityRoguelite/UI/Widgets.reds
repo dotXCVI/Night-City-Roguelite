@@ -41,26 +41,6 @@ public abstract class RLUI {
     return panel;
   }
 
-  public static func Button(name: CName, const label: String, width: Float, disabled: Bool, opt height: Float, opt fontSize: Int32) -> ref<SimpleButton> {
-    let button = SimpleButton.Create();
-    button.SetName(name);
-    button.SetText(label);
-    button.SetWidth(width);
-    if height > 0.0 {
-      button.GetRootWidget().SetHeight(height);
-    }
-    if fontSize > 0 {
-      let text = button.GetRootCompoundWidget().GetWidgetByPathName(n"label") as inkText;
-      if IsDefined(text) {
-        text.SetFontSize(fontSize);
-      }
-    }
-    button.SetDisabled(disabled);
-    button.ToggleAnimations(true);
-    button.ToggleSounds(true);
-    return button;
-  }
-
   // Small grey section heading with a faint rule under it.
   public static func SectionLabel(const label: String) -> ref<inkWidget> {
     let panel = new inkVerticalPanel();

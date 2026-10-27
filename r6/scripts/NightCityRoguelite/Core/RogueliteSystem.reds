@@ -9,19 +9,17 @@
 //
 //   new game -> AwaitingTakeover -> Hub (locked in V's apartment)
 //   Hub --START RUN--> Preparing --> RunHome (still in the apartment)
-//   RunHome --pick reward (if any), pick the next fight (door)--> Deploying
-//     (countdown) --> InEncounter (waves, arena walls)
-//     --> Cleared (loot countdown, F7 skips) --> RunHome
+//   RunHome --reward pick (+1 level), the Fixer after an elite floor, the next
+//     fight (door)--> Deploying (countdown, music) --> InEncounter (waves)
+//     --> Cleared (short countdown, F7 skips) --> RunHome
 //     --> Flatlined (countdown) --> Ending --> Hub
 //   final floor cleared --> Cleared (countdown) --> Ending --> Hub
 //
-// Doors (Hades-style): the first fight is a random arena; after that each
-// floor offers doors by reward type, and the reward type sets the threat of
-// the fight (Rewards/RewardSystem.reds).
-//
-// The hub is V's apartment (Hub/ApartmentHub.reds) unless that is turned off
-// in Config or the apartment fails to load, in which case it is the spot where
-// the takeover happened.
+// Collaborators: doors and offers (Rewards/RewardSystem.reds, Director.reds),
+// waves (Run/Encounters.reds, Combat/WaveSpawner.reds), pacing and difficulty
+// (Run/Pacing.reds, Run/Difficulty.reds), the Fixer (Run/Fixer.reds), music
+// (Audio/Music.reds) and the apartment hub (Hub/ApartmentHub.reds; when it is
+// off or fails to load, home is the spot where the takeover happened).
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -58,6 +56,14 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_hud: ref<RLHud>;
   private let m_apartment: ref<RLApartmentHub>;
   private let m_music: ref<RLMusic>;
+  private let m_pacing: ref<RLPacing>;
+  // Items the mod hands out mid-fight, exempt from the arena pickup filter.
+  private let m_expectedGrants: array<TweakDBID>;
+  private let m_eliteDropTaken: Bool;
+  private let m_fixerStock: array<ref<RLFixerItem>>;
+  // The reward type of the offers waiting at home.
+  private let m_offerCategory: RLRewardCategory;
+  private let m_offerThreat: Int32;
   // The enemy faction of the fight being deployed to / fought.
   private let m_faction: ref<RLFactionPool>;
   private let m_offers: array<ref<RLOffer>>;
@@ -98,6 +104,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_hud = new RLHud();
     this.m_apartment = RLApartmentHub.Create(this);
     this.m_music = new RLMusic();
+    this.m_pacing = new RLPacing();
   }
 
   public func OnDetach() {
@@ -220,6 +227,7 @@ public class RogueliteSystem extends ScriptableSystem {
   public func OnSessionEnding() {
     this.CancelTimer();
     this.m_music.Stop();
+    this.m_pacing.Stop();
     if IsDefined(this.m_journalGuard) {
       this.m_journalGuard.Stop(this.GetGameInstance());
     }
@@ -506,16 +514,6 @@ public class RogueliteSystem extends ScriptableSystem {
     return blackboard.GetInt(GetAllBlackboardDefs().PlayerStateMachine.Vehicle) != EnumInt(gamePSMVehicle.Default);
   }
 
-  public static func IsPlayerFree(player: ref<PlayerPuppet>) -> Bool {
-    if RogueliteSystem.IsInVehicle(player) {
-      return false;
-    }
-    if PlayerPuppet.GetSceneTier(player) > EnumInt(gamePSMHighLevel.SceneTier1) {
-      return false;
-    }
-    return !AIActionHelper.IsInWorkspot(player);
-  }
-
   // --- Hub -------------------------------------------------------------------------------
 
   private func StoreHub(player: ref<PlayerPuppet>) {
@@ -653,6 +651,8 @@ public class RogueliteSystem extends ScriptableSystem {
       case RLState.RunHome:
         if ArraySize(this.m_offers) > 0 {
           this.OpenRewardPopup();
+        } else if this.m_run.fixerPending {
+          this.OpenFixer();
         } else {
           if ArraySize(this.m_doors) == 0 {
             this.RollDoors();
@@ -701,10 +701,10 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     RLBoons.ClearBuffs(player);
     this.ApplyDifficulty();
-    let roguelike = false;
-    let token = service.BeginRunToken(roguelike);
-    this.m_run = RLRunState.Create(token, kit, roguelike);
-    this.m_run.rerollsPerFloor = RLMeta.PerkActive(service, n"perk.Reroll") ? 1 : 0;
+    this.m_run = RLRunState.Create(service.BeginRunToken(), kit);
+    this.m_pacing.ResetRun();
+    this.m_run.rerollsPerFloor = RLMeta.PerkActive(service, n"perk.Reroll2") ? 2 : (RLMeta.PerkActive(service, n"perk.Reroll") ? 1 : 0);
+    this.m_run.rerollsLeft = this.m_run.rerollsPerFloor;
     this.m_run.offerCount = RLMeta.PerkActive(service, n"perk.FourthChoice") ? 4 : 3;
     ArrayClear(this.m_offers);
     ArrayClear(this.m_doors);
@@ -714,7 +714,7 @@ public class RogueliteSystem extends ScriptableSystem {
     let attributePoints = RLConfig.StartingAttributePoints() + RLMeta.BonusAttributePoints(service);
     RLCharacterReset.ResetProgressionAndUnequip(player, attributePoints, RLConfig.StartingPerkPoints());
     this.After(n"prepareGear", 0.6);
-    RLLog(s"Run started: kit \(NameToString(kit)), roguelike \(roguelike).");
+    RLLog("Run started: kit " + NameToString(kit) + ".");
   }
 
   private func PrepareRunGear() {
@@ -735,7 +735,7 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     let service = RogueliteService.Get();
-    RLKits.Apply(player, service.GetPools(), this.m_run.kit);
+    RLKits.Apply(player, service.GetPools(), this.m_run.kit, RLMeta.PerkActive(service, n"perk.MedKit") ? 2 : 0);
 
     if RLMeta.PerkActive(service, n"perk.HeadStart") {
       PlayerDevelopmentSystem.GetData(player).RL_GrantLevels(2);
@@ -753,6 +753,10 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_deathGuard.Arm(player);
     FastTravelSystem.AddFastTravelLock(n"NightCityRoguelite", game);
     this.RollDoors();
+    // Quartermaster: the run opens with an Armory pick.
+    if RLMeta.PerkActive(service, n"perk.StarterPick") {
+      this.RollOffers(RLRewardCategory.Armory, 2);
+    }
     this.EnterRunHome();
     RLNotify(game, "Run started. Spend your attribute points in the Character menu, then press F7 to deploy. Every reward you pick also grants a level.", 8.0);
   }
@@ -818,7 +822,13 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(arena) {
       return;
     }
+    // A workshop door passed over on floor 4 or 10 comes back once.
+    if this.m_run.workshopShown {
+      let depth = this.m_run.Depth();
+      this.m_run.workshopCarry = NotEquals(door.category, RLRewardCategory.Workshop) && (depth == 4 || depth == 10);
+    }
     this.m_run.door = door;
+    this.m_faction = door.faction;
     ArrayClear(this.m_doors);
     this.DeployTo(arena);
   }
@@ -829,6 +839,7 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     this.m_lastArena = arena.id;
+    ArrayClear(this.m_expectedGrants);
     this.m_state = RLState.Deploying;
     this.m_apartment.StopLeash();
     this.m_spawner.DeleteAll();
@@ -840,9 +851,11 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_arenas.StartWalls();
     RLLoot.RefillForArena(player);
     this.UntrackQuest();
-    // The enemy faction is picked on arrival so the music can set the mood
+    // The door already named the enemy faction, so the music sets the mood
     // over the countdown.
-    this.m_faction = RogueliteService.Get().GetPools().PickFactionPreferred(arena.factions, this.m_run.act >= 3);
+    if !IsDefined(this.m_faction) {
+      this.m_faction = RogueliteService.Get().GetPools().PickFactionPreferred(arena.factions, this.m_run.act >= 3);
+    }
     this.m_music.Prepare(this.m_faction.faction, this.m_run.Threat(), this.m_run);
     let reward = RLRewards.CategoryName(this.m_run.door.category);
     RLLog(s"Deploying to \(arena.name): \(reward), threat \(this.m_run.Threat()).");
@@ -853,7 +866,8 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(this.m_run) {
       return;
     }
-    this.m_doors = RLRewards.RollDoors(RogueliteService.Get().GetPools(), this.m_run, this.m_lastArena);
+    let doorCount = RLMeta.PerkActive(RogueliteService.Get(), n"perk.FourthDoor") ? 4 : 3;
+    this.m_doors = RLRewards.RollDoors(GetPlayer(this.GetGameInstance()), RogueliteService.Get().GetPools(), this.m_run, this.m_lastArena, doorCount);
   }
 
   private func SpawnEncounter() {
@@ -862,152 +876,15 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(player) || !IsDefined(this.m_run) || !IsDefined(arena) || !Equals(this.m_state, RLState.Deploying) {
       return;
     }
-    let plan = this.BuildPlan(this.m_run, arena);
-    this.m_state = RLState.InEncounter;
-    this.m_spawner.Start(arena, plan);
-    RLNotify(player.GetGame(), this.m_run.FloorLabel() + " - " + plan.factionName, 4.0);
-  }
-
-  // Waves for a floor. Size grows slowly with the floor; the door's threat
-  // (light / standard / heavy) adds or removes an enemy per wave, heavy fights
-  // get an extra wave from Act 2 on, and the elite floor puts one elite in
-  // every wave. Enemy levels come from the run (Run/Difficulty.reds), not V.
-  private func BuildPlan(run: ref<RLRunState>, arena: ref<RLArenaDef>) -> ref<RLEncounterPlan> {
     let faction = IsDefined(this.m_faction)
       ? this.m_faction
-      : RogueliteService.Get().GetPools().PickFactionPreferred(arena.factions, run.act >= 3);
-    let threat = run.Threat();
-    let plan = new RLEncounterPlan();
-    plan.factionName = RogueliteSystem.FactionName(faction.faction);
-
-    let baseLevel = RLDifficulty.EnemyBaseLevel(run);
-    let threatLevel = threat - 2;
-    let weights = RogueliteSystem.TierWeights(run, threat);
-    let perWave = Max(2, 3 + run.Depth() / 3 + (threat - 2));
-    let waves = run.act >= 2 ? 3 : 2;
-    if threat >= 3 && run.act >= 2 {
-      waves += 1;
-    }
-    if run.IsEliteFloor() {
-      waves = 3;
-    }
-    if run.IsBossFloor() {
-      waves = 2;
-    }
-
-    let w = 0;
-    while w < waves {
-      plan.BeginWave();
-      let size = w == waves - 1 ? perWave + 1 : perWave;
-      let k = 0;
-      if run.IsEliteFloor() {
-        plan.Add(faction.Pick(2), false, baseLevel + 1 + threatLevel);
-        k = 1;
-      }
-      while k < size {
-        let tier = RogueliteSystem.RollTier(weights);
-        plan.Add(faction.Pick(tier), false, baseLevel + (tier >= 2 ? 1 : 0) + threatLevel);
-        k += 1;
-      }
-      w += 1;
-    }
-
-    if run.IsBossFloor() {
-      plan.BeginWave();
-      let bosses = RogueliteSystem.BossRecords(run.act);
-      if ArraySize(bosses) == 0 {
-        // Act 1, or no MaxTac records: faction elites lead the boss wave.
-        plan.Add(faction.Pick(2), true, baseLevel + 2);
-        plan.Add(faction.Pick(2), true, baseLevel + 2);
-      } else {
-        for boss in bosses {
-          plan.Add(boss, true, baseLevel + 2);
-        }
-      }
-      let adds = run.act + 1;
-      while adds > 0 {
-        plan.Add(faction.Pick(1), false, baseLevel);
-        adds -= 1;
-      }
-    }
-    return plan;
-  }
-
-  // Grunt / tough / elite odds. Act 1 opens with grunts only; heavy fights
-  // trade grunts for elites, light fights the other way round.
-  public static func TierWeights(run: ref<RLRunState>, threat: Int32) -> array<Int32> {
-    let weights: array<Int32>;
-    if run.act <= 1 {
-      weights = run.floor <= 2 ? [85, 15, 0] : [70, 27, 3];
-    } else if run.act == 2 {
-      weights = [50, 42, 8];
-    } else {
-      weights = [30, 50, 20];
-    }
-    if threat >= 3 {
-      let shift = Min(10, weights[0]);
-      weights[0] -= shift;
-      weights[2] += shift;
-    } else if threat <= 1 {
-      weights[1] += weights[2];
-      weights[2] = 0;
-      let down = Min(15, weights[1]);
-      weights[1] -= down;
-      weights[0] += down;
-    }
-    return weights;
-  }
-
-  public static func RollTier(weights: array<Int32>) -> Int32 {
-    let total = weights[0] + weights[1] + weights[2];
-    let roll = RandRange(0, Max(1, total));
-    if roll < weights[0] {
-      return 0;
-    }
-    if roll < weights[0] + weights[1] {
-      return 1;
-    }
-    return 2;
-  }
-
-  // MaxTac lead the boss waves of acts 2 and 3; act 1's boss wave is led by
-  // faction elites (empty result).
-  public static func BossRecords(act: Int32) -> array<TweakDBID> {
-    let result: array<TweakDBID>;
-    if act <= 1 {
-      return result;
-    }
-    let maxtac: array<TweakDBID>;
-    for id in RLBosses.MaxTac() {
-      if RLBosses.Exists(id) {
-        ArrayPush(maxtac, id);
-      }
-    }
-    let count = act >= 3 ? 3 : 2;
-    let i = 0;
-    while i < count && ArraySize(maxtac) > 0 {
-      ArrayPush(result, maxtac[RandRange(0, ArraySize(maxtac))]);
-      i += 1;
-    }
-    return result;
-  }
-
-  public static func FactionName(faction: gamedataAffiliation) -> String {
-    switch faction {
-      case gamedataAffiliation.Animals: return "Animals";
-      case gamedataAffiliation.Maelstrom: return "Maelstrom";
-      case gamedataAffiliation.Scavengers: return "Scavengers";
-      case gamedataAffiliation.SixthStreet: return "6th Street";
-      case gamedataAffiliation.TygerClaws: return "Tyger Claws";
-      case gamedataAffiliation.Valentinos: return "Valentinos";
-      case gamedataAffiliation.VoodooBoys: return "Voodoo Boys";
-      case gamedataAffiliation.Wraiths: return "Wraiths";
-      case gamedataAffiliation.Barghest: return "Barghest";
-      case gamedataAffiliation.Arasaka: return "Arasaka";
-      case gamedataAffiliation.Militech: return "Militech";
-      case gamedataAffiliation.KangTao: return "Kang Tao";
-    }
-    return "Hostiles";
+      : RogueliteService.Get().GetPools().PickFactionPreferred(arena.factions, this.m_run.act >= 3);
+    let plan = RLEncounters.Build(this.m_run, faction, this.m_pacing.GetPressure());
+    this.m_state = RLState.InEncounter;
+    this.m_eliteDropTaken = false;
+    this.m_pacing.BeginArena();
+    this.m_spawner.Start(arena, plan);
+    RLNotify(player.GetGame(), this.m_run.FloorLabel() + " - " + plan.factionName, 4.0);
   }
 
   // --- Encounter events (from RLWaveSpawner) -----------------------------------------------
@@ -1023,11 +900,43 @@ public class RogueliteSystem extends ScriptableSystem {
     this.RefreshHud();
   }
 
-  public func OnWaveCleared(wave: Int32, waves: Int32) {
-    RLNotify(this.GetGameInstance(), s"Wave \(wave) cleared. Ammo and a health charge restored - next wave incoming.", 3.0);
+  // Returns true when the pacing director calls for a breather: a longer gap
+  // and a smaller next wave.
+  public func OnWaveCleared(wave: Int32, waves: Int32) -> Bool {
+    let relax = this.m_pacing.WantsRelax();
+    let message = relax
+      ? s"Wave \(wave) cleared. Catch your breath - ammo and a health charge restored."
+      : s"Wave \(wave) cleared. Ammo and a health charge restored - next wave incoming.";
+    RLNotify(this.GetGameInstance(), message, 3.0);
     RLLoot.RefillAfterWave(GetPlayer(this.GetGameInstance()));
     this.m_alive = 0;
     this.RefreshHud();
+    return relax;
+  }
+
+  public func OnHealthChanged(oldValue: Float, newValue: Float) {
+    this.m_pacing.OnHealthChanged(oldValue, newValue);
+  }
+
+  // Damage V takes: the run's curve, pacing pressure and assist mode.
+  public func GetIncomingDamageScale() -> Float {
+    if !IsDefined(this.m_run) {
+      return 1.0;
+    }
+    let scale = RLDifficulty.IncomingDamageScale(this.m_run.Depth(), this.m_run.TotalFloors()) * this.m_pacing.DamageScale();
+    let service = RogueliteService.Get();
+    if service.IsAssistOn() {
+      scale *= 1.0 - service.AssistReduction();
+    }
+    return scale;
+  }
+
+  public func ExpectGrant(record: TweakDBID) {
+    ArrayPush(this.m_expectedGrants, record);
+  }
+
+  public func ConsumeExpectedGrant(record: TweakDBID) -> Bool {
+    return ArrayRemove(this.m_expectedGrants, record);
   }
 
   public func OnEnemyCountChanged(alive: Int32) {
@@ -1035,17 +944,40 @@ public class RogueliteSystem extends ScriptableSystem {
     this.RefreshHud();
   }
 
-  public func OnEnemyKilled(isBoss: Bool) {
+  public func OnEnemyKilled(isBoss: Bool, isElite: Bool) {
     if !IsDefined(this.m_run) || !Equals(this.m_state, RLState.InEncounter) {
       return;
     }
     this.m_run.kills += 1;
+    this.m_pacing.OnKill();
     if isBoss {
       this.m_run.bossesKilled += 1;
     }
     let player = GetPlayer(this.GetGameInstance());
     if !IsDefined(player) {
       return;
+    }
+    // Better healing from the toughest enemies: every boss, and one elite in
+    // four (once per arena), up to two steps above the run's health floor.
+    if isBoss || (isElite && !this.m_eliteDropTaken && RandF() < 0.25) {
+      let cap = RLConsumables.HealthFloorStep(this.m_run.Depth(), this.m_run.TotalFloors()) + 2;
+      let upgraded = RLConsumables.UpgradeHealthOnce(player, cap);
+      if StrLen(upgraded) > 0 {
+        this.m_eliteDropTaken = this.m_eliteDropTaken || !isBoss;
+        RLLog("Health item dropped: " + upgraded + ".");
+        RLNotify(player.GetGame(), "MaxDoc upgraded to " + upgraded + "!", 4.0);
+      }
+    }
+    let demolitionist = this.m_run.BoonStacks(n"Demolitionist");
+    if demolitionist > 0 {
+      GameInstance.GetStatPoolsSystem(player.GetGame()).RequestChangingStatPoolValue(
+        Cast<StatsObjectID>(player.GetEntityID()),
+        gamedataStatPoolType.GrenadesCharges,
+        0.25 * Cast<Float>(demolitionist * player.GetGrenadeThrowCostClean()),
+        null,
+        false,
+        false
+      );
     }
     let bloodlust = this.m_run.BoonStacks(n"Bloodlust");
     if bloodlust > 0 {
@@ -1076,10 +1008,17 @@ public class RogueliteSystem extends ScriptableSystem {
     let cred = RLMeta.ArenaCred(this.m_run.act, this.m_run.Threat(), this.m_run.IsBossFloor());
     RogueliteService.Get().AddCred(cred);
     this.m_run.credEarned += cred;
-    RLNotify(game, s"+\(cred) Cred.", 4.0);
+    // Eddies for the Fixer.
+    let eddies = RLFixer.ArenaEddies(this.m_run);
+    let player = GetPlayer(game);
+    if IsDefined(player) && !this.m_run.IsFinalFloor() {
+      RLGear.GiveEddies(player, eddies);
+    }
+    RLNotify(game, s"+\(cred) Cred, +\(eddies) eddies.", 4.0);
 
     this.m_state = RLState.Cleared;
     this.m_music.OnCleared();
+    this.m_pacing.EndArena(true, this.m_run);
     if this.m_run.IsFinalFloor() {
       RLNotify(game, "Night City is yours. Run complete!", 6.0);
       this.StartCountdown(RLConfig.ClearedCountdown(), "RUN COMPLETE - HOME IN", n"victoryHome");
@@ -1087,20 +1026,21 @@ public class RogueliteSystem extends ScriptableSystem {
     }
 
     this.m_run.rerollsLeft = this.m_run.rerollsPerFloor;
-    this.RollOffers();
+    this.RollOffers(IsDefined(this.m_run.door) ? this.m_run.door.category : RLRewardCategory.Boons, this.m_run.Threat());
     RLNotify(game, "Area clear. Heading home in a few seconds (F7 to go now).", 5.0);
     this.StartCountdown(RLConfig.ClearedCountdown(), "CLEARED - HOME IN", n"returnHome");
   }
 
   // --- Rewards -----------------------------------------------------------------------------------
 
-  private func RollOffers() {
+  private func RollOffers(category: RLRewardCategory, threat: Int32) {
     let player = GetPlayer(this.GetGameInstance());
     if !IsDefined(player) || !IsDefined(this.m_run) {
       return;
     }
-    let category = IsDefined(this.m_run.door) ? this.m_run.door.category : RLRewardCategory.Boons;
-    this.m_offers = RLRewards.RollForCategory(player, RogueliteService.Get().GetPools(), this.m_run, category, this.m_run.Threat(), this.m_run.offerCount);
+    this.m_offerCategory = category;
+    this.m_offerThreat = threat;
+    this.m_offers = RLRewards.RollForCategory(player, RogueliteService.Get().GetPools(), this.m_run, category, threat, this.m_run.offerCount);
   }
 
   private func OpenRewardPopup() {
@@ -1108,8 +1048,7 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     this.m_popupOpen = true;
-    let category = IsDefined(this.m_run.door) ? this.m_run.door.category : RLRewardCategory.Boons;
-    this.m_popup = RLRewardPopup.Open(this, this.m_offers, RLRewards.CategoryName(category) + " - CHOOSE ONE", this.m_run.rerollsLeft);
+    this.m_popup = RLRewardPopup.Open(this, this.m_offers, RLRewards.CategoryName(this.m_offerCategory) + " - CHOOSE ONE", this.m_run.rerollsLeft);
   }
 
   public func OnRewardChosen(index: Int32) {
@@ -1128,14 +1067,50 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(player) {
       return;
     }
-    RLRewards.Grant(player, RogueliteService.Get().GetPools(), this.m_run, offer);
+    RLRewards.Grant(player, this.m_run, offer);
     // Every reward also brings a level: the only XP V gets.
     PlayerDevelopmentSystem.GetData(player).RL_GrantLevels(1);
     ArrayClear(this.m_offers);
     this.RollDoors();
     RLNotify(game, s"\(offer.title) acquired. +1 level.", 4.0);
-    this.m_hud.Update(this.m_run.FloorLabel(), "HOME - F7: CHOOSE YOUR NEXT FIGHT");
+    // The elite floor is behind V: the Fixer before the boss door.
+    this.m_run.fixerPending = this.m_run.IsBossFloor();
+    this.m_hud.Update(this.m_run.FloorLabel(), this.m_run.fixerPending ? "HOME - F7: THE FIXER IS IN" : "HOME - F7: CHOOSE YOUR NEXT FIGHT");
     this.After(n"openTerminal", 0.8);
+  }
+
+  // --- Fixer ---------------------------------------------------------------------------------
+
+  private func OpenFixer() {
+    let player = GetPlayer(this.GetGameInstance());
+    if !IsDefined(player) || this.m_popupOpen {
+      return;
+    }
+    if ArraySize(this.m_fixerStock) == 0 {
+      this.m_fixerStock = RLFixer.Stock(player, RogueliteService.Get().GetPools(), this.m_run);
+    }
+    this.m_popupOpen = true;
+    this.m_popup = RLFixerPopup.Open(this);
+  }
+
+  public func GetFixerStock() -> array<ref<RLFixerItem>> = this.m_fixerStock
+
+  public func BuyFromFixer(index: Int32) -> Bool {
+    let player = GetPlayer(this.GetGameInstance());
+    if !IsDefined(player) || !IsDefined(this.m_run) || index < 0 || index >= ArraySize(this.m_fixerStock) {
+      return false;
+    }
+    return RLFixer.Buy(player, this.m_run, this.m_fixerStock[index]);
+  }
+
+  public func OnFixerLeft() {
+    if !IsDefined(this.m_run) {
+      return;
+    }
+    this.m_run.fixerPending = false;
+    ArrayClear(this.m_fixerStock);
+    this.m_hud.Update(this.m_run.FloorLabel(), "HOME - F7: CHOOSE YOUR NEXT FIGHT");
+    this.After(n"openTerminal", 0.5);
   }
 
   public func OnRewardReroll() {
@@ -1143,7 +1118,7 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     this.m_run.rerollsLeft -= 1;
-    this.RollOffers();
+    this.RollOffers(this.m_offerCategory, this.m_offerThreat);
     this.After(n"reopenReward", 0.5);
   }
 
@@ -1179,6 +1154,7 @@ public class RogueliteSystem extends ScriptableSystem {
   private func Flatline() {
     this.m_state = RLState.Flatlined;
     this.m_music.Stop();
+    this.m_pacing.EndArena(false, this.m_run);
     // Enemies vanish so the countdown is a breather, not a beating.
     this.m_spawner.Abort();
     RLNotify(this.GetGameInstance(), "FLATLINED", 4.0);
@@ -1201,6 +1177,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_state = RLState.Ending;
     this.CancelTimer();
     this.m_music.Stop();
+    this.m_pacing.Stop();
     this.m_spawner.Abort();
     this.m_arenas.StopWalls();
     ArrayClear(this.m_offers);

@@ -136,36 +136,74 @@ public abstract class RLGear {
   }
 }
 
+// Starting kits: Common weapons (no Smart or Tech weapons at the start), one
+// identity perk, and a basic MaxDoc (an Uncommon one with the Med Kit unlock).
+// Grenades are rewards, except for the Demolitions kit.
 public abstract class RLKits {
-  public static func Apply(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, kit: CName) {
-    let pistolTypes = [gamedataItemType.Wea_Handgun, gamedataItemType.Wea_Revolver];
+  public static func Apply(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, kit: CName, healthStep: Int32) {
+    let basic = RLRewards.AllowedEvolutions(1);
+    let pistols = [gamedataItemType.Wea_Handgun, gamedataItemType.Wea_Revolver];
     let noIDs: array<TweakDBID>;
+    let perk = gamedataNewPerkType.Reflexes_Left_Milestone_2;
     switch kit {
       case n"Blade":
-        RLGear.GiveWeapon(player, pools.PickWeapon([gamedataItemType.Wea_Katana, gamedataItemType.Wea_Sword]), n"Common", true);
-        RLGear.GiveWeapon(player, pools.PickWeapon(pistolTypes), n"Common", true);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Katana, gamedataItemType.Wea_Sword], basic);
+        RLKits.Weapon(player, pools, pistols, basic);
+        perk = gamedataNewPerkType.Reflexes_Right_Milestone_2;
         break;
       case n"Netrunner":
         RLGear.InstallCyberware(player, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
         let first = pools.PickQuickhack(0, noIDs);
         let second = pools.PickQuickhack(0, [first]);
         RLGear.GiveQuickhacks(player, [first, second]);
-        RLGear.GiveWeapon(player, pools.PickWeapon(pistolTypes), n"Common", true);
+        RLKits.Weapon(player, pools, pistols, basic);
+        perk = gamedataNewPerkType.Intelligence_Central_Milestone_1;
         break;
       case n"Marksman":
-        RLGear.GiveWeapon(player, pools.PickWeapon([gamedataItemType.Wea_PrecisionRifle, gamedataItemType.Wea_SniperRifle]), n"Common", true);
-        RLGear.GiveWeapon(player, pools.PickWeapon(pistolTypes), n"Common", true);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_PrecisionRifle, gamedataItemType.Wea_SniperRifle], basic);
+        RLKits.Weapon(player, pools, pistols, basic);
+        perk = gamedataNewPerkType.Cool_Left_Milestone_2;
         break;
       case n"Brawler":
         RLGear.InstallCyberware(player, pools.PickCyberware(0, false, gamedataItemType.Cyb_StrongArms, noIDs));
-        RLGear.GiveWeapon(player, pools.PickWeapon([gamedataItemType.Wea_Shotgun, gamedataItemType.Wea_ShotgunDual]), n"Common", true);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Shotgun, gamedataItemType.Wea_ShotgunDual], basic);
+        perk = gamedataNewPerkType.Body_Left_Milestone_2;
+        break;
+      case n"Gunslinger":
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Revolver], basic);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Handgun], basic);
+        perk = gamedataNewPerkType.Cool_Central_Milestone_2;
+        break;
+      case n"Demolitions":
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_SubmachineGun], basic);
+        RLConsumables.SetGrenade(player, RLConsumables.PickGrenadeOfFamily("Frag", 2));
+        perk = gamedataNewPerkType.Tech_Left_Milestone_1;
+        break;
+      case n"Juggernaut":
+        if !RLKits.Weapon(player, pools, [gamedataItemType.Wea_LightMachineGun], basic) {
+          RLKits.Weapon(player, pools, [gamedataItemType.Wea_AssaultRifle], basic);
+        }
+        RLKits.Weapon(player, pools, pistols, basic);
+        perk = gamedataNewPerkType.Body_Central_Milestone_1;
         break;
       default:
-        RLGear.GiveWeapon(player, pools.PickWeapon([gamedataItemType.Wea_AssaultRifle, gamedataItemType.Wea_SubmachineGun]), n"Common", true);
-        RLGear.GiveWeapon(player, pools.PickWeapon(pistolTypes), n"Common", true);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_AssaultRifle, gamedataItemType.Wea_SubmachineGun], basic);
+        RLKits.Weapon(player, pools, pistols, basic);
     }
-    // Everyone starts with a basic MaxDoc; grenades are rewards.
-    RLConsumables.GiveStarterHealth(player, 0);
-    RLLog(s"Kit applied: \(NameToString(kit))");
+    let data = PlayerDevelopmentSystem.GetData(player);
+    if IsDefined(data) {
+      RLPerks.Grant(data, perk, 0);
+      data.UpdateUIBB();
+    }
+    RLConsumables.GiveStarterHealth(player, healthStep);
+    RLLog("Kit applied: " + NameToString(kit) + ".");
+  }
+
+  private static func Weapon(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, types: array<gamedataItemType>, evolutions: array<gamedataWeaponEvolution>) -> Bool {
+    let record = pools.PickWeapon(types, evolutions);
+    if !TDBID.IsValid(record) {
+      record = pools.PickWeapon(types);
+    }
+    return RLGear.GiveWeapon(player, record, n"Common", true);
   }
 }

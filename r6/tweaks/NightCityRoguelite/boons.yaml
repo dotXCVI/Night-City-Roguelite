@@ -161,3 +161,42 @@ NCRoguelite.Boon_BountyHunter:
     displayName: LocKey#NCRoguelite-Boon-BountyHunter
     description: LocKey#NCRoguelite-Boon-BountyHunter-Desc
     iconPath: casino_chip
+
+NCRoguelite.Boon_QuickFuse:
+  $base: BaseStatusEffect.BuffStatusEffect
+  gameplayTags: [ Buff, NCRogueliteBoon ]
+  duration: BaseStats.InfiniteDuration
+  maxStacks: BaseStats.InfiniteStacks
+  savable: false
+  isAffectedByTimeDilationPlayer: false
+  uiData:
+    $type: StatusEffectUIData
+    displayName: LocKey#NCRoguelite-Boon-QuickFuse
+    description: LocKey#NCRoguelite-Boon-QuickFuse-Desc
+    iconPath: combat_booster_icon
+
+NCRoguelite.Boon_Demolitionist:
+  $base: BaseStatusEffect.BuffStatusEffect
+  gameplayTags: [ Buff, NCRogueliteBoon ]
+  duration: BaseStats.InfiniteDuration
+  maxStacks: BaseStats.InfiniteStacks
+  savable: false
+  isAffectedByTimeDilationPlayer: false
+  uiData:
+    $type: StatusEffectUIData
+    displayName: LocKey#NCRoguelite-Boon-Demolitionist
+    description: LocKey#NCRoguelite-Boon-Demolitionist-Desc
+    iconPath: discharge_connector_icon
+
+NCRoguelite.Boon_StimRig:
+  $base: BaseStatusEffect.BuffStatusEffect
+  gameplayTags: [ Buff, NCRogueliteBoon ]
+  duration: BaseStats.InfiniteDuration
+  maxStacks: BaseStats.InfiniteStacks
+  savable: false
+  isAffectedByTimeDilationPlayer: false
+  uiData:
+    $type: StatusEffectUIData
+    displayName: LocKey#NCRoguelite-Boon-StimRig
+    description: LocKey#NCRoguelite-Boon-StimRig-Desc
+    iconPath: inhaler_buff_icon

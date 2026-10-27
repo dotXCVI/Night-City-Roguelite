@@ -117,7 +117,7 @@ public class RLTweakPools {
     for pool in this.m_factions {
       if pool.IsUsable() {
         ArrayPush(usable, pool);
-        RLDebug(s"Faction \(RogueliteSystem.FactionName(pool.faction)): \(ArraySize(pool.tier0))/\(ArraySize(pool.tier1))/\(ArraySize(pool.tier2))");
+        RLDebug(s"Faction \(RLEncounters.FactionName(pool.faction)): \(ArraySize(pool.tier0))/\(ArraySize(pool.tier1))/\(ArraySize(pool.tier2))");
       }
     }
     this.m_factions = usable;

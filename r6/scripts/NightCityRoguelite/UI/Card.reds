@@ -354,6 +354,7 @@ public abstract class RLIcons {
       case RLRewardCategory.Boons: return n"ico_tarot";
       case RLRewardCategory.Training: return n"ico_stats";
       case RLRewardCategory.Iconic: return n"ico_inventory";
+      case RLRewardCategory.Workshop: return n"ico_cafting_upgrading";
     }
     return n"ico_map";
   }
@@ -366,6 +367,7 @@ public abstract class RLIcons {
       case RLRewardCategory.Boons: return n"MainColors.Purple";
       case RLRewardCategory.Training: return n"MainColors.ActiveWhite";
       case RLRewardCategory.Iconic: return n"MainColors.Gold";
+      case RLRewardCategory.Workshop: return n"MainColors.Yellow";
     }
     return n"MainColors.Red";
   }
@@ -377,6 +379,9 @@ public abstract class RLIcons {
       case n"Netrunner": return n"ico_int";
       case n"Marksman": return n"weapon_sniper";
       case n"Brawler": return n"weapon_shotgun";
+      case n"Gunslinger": return n"weapon_revolver";
+      case n"Demolitions": return n"grenade_regular";
+      case n"Juggernaut": return n"weapon_lmg";
     }
     return n"ico_body";
   }

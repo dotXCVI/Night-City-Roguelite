@@ -53,20 +53,6 @@ public abstract class RLStory {
     return IsDefined(scenes) && scenes.GetScriptInterface().IsEntityInDialogue(player.GetEntityID());
   }
 
-  // Any list of choices on screen (dialogue or an interaction prompt).
-  public static func IsDialogueOpen(game: GameInstance) -> Bool {
-    let blackboard = GameInstance.GetBlackboardSystem(game).Get(GetAllBlackboardDefs().UIInteractions);
-    if !IsDefined(blackboard) {
-      return false;
-    }
-    let value = blackboard.GetVariant(GetAllBlackboardDefs().UIInteractions.DialogChoiceHubs);
-    if !IsDefined(value) {
-      return false;
-    }
-    let hubs = FromVariant<DialogChoiceHubs>(value);
-    return ArraySize(hubs.choiceHubs) > 0;
-  }
-
   // The phone UI still shows a call that the game says is over.
   public static func ClearStaleCallCard(game: GameInstance) {
     if RLStory.IsCallActive(game) {
@@ -125,7 +111,7 @@ public abstract class RLQuiet {
 // is mid-notification there; doing so in v0.0.10 is the likely cause of the
 // new-game freeze). The callback only notes the entry; a sweep 0.25 s later,
 // from the delay system, sets it inactive.
-public class RLJournalGuard extends IScriptable {
+public class RLJournalGuard extends RLDelayTarget {
   private let m_registered: Bool;
   private let m_pending: array<Uint32>;
   private let m_sweepQueued: Bool;

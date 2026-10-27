@@ -91,6 +91,8 @@ public abstract class RLConfig {
 
   // Seconds between a wave being cleared and the next one spawning.
   public static func WaveGap() -> Float = 3.0
+  // The gap when the pacing director calls for a breather (Run/Pacing.reds).
+  public static func RelaxWaveGap() -> Float = 8.0
   // An enemy that has not spawned within this many seconds is dropped.
   public static func SpawnTimeout() -> Float = 8.0
   // Living enemies get their threat on V refreshed this often.
@@ -143,86 +145,4 @@ public abstract class RLConfig {
     let list: array<TweakDBID>;
     return list;
   }
-}
-
-public func RLLog(const msg: String) {
-  FTLog("[NightCityRoguelite] " + msg);
-  RLKeepLog(msg);
-}
-
-public func RLDebug(const msg: String) {
-  if RLConfig.VerboseLogging() {
-    FTLog("[NightCityRoguelite][debug] " + msg);
-    RLKeepLog("(debug) " + msg);
-  }
-}
-
-// FTLog output isn't written anywhere in release builds, so every line is
-// also kept in the service's persistent log.
-public func RLKeepLog(const msg: String) {
-  let service = RogueliteService.Get();
-  if IsDefined(service) {
-    service.AppendLog(msg);
-  }
-}
-
-public func RLNotify(game: GameInstance, const msg: String, opt duration: Float) {
-  let message: SimpleScreenMessage;
-  message.isShown = true;
-  message.isInstant = true;
-  message.duration = duration > 0.0 ? duration : 5.0;
-  message.message = msg;
-  message.type = SimpleMessageType.Undefined;
-  GameInstance.GetBlackboardSystem(game)
-    .Get(GetAllBlackboardDefs().UI_Notifications)
-    .SetVariant(GetAllBlackboardDefs().UI_Notifications.OnscreenMessage, ToVariant(message), true);
-}
-
-// Delay helper. Routes the callback back to the owning object with an action
-// name. Only the mod's own classes are supported targets.
-public class RLDelayCallback extends DelayCallback {
-  private let m_target: wref<IScriptable>;
-  private let m_action: CName;
-
-  public static func Create(target: ref<IScriptable>, action: CName) -> ref<RLDelayCallback> {
-    let cb = new RLDelayCallback();
-    cb.m_target = target;
-    cb.m_action = action;
-    return cb;
-  }
-
-  public func Call() {
-    let system = this.m_target as RogueliteSystem;
-    if IsDefined(system) {
-      system.OnDelayed(this.m_action);
-      return;
-    }
-    let spawner = this.m_target as RLWaveSpawner;
-    if IsDefined(spawner) {
-      spawner.OnDelayed(this.m_action);
-      return;
-    }
-    let arenas = this.m_target as RLArenaDirector;
-    if IsDefined(arenas) {
-      arenas.OnDelayed(this.m_action);
-      return;
-    }
-    let apartment = this.m_target as RLApartmentHub;
-    if IsDefined(apartment) {
-      apartment.OnDelayed(this.m_action);
-      return;
-    }
-    let guard = this.m_target as RLJournalGuard;
-    if IsDefined(guard) {
-      guard.OnDelayed(this.m_action);
-    }
-  }
-}
-
-public func RLDelay(game: GameInstance, target: ref<IScriptable>, action: CName, seconds: Float) -> DelayID {
-  return GameInstance.GetDelaySystem(game).DelayCallback(RLDelayCallback.Create(target, action), seconds, false);
-}
-
-public func RLCancel(game: GameInstance, id: DelayID) {
-  GameInstance.GetDelaySystem(game).CancelCallback(id);
 }

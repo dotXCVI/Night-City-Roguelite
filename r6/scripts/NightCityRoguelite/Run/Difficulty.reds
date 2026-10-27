@@ -30,7 +30,8 @@ public abstract class RLDifficulty {
   }
 }
 
-// Damage V takes during a run is scaled by the curve above.
+// Damage V takes during a run: the curve above, the pacing director's
+// pressure and assist mode (RogueliteSystem.GetIncomingDamageScale).
 @wrapMethod(DamageSystem)
 private final func ProcessPlayerIncomingDamageMultiplier(hitEvent: ref<gameHitEvent>) {
   wrappedMethod(hitEvent);
@@ -42,8 +43,5 @@ private final func ProcessPlayerIncomingDamageMultiplier(hitEvent: ref<gameHitEv
   if !IsDefined(system) || !system.IsInArenaFight() {
     return;
   }
-  let run = system.GetRun();
-  if IsDefined(run) {
-    hitEvent.attackComputed.MultAttackValue(RLDifficulty.IncomingDamageScale(run.Depth(), run.TotalFloors()));
-  }
+  hitEvent.attackComputed.MultAttackValue(system.GetIncomingDamageScale());
 }

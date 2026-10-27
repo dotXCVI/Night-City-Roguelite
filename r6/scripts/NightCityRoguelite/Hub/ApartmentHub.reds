@@ -26,7 +26,7 @@ public enum RLHomeMode {
   Hallway = 2,
 }
 
-public class RLApartmentHub extends IScriptable {
+public class RLApartmentHub extends RLDelayTarget {
   private let m_system: wref<RogueliteSystem>;
   private let m_leashActive: Bool;
   private let m_tickID: DelayID;

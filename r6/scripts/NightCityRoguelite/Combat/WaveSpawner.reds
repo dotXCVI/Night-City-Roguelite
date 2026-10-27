@@ -22,6 +22,7 @@ public class RLTrackedEnemy {
   public let id: EntityID;
   public let record: TweakDBID;
   public let isBoss: Bool;
+  public let isElite: Bool;
   public let level: Int32;
   public let spawnTime: Float;
   public let seen: Bool;
@@ -42,6 +43,7 @@ public class RLEncounterPlan {
   // Flat list of records; waveStarts[i] is the index of wave i's first record.
   public let records: array<TweakDBID>;
   public let bossFlags: array<Bool>;
+  public let eliteFlags: array<Bool>;
   public let levels: array<Int32>;
   public let waveStarts: array<Int32>;
   public let factionName: String;
@@ -59,16 +61,17 @@ public class RLEncounterPlan {
     ArrayPush(this.waveStarts, ArraySize(this.records));
   }
 
-  public func Add(record: TweakDBID, isBoss: Bool, level: Int32) {
+  public func Add(record: TweakDBID, isBoss: Bool, level: Int32, isElite: Bool) {
     if TDBID.IsValid(record) {
       ArrayPush(this.records, record);
       ArrayPush(this.bossFlags, isBoss);
+      ArrayPush(this.eliteFlags, isElite);
       ArrayPush(this.levels, Max(1, level));
     }
   }
 }
 
-public class RLWaveSpawner extends IScriptable {
+public class RLWaveSpawner extends RLDelayTarget {
   private let m_system: wref<RogueliteSystem>;
   private let m_plan: ref<RLEncounterPlan>;
   private let m_center: Vector4;
@@ -82,6 +85,8 @@ public class RLWaveSpawner extends IScriptable {
   private let m_lastSpawnPoint: Vector4;
   private let m_hasLastSpawnPoint: Bool;
   private let m_waitingForWave: Bool;
+  // Enemies dropped from the next wave (pacing director's relax phase).
+  private let m_trimNext: Int32;
 
   public static func Tag() -> CName = n"NightCityRoguelite.Enemy"
 
@@ -103,6 +108,7 @@ public class RLWaveSpawner extends IScriptable {
     this.m_active = true;
     this.m_hasLastSpawnPoint = false;
     this.m_waitingForWave = false;
+    this.m_trimNext = 0;
     RLLog(s"Encounter: \(plan.WaveCount()) waves, \(ArraySize(plan.records)) enemies, faction \(plan.factionName)");
     this.NextWave();
     this.ScheduleTick();
@@ -126,10 +132,6 @@ public class RLWaveSpawner extends IScriptable {
   }
 
   public func IsActive() -> Bool = this.m_active
-
-  public func GetWave() -> Int32 = this.m_wave + 1
-
-  public func GetWaveCount() -> Int32 = IsDefined(this.m_plan) ? this.m_plan.WaveCount() : 0
 
   public func GetAliveCount() -> Int32 {
     let count = 0;
@@ -159,13 +161,19 @@ public class RLWaveSpawner extends IScriptable {
     let player = GetPlayer(GetGameInstance());
     let first = this.m_plan.waveStarts[this.m_wave];
     let last = this.m_plan.WaveEnd(this.m_wave);
+    // Relax phase: drop the last (never a boss) enemies of this wave.
+    while this.m_trimNext > 0 && last - first > 1 && !this.m_plan.bossFlags[last - 1] {
+      last -= 1;
+      this.m_trimNext -= 1;
+    }
+    this.m_trimNext = 0;
     let i = first;
     let spawned = 0;
     while i < last {
       if this.GetAliveCount() >= RLConfig.MaxAlive() {
         break;
       }
-      if this.SpawnOne(player, this.m_plan.records[i], this.m_plan.bossFlags[i], this.m_plan.levels[i]) {
+      if this.SpawnOne(player, i) {
         spawned += 1;
       }
       i += 1;
@@ -181,7 +189,8 @@ public class RLWaveSpawner extends IScriptable {
     }
   }
 
-  private func SpawnOne(player: ref<PlayerPuppet>, record: TweakDBID, isBoss: Bool, level: Int32) -> Bool {
+  private func SpawnOne(player: ref<PlayerPuppet>, index: Int32) -> Bool {
+    let record = this.m_plan.records[index];
     let position: Vector4;
     if !this.FindSpawnPoint(player, position) {
       RLLog("No spawn point found for an enemy.");
@@ -205,8 +214,9 @@ public class RLWaveSpawner extends IScriptable {
     let enemy = new RLTrackedEnemy();
     enemy.id = id;
     enemy.record = record;
-    enemy.isBoss = isBoss;
-    enemy.level = level;
+    enemy.isBoss = this.m_plan.bossFlags[index];
+    enemy.isElite = this.m_plan.eliteFlags[index];
+    enemy.level = this.m_plan.levels[index];
     enemy.spawnTime = this.m_time;
     enemy.bestDistance = 9999.0;
     ArrayPush(this.m_tracked, enemy);
@@ -336,10 +346,9 @@ public class RLWaveSpawner extends IScriptable {
         this.NextWave(); // reports the encounter as cleared
       } else {
         this.m_waitingForWave = true;
-        this.m_waveID = RLDelay(game, this, n"wave", RLConfig.WaveGap());
-        if IsDefined(this.m_system) {
-          this.m_system.OnWaveCleared(this.m_wave + 1, this.m_plan.WaveCount());
-        }
+        let relax = IsDefined(this.m_system) && this.m_system.OnWaveCleared(this.m_wave + 1, this.m_plan.WaveCount());
+        this.m_trimNext = relax ? 1 : 0;
+        this.m_waveID = RLDelay(game, this, n"wave", relax ? RLConfig.RelaxWaveGap() : RLConfig.WaveGap());
       }
     }
   }
@@ -384,7 +393,7 @@ public class RLWaveSpawner extends IScriptable {
       enemy.dead = true;
       this.StockCorpse(enemy, player, entities);
       if IsDefined(this.m_system) {
-        this.m_system.OnEnemyKilled(enemy.isBoss);
+        this.m_system.OnEnemyKilled(enemy.isBoss, enemy.isElite);
       }
       return true;
     }

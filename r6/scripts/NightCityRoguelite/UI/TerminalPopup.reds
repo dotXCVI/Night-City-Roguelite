@@ -65,7 +65,7 @@ public class RLTerminalPopup extends InGamePopup {
 
   protected cb func OnCreate() {
     super.OnCreate();
-    this.m_container.SetSize(Vector2(2200.0, 1420.0));
+    this.m_container.SetSize(Vector2(2200.0, 1640.0));
 
     let header = InGamePopupHeader.Create();
     switch this.m_view {
@@ -162,22 +162,13 @@ public class RLTerminalPopup extends InGamePopup {
     let arena = RLArenas.Get(door.arena);
     if IsDefined(arena) {
       card.AddLine(arena.name, n"MainColors.Red", 30);
-      card.AddLine(arena.area + " - " + RLTerminalPopup.FactionList(arena.factions), n"MainColors.Grey", 24);
+      let enemies = IsDefined(door.faction) ? RLEncounters.FactionName(door.faction.faction) : RLTerminalPopup.FactionList(arena.factions);
+      card.AddLine(arena.area + " - vs " + enemies, n"MainColors.Grey", 24);
     }
     card.AddSpacer(6.0);
     card.AddLine(RLRewards.ThreatDescription(door.threat), n"MainColors.Grey", 24);
     card.SetFooter("Deploy");
     this.Hook(card, parent);
-  }
-
-  public static func Stars(threat: Int32) -> String {
-    if threat <= 1 {
-      return "[#--]";
-    }
-    if threat >= 3 {
-      return "[###]";
-    }
-    return "[##-]";
   }
 
   public static func FactionList(factions: array<gamedataAffiliation>) -> String {
@@ -186,7 +177,7 @@ public class RLTerminalPopup extends InGamePopup {
       if StrLen(text) > 0 {
         text += ", ";
       }
-      text += RogueliteSystem.FactionName(faction);
+      text += RLEncounters.FactionName(faction);
     }
     return text;
   }
@@ -224,19 +215,26 @@ public class RLTerminalPopup extends InGamePopup {
     RLUI.StatTile("BEST FLOOR", IntToString(service.GetBestDepth()), n"MainColors.Blue").Reparent(stats);
     RLUI.StatTile("TOTAL KILLS", IntToString(service.GetTotalKills()), n"MainColors.Red").Reparent(stats);
 
-    // Kits: locked kits are bought right here.
+    // Kits (two rows of four): locked kits are bought right here.
     RLUI.SectionLabel("STARTING KIT").Reparent(body);
-    let kits = RLUI.HPanel(10.0);
-    kits.Reparent(body);
+    let kitRows = RLUI.VPanel(5.0);
+    kitRows.Reparent(body);
+    let kits: ref<inkHorizontalPanel>;
+    let k = 0;
     for kit in RLMeta.Kits() {
+      if k % 4 == 0 {
+        kits = RLUI.HPanel(10.0);
+        kits.Reparent(kitRows);
+      }
+      k += 1;
       let available = RLMeta.IsKitAvailable(service, kit);
       let selected = Equals(service.GetSelectedKit(), kit);
       let unlock = RLMeta.Get(StringToName("kit." + NameToString(kit)));
       let affordable = IsDefined(unlock) && RLMeta.CanBuy(service, unlock);
       let accent = selected ? n"MainColors.ActiveYellow" : (available ? n"MainColors.Blue" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
-      let card = RLCard.Create(StringToName("kit_" + NameToString(kit)), 392.0, 256.0, accent);
+      let card = RLCard.Create(StringToName("kit_" + NameToString(kit)), 495.0, 196.0, accent);
       card.SetCompact();
-      card.SetAtlasIcon(RLIcons.CommonAtlas(), RLIcons.KitPart(kit), 64.0);
+      card.SetAtlasIcon(RLIcons.CommonAtlas(), RLIcons.KitPart(kit), 48.0);
       if selected {
         card.SetKicker("SELECTED");
       } else if available {
@@ -247,8 +245,8 @@ public class RLTerminalPopup extends InGamePopup {
         card.SetKicker("LOCKED");
       }
       card.SetTitle(RLMeta.KitName(kit));
-      card.SetTitleSize(36);
-      card.AddLine(RLMeta.KitDescription(kit), n"MainColors.Grey", 24);
+      card.SetTitleSize(32);
+      card.AddLine(RLMeta.KitDescription(kit), n"MainColors.Grey", 22);
       card.SetSelected(selected);
       card.SetDisabled(!available && !affordable);
       this.Hook(card, kits);
@@ -260,8 +258,16 @@ public class RLTerminalPopup extends InGamePopup {
     actions.Reparent(body);
     let start = this.AddActionCard(actions, n"start", "START RUN", "Kit: " + RLMeta.KitName(service.GetSelectedKit()), n"MainColors.Red");
     start.SetTitleSize(48);
+    // Assist mode (Hades' God Mode): less damage taken, a little more with
+    // every run lost while it is on.
+    let reduction = RoundF(service.AssistReduction() * 100.0);
+    let assist = this.AddActionCard(actions, n"assist",
+      service.IsAssistOn() ? s"ASSIST: ON" : "ASSIST: OFF",
+      service.IsAssistOn() ? s"\(reduction)% less damage taken" : s"Take \(reduction)% less damage (grows as you lose)",
+      service.IsAssistOn() ? n"MainColors.Green" : n"MainColors.Grey");
+    assist.SetSelected(service.IsAssistOn());
 
-    // Unlocks (kits are bought from the kit row): a 4-column grid.
+    // Unlocks (kits are bought from the kit rows): a 5-column grid.
     RLUI.SectionLabel("UNLOCKS").Reparent(body);
     let grid = RLUI.VPanel(5.0);
     grid.Reparent(body);
@@ -269,18 +275,18 @@ public class RLTerminalPopup extends InGamePopup {
     let i = 0;
     for def in RLMeta.Unlocks() {
       if !StrBeginsWith(NameToString(def.id), "kit.") {
-        if i % 4 == 0 {
-          row = RLUI.HPanel(10.0);
+        if i % 5 == 0 {
+          row = RLUI.HPanel(8.0);
           row.Reparent(grid);
         }
         let owned = service.HasUnlock(def.id);
         let affordable = RLMeta.CanBuy(service, def);
-        let card = RLCard.Create(StringToName("buy_" + NameToString(def.id)), 495.0, 140.0, owned ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
+        let card = RLCard.Create(StringToName("buy_" + NameToString(def.id)), 398.0, 124.0, owned ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
         card.SetCompact();
         card.SetKicker(owned ? "OWNED" : s"\(def.cost) CRED");
         card.SetTitle(def.name);
-        card.SetTitleSize(32);
-        card.AddLine(def.description, n"MainColors.Grey", 22);
+        card.SetTitleSize(28);
+        card.AddLine(def.description, n"MainColors.Grey", 20);
         card.SetDisabled(owned || !affordable);
         this.Hook(card, row);
         i += 1;
@@ -319,8 +325,8 @@ public class RLTerminalPopup extends InGamePopup {
     } else if Equals(name, "start") {
       this.Close();
       this.m_system.StartRun(service.GetSelectedKit());
-    } else if Equals(name, "mode") {
-      service.SetRoguelikeMode(!service.IsRoguelikeMode());
+    } else if Equals(name, "assist") {
+      service.SetAssist(!service.IsAssistOn());
       this.Rebuild();
     } else if StrBeginsWith(name, "kit_") {
       let kit = StringToName(StrAfterFirst(name, "_"));

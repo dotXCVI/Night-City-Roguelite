@@ -117,6 +117,7 @@ public class RLRewardPopup extends InGamePopup {
     switch offer.kind {
       case RLOfferKind.Weapon:
       case RLOfferKind.Iconic:
+      case RLOfferKind.WeaponUpgrade:
         let iconWidth = MinF(width - 56.0, 400.0);
         if card.SetRecordIcon(RLIcons.ItemIcon(offer.record), iconWidth, iconWidth / 2.0) {
           return;
@@ -125,12 +126,18 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.Cyberware:
       case RLOfferKind.Quickhack:
       case RLOfferKind.Grenade:
+      case RLOfferKind.HealthUpgrade:
         if card.SetRecordIcon(RLIcons.ItemIcon(offer.record), 190.0, 190.0) {
           return;
         }
         break;
       case RLOfferKind.Boon:
         if card.SetRecordIcon(RLIcons.BoonIcon(offer.boon), 150.0, 150.0) {
+          return;
+        }
+        break;
+      case RLOfferKind.Perk:
+        if card.SetRecordIcon(RLPerkCatalog.Icon(offer.perk), 150.0, 150.0) {
           return;
         }
         break;
@@ -148,6 +155,9 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.Quickhack: return n"MainColors.Green";
       case RLOfferKind.Boon: return n"MainColors.Purple";
       case RLOfferKind.Grenade: return n"MainColors.Yellow";
+      case RLOfferKind.Perk: return n"MainColors.ActiveWhite";
+      case RLOfferKind.WeaponUpgrade:
+      case RLOfferKind.HealthUpgrade: return n"MainColors.Gold";
     }
     return n"MainColors.ActiveWhite";
   }
@@ -159,8 +169,9 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.Cyberware: return n"ico_cyberware";
       case RLOfferKind.Quickhack: return n"ico_deck";
       case RLOfferKind.Boon: return n"ico_tarot";
-      case RLOfferKind.AttributePoints: return n"ico_stats";
-      case RLOfferKind.PerkPoints: return n"ico_stats";
+      case RLOfferKind.Perk: return n"ico_stats";
+      case RLOfferKind.WeaponUpgrade: return n"ico_cafting_upgrading";
+      case RLOfferKind.HealthUpgrade: return n"ico_cafting_upgrading";
       case RLOfferKind.Grenade: return n"ico_backpack";
     }
     return n"ico_map";

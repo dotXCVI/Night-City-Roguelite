@@ -22,4 +22,10 @@ NCRoguelite-Boon-Bloodlust	Bloodlust
 NCRoguelite-Boon-Bloodlust-Desc	Kills heal 4% health per stack.
 NCRoguelite-Boon-BountyHunter	Bounty Hunter
 NCRoguelite-Boon-BountyHunter-Desc	Kills pay 100 eddies per stack.
+NCRoguelite-Boon-QuickFuse	Quick Fuse
+NCRoguelite-Boon-QuickFuse-Desc	+25% grenade recharge speed per stack.
+NCRoguelite-Boon-Demolitionist	Demolitionist
+NCRoguelite-Boon-Demolitionist-Desc	Kills restore 25% of a grenade charge per stack.
+NCRoguelite-Boon-StimRig	Stim Rig
+NCRoguelite-Boon-StimRig-Desc	+25% health item recharge speed per stack.
 NCRoguelite-Interaction-Terminal	Roguelite Terminal

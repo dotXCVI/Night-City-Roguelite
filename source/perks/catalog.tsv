@@ -1,0 +1,125 @@
+# perk enum	name	power	tags	card text
+Reflexes_Central_Milestone_3	Air Dash	3	mobility	Dash in midair. Dashing costs less Stamina and is faster.
+Reflexes_Central_Perk_1_1	Power Slide	1	mobility	Slides carry you much further.
+Reflexes_Central_Perk_1_2	Muscle Memory	1	mobility	Reload while sprinting, sliding and vaulting.
+Reflexes_Central_Perk_1_4	Multitasker	1	mobility	Shoot while sprinting, sliding and vaulting.
+Reflexes_Central_Perk_2_1	Mad Dash	1	mobility	Double Dash range toward enemies.
+Reflexes_Central_Perk_2_2	Can't Touch This	1	mobility,survival	Much higher Mitigation chance while Dashing.
+Reflexes_Central_Perk_2_3	Mean Streak	1	mobility	Kills while Dashing restore 40% Stamina.
+Reflexes_Central_Perk_2_4	Steady Grip	1	mobility	Shoot while Dashing.
+Reflexes_Central_Perk_3_2	Aerial Acrobat	2	mobility	Much better control in midair.
+Reflexes_Central_Perk_3_3	Aerodynamic	2	mobility,survival	+30% Mitigation strength in midair.
+Reflexes_Master_Perk_3	Tailwind	4	mobility	Air Dashes and double jumps restore Stamina.
+Reflexes_Left_Milestone_2	Ready, Rested, Reloaded	2	rifle	Assault rifles and SMGs cost less Stamina to fire, and reload 30% faster above half Stamina.
+Reflexes_Left_Perk_2_2	Spice of Life	1	rifle	+15% weapon swap speed and tighter spread right after a swap.
+Reflexes_Left_Perk_2_3	Mind Over Matter	1	rifle	-25% recoil when aiming.
+Reflexes_Left_Perk_2_4	Tunnel Vision	1	rifle	+20% effective range and accuracy.
+Reflexes_Left_Milestone_3	Sharpshooter	3	rifle	+15% aim speed. Every hit adds a Sharpshooter stack that eases Stamina use.
+Reflexes_Left_Perk_3_1	Gundancer	2	rifle,mobility	Aiming no longer slows you down; shoot while vaulting.
+Reflexes_Left_Perk_3_2	Spray and Pray	2	rifle	Hip-fire costs less Stamina.
+Reflexes_Left_Perk_3_3	Practice Makes Perfect	2	rifle	+7% crit chance and crit damage per Sharpshooter stack.
+Reflexes_Master_Perk_1	Salt in the Wound	4	rifle	Every 7th hit in a row on a target deals the damage of the six before it again.
+Reflexes_Master_Perk_2	Submachine Fun	4	rifle	Swapping to an SMG reloads it and boosts its fire rate.
+Reflexes_Right_Milestone_2	Lead and Steel	2	blade	Blade attacks cost less Stamina.
+Reflexes_Right_Perk_2_1	Bullet Deflect	1	blade,survival	Block bullets with a blade to send them back where you aim.
+Reflexes_Right_Perk_2_2	Seeing Double	1	blade	Counterattacks hit harder and can stun.
+Reflexes_Inbetween_Right_2	Flash and Thunderclap	2	blade,mobility	Strong attacks leap to nearby enemies, even from midair.
+Reflexes_Right_Milestone_3	Finisher: Bladerunner	3	blade	Faster blade attacks and a Blade Finisher that restores 25% Health.
+Reflexes_Right_Perk_3_1	Flash of Steel	2	blade,mobility	A burst of movement and attack speed after every Finisher.
+Reflexes_Right_Perk_3_3	Opportunist	2	blade	Stunned, blinded or bleeding enemies are easier to finish.
+Reflexes_Right_Perk_3_4	Going the Distance	2	blade	Double Finisher range.
+Reflexes_Master_Perk_5	Slaughterhouse	4	blade	Every blade hit causes Bleeding, setting up dismemberment and Finishers.
+Body_Left_Milestone_2	Die! Die! Die!	2	shotgun,lmg	Crit chance and weapon handling rise as your Stamina drops.
+Body_Left_Perk_2_1	Bullet Ballet	1	shotgun,lmg	-25% bullet spread while moving.
+Body_Left_Perk_2_3	Don't Stop Me Now	1	shotgun,lmg,survival	More Mitigation while you're low on Stamina.
+Body_Left_Perk_2_4	Like a Feather	1	shotgun,lmg,mobility	No movement penalty with shotguns and machine guns.
+Body_Left_Milestone_3	Spontaneous Obliteration	3	shotgun,lmg	+10% damage up close and a chance to obliterate enemies at low Health.
+Body_Left_Perk_3_1	Rush of Blood	2	shotgun,lmg	Faster reloads after dismembering an enemy.
+Body_Left_Perk_3_3	Dread	2	shotgun,lmg	Ranged hits shred enemy armor; dismemberment spreads it.
+Body_Left_Perk_3_4	Close-quarters Carnage	2	shotgun,lmg	Higher obliterate chance at close range.
+Body_Master_Perk_1	Rip and Tear	4	shotgun	Alternate shotgun blasts and quick melee hits for big bonus damage.
+Body_Master_Perk_2	Onslaught	4	lmg	Machine gun kills refill 20% of the magazine.
+Body_Right_Milestone_2	Wrecking Ball	2	blunt	Blunt weapon attacks cost less Stamina.
+Body_Right_Perk_2_1	Fly Swatter	1	blunt,survival	-40% ranged damage while blocking with a blunt weapon.
+Body_Right_Perk_2_2	Kinetic Absorption	1	blunt	Blocking restores Stamina and boosts blunt damage.
+Body_Right_Perk_2_4	Breakthrough	1	blunt	Strong attacks strip 40% of an enemy's armor.
+Body_Right_Milestone_3	Quake	3	blunt	Faster blunt attacks and the Quake ground slam.
+Body_Right_Perk_3_2	Aftershock	2	blunt	Enemies hit by Quake restore Stamina.
+Body_Inbetween_Right_3	Ripple Effect	2	blunt,survival	Every enemy hit by Quake heals 15% Health.
+Body_Master_Perk_5	Finisher: Savage Sling	4	blunt	A blunt weapon Finisher that restores Health.
+Body_Central_Milestone_1	Painkiller	1	survival	Health regenerates slowly in combat.
+Body_Central_Perk_1_1	Speed Junkie	1	survival,mobility	Faster Health regen while sprinting.
+Body_Central_Perk_1_2	Comeback Kid	1	survival	Health regen speeds up the lower your Health.
+Body_Central_Perk_1_3	Army of One	1	survival	+10% Health regen for every nearby enemy.
+Body_Central_Perk_1_4	Dorph-head	1	survival,gear	Using a health item raises Mitigation for a few seconds.
+Body_Central_Milestone_3	Adrenaline Rush	3	survival	+35 max Health, stronger regen, and health items grant an Adrenaline shield.
+Body_Central_Perk_3_1	Calm Mind	2	survival	Adrenaline lasts longer before it starts to fade.
+Body_Central_Perk_3_2	Juggernaut	2	survival	Faster and deadlier while Adrenaline Rush is active.
+Body_Central_Perk_3_4	Unstoppable Force	2	survival	Immune to knockdowns and crowd control during Adrenaline Rush.
+Body_Master_Perk_3	Pain to Gain	4	survival,gear	Kills during Adrenaline Rush recharge your health items.
+Cool_Left_Milestone_2	Focus	2	handgun,precision	Aim at full Stamina to enter Focus: free shots and more headshot damage.
+Cool_Left_Perk_2_1	Head to Head	1	handgun,precision	Kills during Focus extend it.
+Cool_Left_Perk_2_2	Rinse and Reload	1	handgun,precision	Faster reloads after aimed kills.
+Cool_Inbetween_Left_2	Deep Breath	1	handgun,precision	Focus slows time by 25%.
+Cool_Left_Milestone_3	Deadeye	3	handgun,precision	Above half Stamina: much more headshot damage and cheaper shots.
+Cool_Left_Perk_3_1	Quick Draw	2	handgun,precision	Faster swaps to pistols, revolvers and rifles, with Stamina on the swap.
+Cool_Left_Perk_3_2	High Noon	2	handgun,precision	Headshot kills during Deadeye speed up your next reload.
+Cool_Left_Perk_3_3	Long Shot	2	precision	Full damage at any range during Deadeye.
+Cool_Left_Perk_3_4	California Reaper	2	handgun,precision	Headshot kills restore 30% Stamina.
+Cool_Master_Perk_1	Nerves of Tungsten-Steel	4	precision	Headshots during Deadeye always crit.
+Cool_Master_Perk_2	Run 'N' Gun	4	handgun	Hip-fire costs no Stamina; move faster during Focus.
+Cool_Central_Milestone_2	Double Trouble	2	handgun,dual	Dual-wield pistols and SMGs. Quick melee fires both at once.
+Cool_Central_Perk_2_1	Two Right Hands	1	dual	Dual wielding costs less Stamina and kicks less.
+Cool_Central_Perk_2_2	Triple Tequila	1	dual,survival	Kills while dual wielding stack Mitigation.
+Cool_Central_Perk_2_4	Keep 'Em Comin'	1	dual	Kills while dual wielding restore Stamina.
+Cool_Right_Milestone_2	Scorpion Sting	2	throwable	Faster throws; thrown crits and headshots poison.
+Cool_Right_Perk_2_4	Parasite	1	throwable,survival	Thrown crits and headshots heal you.
+Cool_Right_Milestone_3	Juggler	3	throwable	Crit or headshot kills with throwables bring them straight back.
+Cool_Right_Perk_3_4	Sleight of Hand	2	throwable	Juggler stacks crit damage.
+Cool_Master_Perk_4	Style Over Substance	4	throwable,mobility	Guaranteed crits when you throw while dashing, sliding or dodging.
+Intelligence_Central_Milestone_1	Optimization	1	netrunner	+35% RAM recovery.
+Intelligence_Central_Perk_1_2	Proximate Propagation	1	netrunner	Quickhacks cost less RAM the closer you are.
+Intelligence_Central_Milestone_2	Embedded Exploit	2	netrunner	Faster RAM recovery and +60% quickhack damage on controlled enemies.
+Intelligence_Central_Perk_2_1	Speculation	1	netrunner	Quickhack kills refund RAM.
+Intelligence_Central_Perk_2_2	ICEpick	1	netrunner	Combat quickhacks cost less on controlled enemies.
+Intelligence_Central_Perk_2_3	System Overwhelm	1	netrunner	+7% quickhack damage for every effect on the target.
+Intelligence_Left_Milestone_2	Hack Queue	2	netrunner	+1 RAM and quickhack queues.
+Intelligence_Left_Perk_2_2	Data Recycler	1	netrunner	Kills refund 80% of quickhacks still queued on them.
+Intelligence_Left_Perk_2_4	Feedback Loop	1	netrunner	Faster RAM recovery for every queued quickhack.
+Intelligence_Left_Milestone_3	Queue Acceleration	3	netrunner	+1 RAM, longer queues and faster uploads.
+Intelligence_Central_Milestone_3	Overclock	3	netrunner	Unlocks Overclock: keep hacking with Health when RAM runs out.
+Intelligence_Central_Perk_3_1	Race Against Mind	2	netrunner	Overclocked quickhacks hit harder the lower your Health.
+Intelligence_Central_Perk_3_2	Sublimation	2	netrunner,survival	During Overclock, RAM recovery also heals you.
+Intelligence_Central_Perk_3_3	Power Surge	2	netrunner,survival	Activating Overclock heals you for 5x your max RAM.
+Intelligence_Master_Perk_3	Spillover	4	netrunner	Overclocked quickhacks can spread to a second target.
+Intelligence_Right_Milestone_2	Acquisition Specialist	2	smart	Bigger smart reticle and faster lock-on; reloads keep the lock.
+Intelligence_Right_Perk_2_1	No Escape	1	smart	Shooting a target that is about to lose lock keeps it.
+Intelligence_Right_Perk_2_2	Precision Subroutines	1	smart,netrunner	+2% smart weapon accuracy for every point of max RAM.
+Intelligence_Right_Milestone_3	Target Lock Transfer	3	smart	Swapping smart weapons keeps your lock.
+Intelligence_Right_Perk_3_1	Targeting Prism	2	smart	Lock onto several targets at once.
+Intelligence_Inbetween_Right_2	Recirculation	2	smart,netrunner	Smart weapon kills restore RAM.
+Intelligence_Master_Perk_4	Smart Synergy	4	smart,netrunner	During Overclock, smart weapons lock on instantly.
+Tech_Right_Milestone_3	Bolt	3	tech	Faster charging, stronger charged shots, and perfect-release Bolts.
+Tech_Right_Perk_3_1	In Charge	2	tech	Hold tech weapons at full charge.
+Tech_Right_Perk_3_2	Internal Clock	2	tech	A wider window for Bolts.
+Tech_Right_Perk_3_3	Shock Value	2	tech	Bolts ignore armor.
+Tech_Right_Perk_3_4	Lightning Storm	2	tech	Every Bolt speeds up the next charge.
+Tech_Master_Perk_5	Chain Lightning	4	tech	Bolts arc electricity into up to 3 nearby enemies.
+Tech_Left_Milestone_1	Glutton for War	1	gear	Kills recharge 5% of your health items and grenades.
+Tech_Left_Perk_1_1	Transfusion	1	gear,survival	Your last health charge heals 30% more.
+Tech_Left_Milestone_2	Health Freak	2	gear,survival	+1 health item charge and faster recharge.
+Tech_Left_Perk_2_1	Demolitions Surplus	1	gear,explosive	+1 grenade charge.
+Tech_Left_Perk_2_2	Borrowed Time	1	gear,survival	A kill at low Health with no charges left refills a health item.
+Tech_Left_Perk_2_3	Field Medic	1	gear	Use health items 15% faster.
+Tech_Left_Perk_2_4	Coming in Hot	1	gear,explosive	Grenades recharge 50% faster when you're out.
+Tech_Left_Milestone_3	Pyromania	3	explosive	Bigger blasts; explosions boost your speed and explosion damage.
+Tech_Left_Perk_3_01	Friendlier Fire	2	explosive,survival	Your own explosions hurt you half as much.
+Tech_Left_Perk_3_2	Burn This City	2	explosive	Pyromania stacks refill a grenade.
+Tech_Left_Perk_3_4	Heat Shield	2	explosive,survival	+10% Mitigation for every Pyromania stack.
+Tech_Central_Milestone_2	All Things Cyber	2	chrome	+10% to every cyberware stat; skin and skeleton chrome costs less capacity.
+Tech_Central_Perk_2_4	Chrome Constitution	1	chrome,survival	-5% damage taken with every skin and skeleton slot filled.
+Tech_Central_Milestone_3	License to Chrome	3	chrome,survival	+10% to every cyberware stat and +40 armor.
+Tech_Central_Perk_3_1	Extended Warranty	2	chrome	Cyberware effects last 15% longer.
+Tech_Central_Perk_3_2	Ambidextrous	2	chrome	An extra hands cyberware slot.
+Tech_Central_Perk_3_4	Cyborg	2	chrome	Cyberware cooldowns 15% shorter with every slot filled.
+Tech_Master_Perk_3	Edgerunner	4	chrome	Go past your cyberware capacity at a Health cost; kills can trigger Fury.

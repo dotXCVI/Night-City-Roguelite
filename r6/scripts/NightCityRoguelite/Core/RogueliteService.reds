@@ -16,7 +16,10 @@ public class RogueliteService extends ScriptableService {
   private persistent let m_cred: Int32;
   private persistent let m_unlocks: array<CName>;
   private persistent let m_selectedKit: CName;
-  private persistent let m_roguelikeMode: Bool;
+  // Assist mode (Hades' God Mode): less damage taken, a little more with every
+  // run lost while it is on.
+  private persistent let m_assistOn: Bool;
+  private persistent let m_assistLevel: Int32;
 
   // Lifetime stats
   private persistent let m_runsStarted: Int32;
@@ -31,7 +34,6 @@ public class RogueliteService extends ScriptableService {
   private persistent let m_activeRunFloors: Int32;
   private persistent let m_activeRunKills: Int32;
   private persistent let m_activeRunBosses: Int32;
-  private persistent let m_activeRunRoguelike: Bool;
 
   // The mod's own log, kept in Codeware's persistent store so it can be read
   // after a session (red4ext/plugins/Codeware/Persistent). Newest last.
@@ -40,8 +42,10 @@ public class RogueliteService extends ScriptableService {
   // lines would otherwise collapse into one.
   private persistent let m_logSeq: Int32;
 
-  // Content pools, built once per game process.
+  // Content pools and the perk card catalog, built once per game process.
   private let m_pools: ref<RLTweakPools>;
+  private let m_perkCatalog: array<ref<RLPerkDef>>;
+  private let m_perkCatalogBuilt: Bool;
 
   // Main menu -> new game hand-off (not persistent on purpose).
   private let m_pendingStart: Bool;
@@ -214,22 +218,18 @@ public class RogueliteService extends ScriptableService {
     }
   }
 
-  public func GetUnlockCount(prefix: String) -> Int32 {
-    let count = 0;
-    for id in this.m_unlocks {
-      if StrBeginsWith(NameToString(id), prefix) {
-        count += 1;
-      }
-    }
-    return count;
+  // --- Assist mode ------------------------------------------------------------------
+
+  public func IsAssistOn() -> Bool = this.m_assistOn
+
+  public func SetAssist(on: Bool) {
+    this.m_assistOn = on;
+    RLLog(s"Assist mode \(on ? "on" : "off") (\(RoundF(this.AssistReduction() * 100.0))% less damage).");
   }
 
-  // Roguelike mode (no unlock perks) is retired for now: every run is a
-  // roguelite run.
-  public func IsRoguelikeMode() -> Bool = false
-
-  public func SetRoguelikeMode(value: Bool) {
-    this.m_roguelikeMode = false;
+  // 20% less damage, +2% for every run lost with assist on, up to 80%.
+  public func AssistReduction() -> Float {
+    return MinF(0.8, 0.2 + 0.02 * Cast<Float>(this.m_assistLevel));
   }
 
   public func GetSelectedKit() -> CName = this.m_selectedKit
@@ -240,13 +240,12 @@ public class RogueliteService extends ScriptableService {
 
   // --- Run bookkeeping -----------------------------------------------------------
 
-  public func BeginRunToken(roguelike: Bool) -> Int32 {
+  public func BeginRunToken() -> Int32 {
     let token = RandRange(1, 2000000000);
     this.m_activeRunToken = token;
     this.m_activeRunFloors = 0;
     this.m_activeRunKills = 0;
     this.m_activeRunBosses = 0;
-    this.m_activeRunRoguelike = roguelike;
     this.m_runsStarted += 1;
     return token;
   }
@@ -287,11 +286,23 @@ public class RogueliteService extends ScriptableService {
     return this.m_pools;
   }
 
+  public func GetPerkCatalog() -> array<ref<RLPerkDef>> {
+    if !this.m_perkCatalogBuilt {
+      this.m_perkCatalogBuilt = true;
+      this.m_perkCatalog = RLPerkCatalogData.Build();
+      RLLog(s"Perk cards: \(ArraySize(this.m_perkCatalog)).");
+    }
+    return this.m_perkCatalog;
+  }
+
   public func RecordRunEnd(depth: Int32, kills: Int32, victory: Bool) {
     if victory {
       this.m_victories += 1;
     } else {
       this.m_deaths += 1;
+      if this.m_assistOn {
+        this.m_assistLevel += 1;
+      }
     }
     this.m_totalKills += kills;
     if depth > this.m_bestDepth {

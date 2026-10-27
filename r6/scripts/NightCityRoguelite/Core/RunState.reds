@@ -10,7 +10,6 @@ module NightCityRoguelite
 public class RLRunState {
   public let token: Int32;
   public let kit: CName;
-  public let roguelike: Bool;
   public let credEarned: Int32;
   public let act: Int32;
   public let floor: Int32;
@@ -26,13 +25,24 @@ public class RLRunState {
   // The fight in progress (or just cleared): its reward type and threat.
   public let door: ref<RLDoor>;
 
+  // Reward director (Rewards/Director.reds).
+  public let pityOffset: Int32;
+  public let flatStreak: Int32;
+  public let magnificence: Int32;
+
+  // Workshop doors (floors 4 and 10; offered once more if passed over).
+  public let workshopShown: Bool;
+  public let workshopCarry: Bool;
+
+  // Fixer stop after the elite floor, before the boss door.
+  public let fixerPending: Bool;
+
   public func Threat() -> Int32 = IsDefined(this.door) ? this.door.threat : 2
 
-  public static func Create(token: Int32, kit: CName, roguelike: Bool) -> ref<RLRunState> {
+  public static func Create(token: Int32, kit: CName) -> ref<RLRunState> {
     let run = new RLRunState();
     run.token = token;
     run.kit = kit;
-    run.roguelike = roguelike;
     run.act = 1;
     run.floor = 1;
     run.offerCount = 3;

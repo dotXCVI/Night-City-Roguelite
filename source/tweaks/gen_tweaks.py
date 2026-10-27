@@ -92,6 +92,9 @@ BOONS = [
     ('SecondWind', 'Second Wind', 'A lethal hit leaves you at 50% health instead. One stack is used up.', 'second_wind'),
     ('Bloodlust', 'Bloodlust', 'Kills heal 4% health per stack.', 'regeneration_icon'),
     ('BountyHunter', 'Bounty Hunter', 'Kills pay 100 eddies per stack.', 'casino_chip'),
+    ('QuickFuse', 'Quick Fuse', '+25% grenade recharge speed per stack.', 'combat_booster_icon'),
+    ('Demolitionist', 'Demolitionist', 'Kills restore 25% of a grenade charge per stack.', 'discharge_connector_icon'),
+    ('StimRig', 'Stim Rig', '+25% health item recharge speed per stack.', 'inhaler_buff_icon'),
 ]
 b = [HEADER.format(title='boon buffs')]
 b.append("""# Each boon shows on the HUD buff bar while the run lasts (stack count included).

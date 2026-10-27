@@ -71,15 +71,19 @@ public class RLDeathGuard extends IScriptable {
     RLDebug("Death guard disarmed.");
   }
 
-  public func IsArmed() -> Bool = this.m_armed
-
   // Allows the run to continue after a Second Wind save.
   public func Rearm() {
     this.m_triggered = false;
   }
 
   public func OnHealthChanged(oldValue: Float, newValue: Float) {
-    if !this.m_armed || this.m_triggered {
+    if !this.m_armed {
+      return;
+    }
+    if IsDefined(this.m_system) {
+      this.m_system.OnHealthChanged(oldValue, newValue);
+    }
+    if this.m_triggered {
       return;
     }
     if newValue <= RLConfig.FlatlineThresholdPercent() && newValue < oldValue {

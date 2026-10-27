@@ -116,15 +116,6 @@ public abstract class RLLoot {
 
   // --- Pickups ---------------------------------------------------------------------------
 
-  public static func IsHealing(itemID: ItemID) -> Bool {
-    let itemType = RPGManager.GetItemType(itemID);
-    return Equals(itemType, gamedataItemType.Con_Inhaler) || Equals(itemType, gamedataItemType.Con_Injector);
-  }
-
-  public static func IsGrenade(itemID: ItemID) -> Bool {
-    return Equals(RPGManager.GetItemType(itemID), gamedataItemType.Gad_Grenade);
-  }
-
   // Arena pickups that are taken away again: everything except ammo, money,
   // quest items and hidden system items (V's own body parts).
   public static func ShouldDiscardPickup(itemID: ItemID, itemData: ref<gameItemData>) -> Bool {
@@ -162,7 +153,7 @@ public abstract class RLLoot {
 protected cb func OnItemAddedToInventory(evt: ref<ItemAddedEvent>) -> Bool {
   let result = wrappedMethod(evt);
   let system = RogueliteSystem.Get(this.GetGame());
-  if IsDefined(system) && system.FiltersLoot() && ItemID.IsValid(evt.itemID) {
+  if IsDefined(system) && system.FiltersLoot() && ItemID.IsValid(evt.itemID) && !system.ConsumeExpectedGrant(ItemID.GetTDBID(evt.itemID)) {
     if RLLoot.ShouldDiscardPickup(evt.itemID, evt.itemData) {
       system.QueueLootRemoval(evt.itemID);
     }

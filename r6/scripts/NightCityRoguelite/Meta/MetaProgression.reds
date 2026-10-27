@@ -17,19 +17,29 @@ public class RLUnlockDef {
 }
 
 public abstract class RLMeta {
+  // Meta unlocks lean towards more choice (Roboquest's basecamp): rerolls,
+  // more options, more doors, a starting pick - with a few small head starts.
   public static func Unlocks() -> array<ref<RLUnlockDef>> {
     let list: array<ref<RLUnlockDef>>;
-    ArrayPush(list, RLMeta.Def(n"kit.Netrunner", "Kit: Netrunner", "Start with a cyberdeck, two quickhacks and a pistol.", 150, n""));
-    ArrayPush(list, RLMeta.Def(n"kit.Marksman", "Kit: Marksman", "Start with a precision or sniper rifle and a pistol.", 150, n""));
-    ArrayPush(list, RLMeta.Def(n"kit.Brawler", "Kit: Brawler", "Start with Gorilla Arms and a shotgun.", 250, n""));
+    ArrayPush(list, RLMeta.Def(n"kit.Netrunner", "Kit: Netrunner", "Cyberdeck, two quickhacks, pistol, Optimization.", 150, n""));
+    ArrayPush(list, RLMeta.Def(n"kit.Marksman", "Kit: Marksman", "Precision or sniper rifle, pistol, Focus.", 150, n""));
+    ArrayPush(list, RLMeta.Def(n"kit.Brawler", "Kit: Brawler", "Gorilla Arms, shotgun, Die! Die! Die!", 250, n""));
+    ArrayPush(list, RLMeta.Def(n"kit.Gunslinger", "Kit: Gunslinger", "Revolver, pistol, Double Trouble.", 250, n""));
+    ArrayPush(list, RLMeta.Def(n"kit.Demolitions", "Kit: Demolitions", "SMG, frag grenades, Glutton for War.", 300, n""));
+    ArrayPush(list, RLMeta.Def(n"kit.Juggernaut", "Kit: Juggernaut", "Light machine gun, pistol, Painkiller.", 350, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts I", "One reward reroll per floor.", 200, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.Reroll2", "Fixer Contacts II", "Two reward rerolls per floor.", 450, n"perk.Reroll"));
+    ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Reward screens show 4 options.", 400, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.FourthDoor", "Street Map", "Choose between 4 doors instead of 3.", 350, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.StarterPick", "Quartermaster", "Every run opens with an Armory pick.", 300, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.StreetSmart", "Street Smart", "The Fixer charges 20% less.", 200, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.MedKit", "Med Kit", "Start every run with an Uncommon MaxDoc.", 150, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.HeadStart", "Head Start", "Start every run at level 3.", 300, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.Vitality1", "Vitality I", "Start every run with Reinforced Frame.", 120, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.Vitality2", "Vitality II", "A second stack of Reinforced Frame.", 240, n"perk.Vitality1"));
     ArrayPush(list, RLMeta.Def(n"perk.Attribute1", "Edge I", "+1 starting attribute point.", 100, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Attribute2", "Edge II", "+1 more starting attribute point.", 200, n"perk.Attribute1"));
     ArrayPush(list, RLMeta.Def(n"perk.Attribute3", "Edge III", "+1 more starting attribute point.", 350, n"perk.Attribute2"));
-    ArrayPush(list, RLMeta.Def(n"perk.Vitality1", "Vitality I", "Start every run with Reinforced Frame.", 120, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Vitality2", "Vitality II", "Start with a second stack of Reinforced Frame.", 240, n"perk.Vitality1"));
-    ArrayPush(list, RLMeta.Def(n"perk.HeadStart", "Head Start", "Start every run at level 3.", 300, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts", "One reward reroll per floor.", 200, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Reward picks show 4 options.", 400, n""));
     return list;
   }
 
@@ -74,9 +84,8 @@ public abstract class RLMeta {
     return true;
   }
 
-  // Unlock perks only apply outside roguelike mode.
   public static func PerkActive(service: ref<RogueliteService>, id: CName) -> Bool {
-    return !service.IsRoguelikeMode() && service.HasUnlock(id);
+    return service.HasUnlock(id);
   }
 
   public static func BonusAttributePoints(service: ref<RogueliteService>) -> Int32 {
@@ -101,27 +110,21 @@ public abstract class RLMeta {
   // --- Kits -------------------------------------------------------------------------
 
   public static func Kits() -> array<CName> {
-    return [n"Solo", n"Blade", n"Netrunner", n"Marksman", n"Brawler"];
+    return [n"Solo", n"Blade", n"Netrunner", n"Marksman", n"Brawler", n"Gunslinger", n"Demolitions", n"Juggernaut"];
   }
 
-  public static func KitName(kit: CName) -> String {
-    switch kit {
-      case n"Solo": return "Solo";
-      case n"Blade": return "Blade";
-      case n"Netrunner": return "Netrunner";
-      case n"Marksman": return "Marksman";
-      case n"Brawler": return "Brawler";
-    }
-    return NameToString(kit);
-  }
+  public static func KitName(kit: CName) -> String = NameToString(kit)
 
   public static func KitDescription(kit: CName) -> String {
     switch kit {
-      case n"Solo": return "Assault rifle and pistol.";
-      case n"Blade": return "Katana and pistol.";
-      case n"Netrunner": return "Cyberdeck, two quickhacks, pistol.";
-      case n"Marksman": return "Precision or sniper rifle and pistol.";
-      case n"Brawler": return "Gorilla Arms and shotgun.";
+      case n"Solo": return "Assault rifle, pistol, Ready, Rested, Reloaded.";
+      case n"Blade": return "Katana, pistol, Lead and Steel.";
+      case n"Netrunner": return "Cyberdeck, two quickhacks, pistol, Optimization.";
+      case n"Marksman": return "Precision or sniper rifle, pistol, Focus.";
+      case n"Brawler": return "Gorilla Arms, shotgun, Die! Die! Die!";
+      case n"Gunslinger": return "Revolver, pistol, Double Trouble.";
+      case n"Demolitions": return "SMG, frag grenades, Glutton for War.";
+      case n"Juggernaut": return "Light machine gun, pistol, Painkiller.";
     }
     return "";
   }

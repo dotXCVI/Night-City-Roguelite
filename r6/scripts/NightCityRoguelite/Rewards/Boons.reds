@@ -5,6 +5,7 @@
 //   SecondWind  - a lethal hit restores 50% health instead (one stack used up)
 //   Bloodlust   - every kill heals 4% health per stack
 //   BountyHunter- every kill pays 100 eddies per stack
+//   Demolitionist- every kill refunds 25% of a grenade charge per stack
 // Applied modifiers are tracked so they can be removed when the run ends.
 //
 // Every stack also adds a stack of the boon's HUD buff (NCRoguelite.Boon_<id>,
@@ -37,7 +38,10 @@ public abstract class RLBoons {
     ArrayPush(list, RLBoons.Def(n"BigLungs", "Big Lungs", "+25% stamina.", 2, 7));
     ArrayPush(list, RLBoons.Def(n"SecondWind", "Second Wind", "A lethal hit leaves you at 50% health instead. Used up on trigger.", 3, 5));
     ArrayPush(list, RLBoons.Def(n"Bloodlust", "Bloodlust", "Kills heal 4% health.", 3, 7));
-    ArrayPush(list, RLBoons.Def(n"BountyHunter", "Bounty Hunter", "Kills pay 100 eddies.", 3, 6));
+    ArrayPush(list, RLBoons.Def(n"BountyHunter", "Bounty Hunter", "Kills pay 100 eddies (spend them at the Fixer).", 3, 6));
+    ArrayPush(list, RLBoons.Def(n"QuickFuse", "Quick Fuse", "+25% grenade recharge speed.", 3, 7));
+    ArrayPush(list, RLBoons.Def(n"Demolitionist", "Demolitionist", "Kills restore 25% of a grenade charge.", 2, 6));
+    ArrayPush(list, RLBoons.Def(n"StimRig", "Stim Rig", "+25% health item recharge speed.", 3, 7));
     return list;
   }
 
@@ -90,6 +94,12 @@ public abstract class RLBoons {
       case n"IronWill":
         ArrayPush(mods, RPGManager.CreateStatModifier(gamedataStatType.KnockdownImmunity, gameStatModifierType.Additive, 1.0));
         ArrayPush(mods, RPGManager.CreateStatModifier(gamedataStatType.StunImmunity, gameStatModifierType.Additive, 1.0));
+        break;
+      case n"QuickFuse":
+        ArrayPush(mods, RPGManager.CreateStatModifier(gamedataStatType.GrenadesChargesRegenMult, gameStatModifierType.Additive, 0.25));
+        break;
+      case n"StimRig":
+        ArrayPush(mods, RPGManager.CreateStatModifier(gamedataStatType.HealingItemsChargesRegenMult, gameStatModifierType.Additive, 0.25));
         break;
       case n"BigLungs":
         ArrayPush(mods, RPGManager.CreateStatModifier(gamedataStatType.Stamina, gameStatModifierType.AdditiveMultiplier, 0.25));

@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.0.14)
+# Night City Roguelite (v0.0.15)
 
 > **Versions:** alpha builds are v0.0.X. v0.X.X starts once the foundation is
 > solid, v1.0.0 is the finished mod. (Builds before v0.0.8 were numbered
@@ -11,8 +11,9 @@ rewards after every floor, and bank meta Cred when you flatline. Home is where
 a run starts and ends; in between you go from arena to arena. The design rule:
 fights should be easy to read, and all the thinking happens between them.
 
-> **Status:** v0.0.13 was tested in game; v0.0.14 fixes what that test turned
-> up and is untested. Start a **new** roguelite character for this build. Compiles cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0
+> **Status:** v0.0.13 was tested in game; v0.0.14 fixed what that test
+> turned up, and v0.0.15 fixes v0.0.14's blank screen when starting a new
+> roguelite character. Untested beyond that. Start a **new** roguelite character for this build. Compiles cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0
 > and TweakXL 1.12.0.
 
 ## Requirements
@@ -316,3 +317,9 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `source/perks/` | Perk catalogue (tsv) and the generator for `PerkCatalogData.reds` |
 | `source/tweaks/gen_tweaks.py` | Generates the yaml files and the text list |
 | `source/localization/` | English text and its converter for ArchiveXL |
+
+## License
+
+MIT for the mod's own code, data and docs (see LICENSE). Cyberpunk 2077 and
+its content belong to CD PROJEKT RED; this is an unofficial fan mod.
+Source and every release: https://github.com/dotXCVI/night-city-roguelite

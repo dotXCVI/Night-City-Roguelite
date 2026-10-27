@@ -3,6 +3,10 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.15 - Hotfix: blank screen on new character (2026-10-27)
+
+- Fixed a blank screen with nothing to click when starting a new roguelite character. v0.0.14 cut the campaign screen's intro animation short, but the menu only moves on when that animation finishes. The screen is now hidden and the animation is left to finish.
+
 ## v0.0.14 - Arena-to-arena runs, real death, rerolls (2026-10-27)
 
 From the v0.0.13 playtest, the first build that felt like a real game mode.

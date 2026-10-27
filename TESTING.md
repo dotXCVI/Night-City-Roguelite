@@ -18,6 +18,13 @@ stuff as you go. It won't touch your normal saves or playthroughs.
   Get the latest version of each. If you already mod Cyberpunk, you probably
   have them; just update them.
 
+## Download
+
+Always grab the newest build from this link (it never changes):
+https://github.com/dotXCVI/night-city-roguelite/releases/latest/download/NightCityRoguelite.zip
+
+What changed in each version: https://github.com/dotXCVI/night-city-roguelite/blob/main/CHANGELOG.md
+
 ## Install
 
 **Option A - Vortex (easiest if you already use it)**

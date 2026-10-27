@@ -46,18 +46,17 @@ protected cb func OnEnterScenario(prevScenario: CName, userData: ref<IScriptable
 }
 
 // The campaign screen is never shown: it is hidden as it initializes (its
-// intro animation would fade it back in, so visibility rather than opacity),
-// the intro is jumped to its end, and the standalone start, the life path and
-// zero creation points (the mod sets attributes itself) are chosen right
-// away. Its outro then plays hidden and hands over to the next screen.
+// intro animation would fade it back in, so visibility rather than opacity).
+// The intro must be left to finish - its end is what calls OnIntroComplete
+// (stopping it early left a blank screen in v0.0.14) - and there the
+// standalone start, the life path and zero creation points (the mod sets
+// attributes itself) are chosen. Its outro then plays hidden and hands over
+// to the next screen.
 @wrapMethod(ExpansionNewGame)
 protected cb func OnInitialize() -> Bool {
   let result = wrappedMethod();
   if RogueliteService.Get().HasPendingStart() {
     this.GetRootWidget().SetVisible(false);
-    if IsDefined(this.m_animationProxy) {
-      this.m_animationProxy.GotoEndAndStop(false);
-    }
   }
   return result;
 }

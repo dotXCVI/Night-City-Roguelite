@@ -1,4 +1,4 @@
-# Night City Roguelite - developer handoff (v0.0.14)
+# Night City Roguelite - developer handoff (v0.0.15)
 
 You are picking up an in-progress Cyberpunk 2077 mod from another AI. Read this
 whole file before changing anything. The mod's source is the attached ZIP; the
@@ -35,10 +35,11 @@ built only from the game's own assets and systems (no new art, no new models).
 - Code must read like it was written by a very talented human engineer:
   clean, consistent, industry-standard, well-commented (comments explain *why*).
 - Versioning: alpha builds are **v0.0.X**. Bump X for every build you hand over
-  (next is v0.0.15). Update the README's title/status line and keep a short
+  (next is v0.0.16). Update the README's title/status line and keep a short
   changelog entry for each version.
 - Deliver: a ZIP of the full mod folder (README.md, r6/, archive/, source/),
-  plus a plain summary of what changed and what is least certain.
+  plus a plain summary of what changed and what is least certain. Every
+  version also gets a CHANGELOG.md entry and a GitHub release (section 12).
 - Testing: the owner installs by copying `r6/` and `archive/` into the game
   folder, plays, quits **through the main menu** (so the log is saved), and
   shares log files (section 9).
@@ -186,7 +187,9 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
    attribute. XP only comes from `RL_GrantLevels` (1 level per reward).
 10. **Main menu skip** (`MainMenuEntry.reds`): the campaign screen is hidden
     with `SetVisible(false)` - not opacity, which its intro animation
-    overrides. The life path / attribute screens are skipped via scenario
+    overrides. Never stop or skip its intro animation: the intro's end calls
+    `OnIntroComplete`, which is where the mod moves on (v0.0.14 jumped the
+    intro to its end and testers got stuck on a blank screen). The life path / attribute screens are skipped via scenario
     wraps; don't reintroduce them.
 11. **Music sets must use events from one Wwise combo each** (mixing combos
     leaves a track playing that the set's stop event doesn't end). Event names
@@ -240,8 +243,9 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 
 ## 10. Status and what's next
 
-- **v0.0.14 is untested in game.** It was built from the owner's v0.0.13
-  playtest notes (all addressed). Least certain, check these first with the
+- **v0.0.15 is untested in game.** v0.0.14 was built from the owner's
+  v0.0.13 playtest notes (all addressed); v0.0.15 fixes its blank screen on
+  starting a new roguelite character. Least certain, check these first with the
   first test log:
   1. Death -> resurrection -> home sequence (Player/Death.reds).
   2. The fade overlay covering the screen (`inkGameNotificationsLayer`).
@@ -262,3 +266,24 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 4. Update README.md (and this file's section 10) with what changed.
 5. Hand back a v0.0.X ZIP and a short, plain summary: what changed, what's
    least certain, and anything they should test.
+
+## 12. Version control and releases
+
+- Repo: https://github.com/dotXCVI/night-city-roguelite (public). One commit
+  and one tag per version (v0.0.3 onward; v0.0.3-v0.0.7 were first released as
+  v0.3.0-v0.7.0). `CHANGELOG.md` has every version, newest first.
+- Each version is a GitHub release with the ZIP attached twice: as
+  `NightCityRoguelite.zip` (same name every time) and
+  `NightCityRoguelite-<tag>.zip`. Testers use the permanent link
+  https://github.com/dotXCVI/night-city-roguelite/releases/latest/download/NightCityRoguelite.zip
+  which always serves the newest release. So: always attach an asset named
+  exactly `NightCityRoguelite.zip`, always mark the release as latest, and
+  never as a pre-release (latest skips pre-releases).
+- To publish a version (needs git + the GitHub CLI signed in):
+  `tools/release.sh v0.0.16 "Short title" notes.md` - it prepends the entry to
+  CHANGELOG.md, commits, tags, pushes, builds the ZIP and creates the release.
+- Without command-line access, hand the owner: the full mod folder as a ZIP
+  named `NightCityRoguelite.zip`, the changelog entry text, and the tag and
+  title. They can publish it from GitHub's "Draft a new release" page
+  (new tag, title, paste the notes, attach the ZIP, "Set as the latest
+  release"), and upload the changed files to the repo's main branch.

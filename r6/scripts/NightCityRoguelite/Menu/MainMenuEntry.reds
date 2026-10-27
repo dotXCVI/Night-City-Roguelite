@@ -4,9 +4,11 @@
 // Adds a ROGUELITE item above New Game. Choosing it:
 //   1. marks a pending roguelite start in the meta service,
 //   2. runs the normal new-game flow,
-//   3. auto-selects the Phantom Liberty standalone start on the expansion screen
-//      (no story prologue), skips the difficulty screen (the mod sets its own)
-//      and continues to lifepath and the character creator as usual.
+//   3. passes the campaign screen without showing it (Phantom Liberty
+//      standalone start, no story prologue), skips the difficulty screen (the
+//      mod sets its own), the life path screen (Street Kid - it changes
+//      nothing here) and the attribute screen (the mod resets attributes), so
+//      the flow is body type -> appearance -> summary.
 // Once the new game is ready, RogueliteSystem takes over.
 // -----------------------------------------------------------------------------
 
@@ -43,24 +45,58 @@ protected cb func OnEnterScenario(prevScenario: CName, userData: ref<IScriptable
   return wrappedMethod(prevScenario, userData);
 }
 
-// Auto-pick the Phantom Liberty standalone start once the screen is ready.
+// The campaign screen stays invisible; the standalone start, the life path and
+// zero creation points (the mod resets attributes anyway) are set once it has
+// initialized the character state.
+@wrapMethod(ExpansionNewGame)
+protected cb func OnInitialize() -> Bool {
+  let result = wrappedMethod();
+  if RogueliteService.Get().HasPendingStart() {
+    this.GetRootWidget().SetOpacity(0.0);
+  }
+  return result;
+}
+
 @wrapMethod(ExpansionNewGame)
 protected cb func OnIntroComplete(anim: ref<inkAnimProxy>) -> Bool {
   let result = wrappedMethod(anim);
   if RogueliteService.Get().TryConsumeScreenSkip() {
     this.m_characterCustomizationState.SetIsExpansionStandalone(true);
-    this.PlaySound(n"Button", n"OnPress");
+    this.m_characterCustomizationState.SetLifePath(t"LifePaths.StreetKid");
+    this.m_characterCustomizationState.SetAttributePointsAvailable(0u);
     this.NextMenu();
+  } else {
+    this.GetRootWidget().SetOpacity(1.0);
   }
   return result;
 }
 
-// Roguelite characters use the mod's difficulty (RLConfig.GameDifficulty,
-// applied once the game starts), so the difficulty screen is skipped.
+// Difficulty and life path screens skipped: straight to body type.
 @wrapMethod(MenuScenario_ExpansionNewGame)
 protected cb func OnAccept() -> Bool {
   if RogueliteService.Get().HasPendingStart() {
-    this.SwitchToScenario(n"MenuScenario_LifePathSelection");
+    this.SwitchToScenario(n"MenuScenario_BodyTypeSelection");
+    return true;
+  }
+  return wrappedMethod();
+}
+
+// Body type normally follows the life path screen, which opens the creator's
+// background; open it here instead when coming straight from the campaign
+// screen.
+@wrapMethod(MenuScenario_BodyTypeSelection)
+protected cb func OnEnterScenario(prevScenario: CName, userData: ref<IScriptable>) -> Bool {
+  if Equals(prevScenario, n"MenuScenario_ExpansionNewGame") && RogueliteService.Get().HasPendingStart() {
+    this.GetMenusState().OpenMenu(n"character_customization_background");
+  }
+  return wrappedMethod(prevScenario, userData);
+}
+
+// The attribute screen is skipped (attributes are reset when the run starts).
+@wrapMethod(MenuScenario_CharacterCustomization)
+protected cb func OnAccept() -> Bool {
+  if RogueliteService.Get().HasPendingStart() {
+    this.SwitchToScenario(n"MenuScenario_Summary");
     return true;
   }
   return wrappedMethod();

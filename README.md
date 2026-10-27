@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.0.11)
+# Night City Roguelite (v0.0.12)
 
 > **Versions:** alpha builds are v0.0.X. v0.X.X starts once the foundation is
 > solid, v1.0.0 is the finished mod. (Builds before v0.0.8 were numbered
@@ -6,7 +6,8 @@
 
 A run-based arena mode for Cyberpunk 2077 2.5, built only from the game's own
 assets and systems. Start a new roguelite character from the main menu, fight
-through 3 acts of 5 arenas, pick one of three rewards after every floor, and
+through 3 acts of 6 arenas (bosses on floors 6, 12 and 18), pick one of three
+rewards after every floor, and
 bank meta Cred when you flatline.
 
 > **Status:** first in-game test done; v0.5 fixes what it turned up. Compiles
@@ -42,11 +43,11 @@ works: it just waits for the opening call to end before taking over.
 
 ## How to play
 
-1. Main menu -> **ROGUELITE** (top of the list). The expansion choice and the
-   difficulty screen are skipped (the mod uses its own difficulty, Hard for
-   now); make your V as usual.
+1. Main menu -> **ROGUELITE** (top of the list). The campaign, difficulty,
+   life path and attribute screens are skipped (the mod sets all of them);
+   pick a body type, make your V, confirm.
 2. There's no opening scene: the screen stays black while the mod resets V to
-   level 1 (clothes kept) and moves V into **V's apartment in Megabuilding
+   level 1 (clothes kept, Dash included) and moves V into **V's apartment in Megabuilding
    H10**, then fades in with V standing inside. The front door is sealed.
 3. Use **V's computer** (prompt: "Roguelite Terminal") or press **F7** for the
    terminal: pick a kit (locked kits are bought by clicking them), buy
@@ -56,23 +57,27 @@ works: it just waits for the opening call to end before taking over.
    arena is ringed by a solid wall: invisible from a distance, it lights up as
    red NCPD holo-tape ("POLICE LINE - DO NOT CROSS") as you walk up to it, more
    solid the closer you get.
-5. Clear every wave and you have 30 seconds to loot bodies for ammo (F7 skips),
-   then you're sent home. Pick one of three rewards of that fight's type.
+5. Clearing a wave refills part of your ammo and one health charge. Clear the
+   last one and you're sent home a few seconds later (F7 goes at once). Pick
+   one of three rewards of that fight's type - every pick also grants +1 level.
 6. Then pick your next fight by its reward, Hades-style. Each door shows the
    reward type, the arena and the threat:
 
    | Reward | What you choose from | Threat |
    | --- | --- | --- |
-   | TRAINING | Levels, attribute points, perk points | Light |
-   | ARMORY | Weapons (sometimes an iconic) | Standard |
+   | TRAINING | Extra attribute points, perk points or a boon | Light |
+   | ARMORY | Weapons, grenades (sometimes an iconic) | Standard |
    | BOONS | Run-only bonuses | Standard |
    | DAEMONS | Quickhacks | Standard |
    | CHROME | Cyberware, installed on the spot | Heavy |
    | ICONIC | Iconic weapons (rare door) | Heavy |
 
-   Light fights have smaller waves of weaker enemies; heavy fights have bigger
-   waves, more elites, an extra wave and enemies a level above V, and pay out
-   better quality. Before a boss floor there is a single boss door.
+   Light fights have smaller waves of weaker enemies; heavy fights (from floor
+   3 on) have bigger waves, more elites, an extra wave from Act 2 and enemies a
+   level up, and roll better quality. Reward quality follows the run (Common on
+   floor 1, Legendary at the end), with elite floors rolling better and bosses
+   always paying out high. Smart weapons appear from floor 7, Tech from floor 4.
+   Before a boss floor there is a single boss door.
 7. When health hits zero the run ends: enemies vanish, a 5-second countdown runs,
    and you're sent home. Quitting or crashing mid-run counts as a flatline too.
 
@@ -93,13 +98,26 @@ the quest patch in the archive. If the story ever starts a call or conversation 
 the terminal and the reward screen wait until it's over (looking at something
 with a prompt doesn't count).
 
-### Loot in arenas
+### No looting
 
-Enemies drop no weapons or money. Bodies carry ammo for your weapons, and
-sometimes a health item or grenade from the enemies' own loot table (each also
-restores a charge). Anything else you pick up
-in an arena - junk, crafting parts, weapons, clothes - is taken away again
-right after. Weapons and cyberware come from rewards only.
+Bodies are emptied - there is nothing to search mid-fight. Ammo comes back as
+you clear waves, your MaxDoc is upgraded automatically at home as the run goes
+on, and grenades are Armory rewards. Anything you pick up in an arena anyway is
+taken away again right after.
+
+### Difficulty
+
+Enemy levels follow the floor, not V: Act 1 enemies are a level below the
+floor number, Act 3 a level above, and V gains a level with every reward. Damage
+V takes scales from 55% on floor 1 to 100% on floor 18 (on top of the game's
+Hard difficulty). Both curves are in `Config.reds`.
+
+### Music
+
+Fights use the game's own interactive combat music: the faction's street-story
+set for regular fights (tense until the last wave in light fights), the
+Konpeki heist or Kang Tao sets for heavy and elite fights, and story boss music
+on boss floors (Royce, the mall fight, Adam Smasher).
 
 ### Enemies
 
@@ -107,7 +125,7 @@ Enemies are roguelite versions of the game's own open-world combat NPCs for
 each faction (`r6/tweaks/NightCityRoguelite/enemies.yaml`, made from the list
 in `Data/EnemyRoster.reds`): hostile to V from the start, on combat alert
 instead of relaxed, all on one side, with the loot described above. They spawn
-inside the arena on spots you can reach on foot, are matched to your level, and
+inside the arena on spots you can reach on foot, at the run's level, and
 an enemy that hangs back is sent running at you. Acts 2 and 3 end with MaxTac.
 Without TweakXL the game's original records are used.
 
@@ -183,7 +201,11 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Combat/ArenaWalls.reds` | Collision walls with proximity holo-tape visuals |
 | `Combat/ArenaCleaner.reds` | No bystanders in arenas, no safe zones mid-fight |
 | `Combat/WaveSpawner.reds` | Wave spawning, level matching, chasing, kill tracking |
-| `Combat/Loot.reds` | Ammo refill, body loot, arena pickup filter |
+| `Combat/Loot.reds` | Ammo refill, empty bodies, arena pickup filter |
+| `Run/Difficulty.reds` | Enemy level curve, damage-taken curve |
+| `Player/Consumables.reds` | Quality steps, MaxDoc ladder, grenades |
+| `Player/Perks.reds` | Direct perk grants, baseline Dash |
+| `Audio/Music.reds` | Arena combat music |
 | `Rewards/RewardSystem.reds` | Reward doors, threat, offer rolling and granting |
 | `Rewards/Boons.reds` | Run-only bonuses |
 | `Meta/MetaProgression.reds` | Unlocks, kits, Cred payout |

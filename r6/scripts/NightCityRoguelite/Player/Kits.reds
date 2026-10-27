@@ -36,6 +36,25 @@ public abstract class RLGear {
     return true;
   }
 
+  // Gives one of the item and puts it in its slot (health item, grenade...).
+  public static func GiveAndEquip(player: ref<PlayerPuppet>, recordID: TweakDBID) -> Bool {
+    if !TDBID.IsValid(recordID) {
+      return false;
+    }
+    let itemID = ItemID.FromTDBID(recordID);
+    let transactionSystem = GameInstance.GetTransactionSystem(player.GetGame());
+    if !transactionSystem.HasItem(player, itemID) && !transactionSystem.GiveItem(player, itemID, 1) {
+      RLLog(s"GiveItem failed for \(TDBID.ToStringDEBUG(recordID))");
+      return false;
+    }
+    let request = new EquipRequest();
+    request.owner = player;
+    request.itemID = itemID;
+    request.slotIndex = 0;
+    EquipmentSystem.GetInstance(player).QueueRequest(request);
+    return true;
+  }
+
   public static func InstallCyberware(player: ref<PlayerPuppet>, recordID: TweakDBID) -> Bool {
     if !TDBID.IsValid(recordID) {
       return false;
@@ -145,9 +164,8 @@ public abstract class RLKits {
         RLGear.GiveWeapon(player, pools.PickWeapon([gamedataItemType.Wea_AssaultRifle, gamedataItemType.Wea_SubmachineGun]), n"Common", true);
         RLGear.GiveWeapon(player, pools.PickWeapon(pistolTypes), n"Common", true);
     }
-    // Everyone gets a couple of heals and grenades.
-    RLGear.GiveStack(player, pools.PickHealing(), 2);
-    RLGear.GiveStack(player, pools.PickGrenade(), 2);
+    // Everyone starts with a basic MaxDoc; grenades are rewards.
+    RLConsumables.GiveStarterHealth(player, 0);
     RLLog(s"Kit applied: \(NameToString(kit))");
   }
 }

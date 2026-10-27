@@ -3,6 +3,18 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.12 - Balance pass, part 1 (2026-10-26)
+
+- Runs are 3 acts of 6 arenas: an elite on floor 5 and a boss on floor 6 of each act (bosses on floors 6, 12 and 18).
+- Difficulty: enemy level follows the floor (Act 1 one level below, Act 3 one above). Damage V takes scales from 55% on floor 1 to 100% on floor 18.
+- Waves grow with depth; elite floors have an elite in every wave.
+- Reward quality rolls around an expected step (Common on floor 1 to Legendary+ on floor 18). Heavy and elite fights roll higher.
+- Every reward pick gives +1 level. Dash and Slippery are baseline for everyone.
+- No looting: bodies are emptied, and each cleared wave refills ammo and one health charge.
+- MaxDoc quality floor that rises with depth; grenades are Armory rewards.
+- Arena music from the game's interactive combat sets, with heavier sets for heavy fights and boss music on boss floors.
+- The campaign, life path and attribute screens are skipped.
+
 ## v0.0.11 - New-game freeze fix (2026-10-26)
 
 - Fixed new characters freezing on a black screen:

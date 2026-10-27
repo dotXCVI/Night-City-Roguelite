@@ -1,15 +1,14 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - ammo and loot
 // -----------------------------------------------------------------------------
-// In an arena the only loot is what keeps V fighting:
+// No looting in arenas - all thinking happens between fights:
 //   - V arrives with every weapon's ammo full and health/grenade charges full;
-//   - bodies are stripped of their junk and carry ammo for V's weapons, and
-//     sometimes a health item or grenade (from the enemies' own loot table,
-//     NCRoguelite.EnemyLoot in r6/tweaks; rolled here only for the game's
-//     original records, when TweakXL didn't load the variants);
-//   - picking up a health item or grenade also restores one charge;
-//   - anything else V picks up in an arena (junk, crafting parts, weapons,
-//     clothes) is taken away again right after.
+//   - clearing a wave refills part of every ammo type and one health charge;
+//   - bodies are emptied (only clothes stay), so there is nothing to search;
+//   - anything V picks up in an arena anyway (junk, weapons, consumables) is
+//     taken away again right after.
+// Health items and grenades are gear upgrades instead (Player/Consumables.reds,
+// Rewards/RewardSystem.reds).
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -79,55 +78,40 @@ public abstract class RLLoot {
 
   // --- Bodies --------------------------------------------------------------------------
 
-  // Removes everything from a body except its clothes, ammo, health items and
-  // grenades. With `stock`, also puts in ammo for V's weapons, plus (for
-  // records without the mod's loot table) maybe a health item or grenade.
-  public static func PrepareCorpse(npc: ref<ScriptedPuppet>, player: ref<PlayerPuppet>, stock: Bool, hasLootTable: Bool) {
-    if !IsDefined(npc) || !IsDefined(player) {
+  // Empties a body: everything but its clothes goes. Two passes are made (the
+  // game may still be generating the body's loot on the first one).
+  public static func EmptyCorpse(npc: ref<ScriptedPuppet>) {
+    if !IsDefined(npc) {
       return;
     }
     let transactionSystem = GameInstance.GetTransactionSystem(npc.GetGame());
     let items: array<wref<gameItemData>>;
     transactionSystem.GetItemList(npc, items);
     for item in items {
-      if IsDefined(item) && RLLoot.IsCorpseJunk(item) {
+      if IsDefined(item) && !item.HasTag(n"Quest") && !EquipmentSystem.IsClothing(item.GetID()) {
         transactionSystem.RemoveItem(npc, item.GetID(), item.GetQuantity());
-      }
-    }
-    if !stock {
-      return;
-    }
-    for ammo in RLLoot.PlayerAmmoTypes(player) {
-      let ammoID = ItemID.CreateQuery(ammo);
-      let amount = Max(6, RLLoot.AmmoCap(player, ammoID) / 10) + RandRange(0, 8);
-      transactionSystem.GiveItem(npc, ammoID, amount);
-    }
-    if hasLootTable {
-      return;
-    }
-    let pools = RogueliteService.Get().GetPools();
-    if RandF() < 0.3 {
-      let heal = pools.PickHealing();
-      if TDBID.IsValid(heal) {
-        transactionSystem.GiveItem(npc, ItemID.FromTDBID(heal), 1);
-      }
-    }
-    if RandF() < 0.2 {
-      let grenade = pools.PickGrenade();
-      if TDBID.IsValid(grenade) {
-        transactionSystem.GiveItem(npc, ItemID.FromTDBID(grenade), 1);
       }
     }
   }
 
-  private static func IsCorpseJunk(item: wref<gameItemData>) -> Bool {
-    if item.HasTag(n"Quest") || item.HasTag(n"HideInUI") || item.HasTag(n"Ammo") {
-      return false;
+  // --- Wave cleared --------------------------------------------------------------------
+
+  // Part of every ammo type back, plus one health item charge.
+  public static func RefillAfterWave(player: ref<PlayerPuppet>) {
+    if !IsDefined(player) {
+      return;
     }
-    if RLLoot.IsHealing(item.GetID()) || RLLoot.IsGrenade(item.GetID()) {
-      return false;
+    let transactionSystem = GameInstance.GetTransactionSystem(player.GetGame());
+    for ammo in RLLoot.PlayerAmmoTypes(player) {
+      let ammoID = ItemID.CreateQuery(ammo);
+      let cap = RLLoot.AmmoCap(player, ammoID);
+      let have = transactionSystem.GetItemQuantity(player, ammoID);
+      let amount = Min(cap - have, Cast<Int32>(Cast<Float>(cap) * RLConfig.WaveAmmoRefill()));
+      if amount > 0 {
+        transactionSystem.GiveItem(player, ammoID, amount);
+      }
     }
-    return !EquipmentSystem.IsClothing(item.GetID());
+    ConsumablesChargesHelper.RefreshAmountOfCharges(player.GetGame(), gamedataStatPoolType.HealingItemsCharges, 1);
   }
 
   // --- Pickups ---------------------------------------------------------------------------
@@ -141,16 +125,15 @@ public abstract class RLLoot {
     return Equals(RPGManager.GetItemType(itemID), gamedataItemType.Gad_Grenade);
   }
 
-  // Arena pickups that are taken away again: junk, crafting parts, mods,
-  // weapons, clothes, cyberware, food. Ammo, money, health items, grenades,
-  // quest and hidden system items (V's own body parts) always stay.
+  // Arena pickups that are taken away again: everything except ammo, money,
+  // quest items and hidden system items (V's own body parts).
   public static func ShouldDiscardPickup(itemID: ItemID, itemData: ref<gameItemData>) -> Bool {
     if IsDefined(itemData) && (itemData.HasTag(n"Ammo") || itemData.HasTag(n"Currency") || itemData.HasTag(n"Quest")
       || itemData.HasTag(n"HideInUI") || itemData.HasTag(n"TppHead") || itemData.HasTag(n"UnequipBlocked")) {
       return false;
     }
     let tdbid = ItemID.GetTDBID(itemID);
-    if RLCharacterReset.IsBodyItem(tdbid) || RLLoot.IsHealing(itemID) || RLLoot.IsGrenade(itemID) {
+    if RLCharacterReset.IsBodyItem(tdbid) {
       return false;
     }
     let record = TweakDBInterface.GetItemRecord(tdbid);
@@ -170,22 +153,11 @@ public abstract class RLLoot {
     }
     return false;
   }
-
-  // One charge back for a picked-up health item or grenade.
-  public static func RestoreCharge(player: ref<PlayerPuppet>, itemID: ItemID) {
-    let pools = GameInstance.GetStatPoolsSystem(player.GetGame());
-    let id = Cast<StatsObjectID>(player.GetEntityID());
-    if RLLoot.IsHealing(itemID) {
-      pools.RequestChangingStatPoolValue(id, gamedataStatPoolType.HealingItemsCharges, Cast<Float>(player.GetHealingItemUseCost()), null, false, false);
-    } else if RLLoot.IsGrenade(itemID) {
-      pools.RequestChangingStatPoolValue(id, gamedataStatPoolType.GrenadesCharges, Cast<Float>(player.GetGrenadeThrowCostClean()), null, false, false);
-    }
-  }
 }
 
-// Arena pickups: health items and grenades also restore a charge, anything V
-// shouldn't carry is queued for removal (the game's own bookkeeping runs first
-// so inventory weight stays right).
+// Arena pickups V shouldn't carry are queued for removal (the game's own
+// bookkeeping runs first so inventory weight stays right). The mod's own
+// grants are exempt (RogueliteSystem.FiltersLoot is off while they happen).
 @wrapMethod(PlayerPuppet)
 protected cb func OnItemAddedToInventory(evt: ref<ItemAddedEvent>) -> Bool {
   let result = wrappedMethod(evt);
@@ -193,8 +165,6 @@ protected cb func OnItemAddedToInventory(evt: ref<ItemAddedEvent>) -> Bool {
   if IsDefined(system) && system.FiltersLoot() && ItemID.IsValid(evt.itemID) {
     if RLLoot.ShouldDiscardPickup(evt.itemID, evt.itemData) {
       system.QueueLootRemoval(evt.itemID);
-    } else {
-      RLLoot.RestoreCharge(this, evt.itemID);
     }
   }
   return result;

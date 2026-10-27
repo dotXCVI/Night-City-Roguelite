@@ -55,6 +55,7 @@ public class RLItemEntry {
   public let band: Int32;
   public let iconic: Bool;
   public let cyberdeck: Bool;
+  public let evolution: gamedataWeaponEvolution;
 }
 
 public class RLTweakPools {
@@ -64,8 +65,6 @@ public class RLTweakPools {
   private let m_iconics: array<ref<RLItemEntry>>;
   private let m_cyberware: array<ref<RLItemEntry>>;
   private let m_quickhacks: array<ref<RLItemEntry>>;
-  private let m_grenades: array<ref<RLItemEntry>>;
-  private let m_healing: array<ref<RLItemEntry>>;
   private let m_seen: array<TweakDBID>;
 
   // --- Build ----------------------------------------------------------------------
@@ -197,6 +196,8 @@ public class RLTweakPools {
     entry.band = IsDefined(item.Quality()) ? RLTweakPools.BandOf(item.Quality().Type()) : 0;
     entry.iconic = iconic || item.TagsContains(n"IconicWeapon");
     entry.cyberdeck = item.TagsContains(n"Cyberdeck");
+    let weapon = item as WeaponItem_Record;
+    entry.evolution = IsDefined(weapon) && IsDefined(weapon.Evolution()) ? weapon.Evolution().Type() : gamedataWeaponEvolution.None;
 
     if Equals(category, gamedataItemCategory.Weapon) && RLTweakPools.IsPlayerWeaponType(itemType) {
       if entry.iconic {
@@ -213,13 +214,6 @@ public class RLTweakPools {
     if Equals(itemType, gamedataItemType.Prt_Program) {
       ArrayPush(this.m_quickhacks, entry);
       return;
-    }
-    if Equals(itemType, gamedataItemType.Gad_Grenade) {
-      ArrayPush(this.m_grenades, entry);
-      return;
-    }
-    if Equals(itemType, gamedataItemType.Con_Inhaler) || Equals(itemType, gamedataItemType.Con_Injector) {
-      ArrayPush(this.m_healing, entry);
     }
   }
 
@@ -375,10 +369,14 @@ public class RLTweakPools {
     return this.PickFaction(preferCorp);
   }
 
-  public func PickWeapon(itemTypes: array<gamedataItemType>) -> TweakDBID {
+  // A weapon of one of the item types (any when empty) and, when given, one of
+  // the evolutions (Power, Tech, Smart, Blade...).
+  public func PickWeapon(itemTypes: array<gamedataItemType>, opt evolutions: array<gamedataWeaponEvolution>) -> TweakDBID {
     let matches: array<TweakDBID>;
     for entry in this.m_weapons {
-      if ArraySize(itemTypes) == 0 || ArrayContains(itemTypes, entry.itemType) {
+      let typeOk = ArraySize(itemTypes) == 0 || ArrayContains(itemTypes, entry.itemType);
+      let evolutionOk = ArraySize(evolutions) == 0 || ArrayContains(evolutions, entry.evolution);
+      if typeOk && evolutionOk {
         ArrayPush(matches, entry.id);
       }
     }
@@ -431,20 +429,6 @@ public class RLTweakPools {
       distance += 1;
     }
     return TDBID.None();
-  }
-
-  public func PickGrenade() -> TweakDBID {
-    if ArraySize(this.m_grenades) == 0 {
-      return TDBID.None();
-    }
-    return this.m_grenades[RandRange(0, ArraySize(this.m_grenades))].id;
-  }
-
-  public func PickHealing() -> TweakDBID {
-    if ArraySize(this.m_healing) == 0 {
-      return TDBID.None();
-    }
-    return this.m_healing[RandRange(0, ArraySize(this.m_healing))].id;
   }
 
   public func HasQuickhacks() -> Bool = ArraySize(this.m_quickhacks) > 0

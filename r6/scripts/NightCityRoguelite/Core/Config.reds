@@ -50,11 +50,12 @@ public abstract class RLConfig {
 
   // --- Run structure ------------------------------------------------------------
 
+  // 3 acts of 6 arenas: floors 1-4 are regular, 5 is the elite floor and 6
+  // the act boss (overall floors 6, 12 and 18).
   public static func Acts() -> Int32 = 3
-  public static func FloorsPerAct() -> Int32 = 5
-  // Floor numbers (within an act) that are elite / boss floors.
-  public static func EliteFloor() -> Int32 = 4
-  public static func BossFloor() -> Int32 = 5
+  public static func FloorsPerAct() -> Int32 = 6
+  public static func EliteFloor() -> Int32 = 5
+  public static func BossFloor() -> Int32 = 6
 
   // --- Character baseline -------------------------------------------------------
 
@@ -80,8 +81,9 @@ public abstract class RLConfig {
   // Countdown after arriving in an arena before the first wave (also lets the
   // area stream in).
   public static func DeployCountdown() -> Int32 = 5
-  // Countdown after an arena is cleared (loot time) before V is sent home.
-  public static func ClearedCountdown() -> Int32 = 30
+  // Countdown after an arena is cleared before V is sent home (there is no
+  // looting: ammo and health charges come back when a wave is cleared).
+  public static func ClearedCountdown() -> Int32 = 8
   // Countdown after a flatline before V is sent home.
   public static func FlatlineCountdown() -> Int32 = 5
 
@@ -101,7 +103,23 @@ public abstract class RLConfig {
   public static func ChaseDistance() -> Float = 15.0
   public static func ChaseAfterSeconds() -> Float = 5.0
   // Hard cap on simultaneously alive enemies.
-  public static func MaxAlive() -> Int32 = 14
+  public static func MaxAlive() -> Int32 = 12
+
+  // --- Difficulty curve (Run/Difficulty.reds) ------------------------------------
+
+  // Damage V takes, scaled from the first floor to the last (1.0 = the game's
+  // own Hard difficulty).
+  public static func IncomingDamageFirstFloor() -> Float = 0.55
+  public static func IncomingDamageLastFloor() -> Float = 1.0
+  // Enemy level relative to the floor number, per act (V gains a level with
+  // every reward, so V's level is about the floor number).
+  public static func EnemyLevelOffset(act: Int32) -> Int32 {
+    if act <= 1 { return -1; }
+    if act == 2 { return 0; }
+    return 1;
+  }
+  // Share of each ammo type's carry limit refilled when a wave is cleared.
+  public static func WaveAmmoRefill() -> Float = 0.4
 
   // --- Death --------------------------------------------------------------------
 

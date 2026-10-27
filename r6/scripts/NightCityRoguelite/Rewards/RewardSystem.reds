@@ -16,10 +16,9 @@ public enum RLOfferKind {
   Cyberware = 2,
   Quickhack = 3,
   Boon = 4,
-  Levels = 5,
-  AttributePoints = 6,
-  PerkPoints = 7,
-  Supplies = 8,
+  AttributePoints = 5,
+  PerkPoints = 6,
+  Grenade = 7,
 }
 
 public enum RLRewardCategory {
@@ -52,26 +51,54 @@ public class RLOffer {
 }
 
 public abstract class RLRewards {
-  // --- Depth scaling ---------------------------------------------------------------
+  // --- Quality rolls ---------------------------------------------------------------
+  // Like Enter the Gungeon's floor tables: each card rolls around the quality
+  // expected on this floor (RLQuality.ExpectedStep) - usually at or just below
+  // it, sometimes one step above, rarely two. Elite floors and heavy fights roll
+  // better (as Slay the Spire's elites do); boss rewards are always two above.
 
-  public static func WeaponTier(depth: Int32) -> CName {
-    if depth <= 2 { return n"Uncommon"; }
-    if depth <= 4 { return n"UncommonPlus"; }
-    if depth <= 6 { return n"Rare"; }
-    if depth <= 8 { return n"RarePlus"; }
-    if depth <= 10 { return n"Epic"; }
-    if depth <= 12 { return n"EpicPlus"; }
-    if depth <= 14 { return n"Legendary"; }
-    return n"LegendaryPlus";
+  public static func RollStep(run: ref<RLRunState>, threat: Int32) -> Int32 {
+    let expected = RLQuality.ExpectedStep(run.Depth(), run.TotalFloors());
+    if run.IsBossFloor() {
+      return Min(RLQuality.MaxStep(), expected + 2);
+    }
+    // Odds for -1, 0, +1, +2 steps.
+    let odds: array<Int32> = [25, 55, 16, 4];
+    if run.IsEliteFloor() || threat >= 3 {
+      odds = [10, 50, 30, 10];
+    } else if threat <= 1 {
+      odds = [35, 55, 10, 0];
+    }
+    let roll = RandRange(0, 100);
+    let offset = -1;
+    let i = 0;
+    while i < ArraySize(odds) && roll >= odds[i] {
+      roll -= odds[i];
+      i += 1;
+    }
+    offset = i - 1;
+    return Clamp(expected + offset, 0, RLQuality.MaxStep());
   }
 
-  public static func Band(depth: Int32) -> Int32 {
-    // 0..4 over a 15-floor run.
-    return Min(4, (depth - 1) / 3);
-  }
+  // Cyberware and quickhack quality bands (0 Common .. 4 Legendary).
+  public static func BandForStep(step: Int32) -> Int32 = Clamp(step / 2, 0, 4)
 
+  // Iconics show up from floor 4 on, a little more often each floor.
   public static func IconicChance(depth: Int32) -> Float {
-    return 0.04 + Cast<Float>(depth) * 0.015;
+    return depth < 4 ? 0.0 : 0.02 + Cast<Float>(depth) * 0.01;
+  }
+
+  // Smart weapons are strong for new characters, so the weapon classes open
+  // up as the run goes on: Tech from floor 4, Smart from floor 7.
+  public static func AllowedEvolutions(depth: Int32) -> array<gamedataWeaponEvolution> {
+    let allowed = [gamedataWeaponEvolution.Power, gamedataWeaponEvolution.Blade, gamedataWeaponEvolution.Blunt, gamedataWeaponEvolution.Throwable, gamedataWeaponEvolution.None];
+    if depth >= 4 {
+      ArrayPush(allowed, gamedataWeaponEvolution.Tech);
+    }
+    if depth >= 7 {
+      ArrayPush(allowed, gamedataWeaponEvolution.Smart);
+    }
+    return allowed;
   }
 
   // --- Categories (doors) -----------------------------------------------------------
@@ -94,7 +121,7 @@ public abstract class RLRewards {
       case RLRewardCategory.Chrome: return "Pick cyberware, installed on the spot";
       case RLRewardCategory.Daemons: return "Pick a quickhack";
       case RLRewardCategory.Boons: return "Pick a run-only bonus";
-      case RLRewardCategory.Training: return "Pick levels, attribute points or perk points";
+      case RLRewardCategory.Training: return "Pick extra attribute or perk points, or a boon";
       case RLRewardCategory.Iconic: return "Pick an iconic weapon";
     }
     return "";
@@ -174,13 +201,13 @@ public abstract class RLRewards {
   }
 
   private static func RollCategory(pools: ref<RLTweakPools>, run: ref<RLRunState>) -> RLRewardCategory {
-    // The very first fight is never a heavy one.
-    let first = run.floorsCleared == 0;
-    if !first && RandF() < 0.12 {
+    // No heavy fights (Chrome, Iconic) before floor 3.
+    let early = run.Depth() < 3;
+    if !early && RandF() < 0.10 {
       return RLRewardCategory.Iconic;
     }
     // Armory, Chrome, Daemons, Boons, Training
-    let weights: array<Int32> = [24, first ? 0 : 22, pools.HasQuickhacks() && !first ? 12 : 0, 24, 18];
+    let weights: array<Int32> = [26, early ? 0 : 20, pools.HasQuickhacks() && !early ? 12 : 0, 24, 18];
     let total = 0;
     for w in weights {
       total += w;
@@ -222,7 +249,7 @@ public abstract class RLRewards {
     let boons: array<CName>;
     let bonus = threat - 2;
     if Equals(category, RLRewardCategory.Training) {
-      let kinds = [RLOfferKind.Levels, RLOfferKind.AttributePoints, RLOfferKind.PerkPoints];
+      let kinds = [RLOfferKind.AttributePoints, RLOfferKind.PerkPoints, RLOfferKind.Boon];
       for kind in kinds {
         let offer = RLRewards.Build(player, pools, run, kind, bonus);
         if IsDefined(offer) {
@@ -260,7 +287,10 @@ public abstract class RLRewards {
   private static func KindFor(category: RLRewardCategory, run: ref<RLRunState>) -> RLOfferKind {
     switch category {
       case RLRewardCategory.Armory:
-        return RandF() < RLRewards.IconicChance(run.Depth()) ? RLOfferKind.Iconic : RLOfferKind.Weapon;
+        if RandF() < RLRewards.IconicChance(run.Depth()) {
+          return RLOfferKind.Iconic;
+        }
+        return RandF() < 0.25 ? RLOfferKind.Grenade : RLOfferKind.Weapon;
       case RLRewardCategory.Chrome:
         return RLOfferKind.Cyberware;
       case RLRewardCategory.Daemons:
@@ -272,26 +302,26 @@ public abstract class RLRewards {
   }
 
   private static func Build(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, kind: RLOfferKind, bonus: Int32) -> ref<RLOffer> {
-    // Heavier fights pay out better quality.
-    let depth = Max(1, run.Depth() + bonus * 2);
+    let depth = run.Depth();
+    let step = RLRewards.RollStep(run, bonus + 2);
     let offer = new RLOffer();
     offer.kind = kind;
     let noIDs: array<TweakDBID>;
     let noTypes: array<gamedataItemType>;
     switch kind {
       case RLOfferKind.Weapon:
-        offer.record = pools.PickWeapon(noTypes);
-        offer.tier = RLRewards.WeaponTier(depth);
+        offer.record = pools.PickWeapon(noTypes, RLRewards.AllowedEvolutions(depth));
+        offer.tier = RLQuality.TierName(step);
         if !TDBID.IsValid(offer.record) {
           return null;
         }
         offer.title = RLRewards.ItemName(offer.record);
-        offer.subtitle = "WEAPON - " + NameToString(offer.tier);
+        offer.subtitle = "WEAPON - " + RLQuality.DisplayName(step);
         offer.description = RLRewards.ItemTypeName(offer.record);
         break;
       case RLOfferKind.Iconic:
         offer.record = pools.PickIconic();
-        offer.tier = RLRewards.WeaponTier(depth + 2);
+        offer.tier = RLQuality.TierName(Min(RLQuality.MaxStep(), step + 2));
         if !TDBID.IsValid(offer.record) {
           return null;
         }
@@ -300,7 +330,7 @@ public abstract class RLRewards {
         offer.description = RLRewards.ItemTypeName(offer.record);
         break;
       case RLOfferKind.Cyberware:
-        offer.record = pools.PickCyberware(RLRewards.Band(depth), false, gamedataItemType.Invalid, noIDs);
+        offer.record = pools.PickCyberware(RLRewards.BandForStep(step), false, gamedataItemType.Invalid, noIDs);
         if !TDBID.IsValid(offer.record) {
           return null;
         }
@@ -314,7 +344,7 @@ public abstract class RLRewards {
           : "Installed immediately.";
         break;
       case RLOfferKind.Quickhack:
-        offer.record = pools.PickQuickhack(RLRewards.Band(depth), noIDs);
+        offer.record = pools.PickQuickhack(RLRewards.BandForStep(step), noIDs);
         if !TDBID.IsValid(offer.record) {
           return null;
         }
@@ -332,29 +362,27 @@ public abstract class RLRewards {
         offer.subtitle = s"BOON - \(run.BoonStacks(boon.id) + 1)/\(boon.maxStacks)";
         offer.description = boon.description;
         break;
-      case RLOfferKind.Levels:
-        offer.amount = depth >= 8 ? 3 : 2;
-        offer.title = s"+\(offer.amount) Levels";
-        offer.subtitle = "EXPERIENCE";
-        offer.description = "Gain levels instantly, with their perk and attribute points.";
+      case RLOfferKind.Grenade:
+        let noGrenades: array<TweakDBID>;
+        offer.record = RLConsumables.PickGrenade(step, noGrenades);
+        if !TDBID.IsValid(offer.record) {
+          return null;
+        }
+        offer.title = RLRewards.ItemName(offer.record);
+        offer.subtitle = "GRENADE - " + RLQuality.DisplayName(RLQuality.StepOfRecord(offer.record));
+        offer.description = "Equipped on the spot. Replaces your current grenade.";
         break;
       case RLOfferKind.AttributePoints:
-        offer.amount = 2;
-        offer.title = "+2 Attribute Points";
+        offer.amount = depth >= 9 ? 4 : 3;
+        offer.title = s"+\(offer.amount) Attribute Points";
         offer.subtitle = "TRAINING";
         offer.description = "Spend them in the Character menu.";
         break;
       case RLOfferKind.PerkPoints:
-        offer.amount = depth >= 8 ? 4 : 3;
+        offer.amount = depth >= 9 ? 6 : 4;
         offer.title = s"+\(offer.amount) Perk Points";
         offer.subtitle = "TRAINING";
         offer.description = "Spend them in the Character menu.";
-        break;
-      case RLOfferKind.Supplies:
-        offer.amount = 300 + depth * 150;
-        offer.title = "Supply Drop";
-        offer.subtitle = "SUPPLIES";
-        offer.description = s"3 heals, 3 grenades, \(offer.amount) eddies.";
         break;
     }
     return offer;
@@ -400,8 +428,8 @@ public abstract class RLRewards {
         ArrayPush(run.boons, offer.boon);
         RLBoons.ApplyStack(player, offer.boon, run);
         break;
-      case RLOfferKind.Levels:
-        PlayerDevelopmentSystem.GetData(player).RL_GrantLevels(offer.amount);
+      case RLOfferKind.Grenade:
+        RLConsumables.SetGrenade(player, offer.record);
         break;
       case RLOfferKind.AttributePoints:
         PlayerDevelopmentSystem.GetData(player).AddDevelopmentPoints(offer.amount, gamedataDevelopmentPointType.Attribute);
@@ -410,11 +438,6 @@ public abstract class RLRewards {
       case RLOfferKind.PerkPoints:
         PlayerDevelopmentSystem.GetData(player).AddDevelopmentPoints(offer.amount, gamedataDevelopmentPointType.Primary);
         PlayerDevelopmentSystem.GetData(player).UpdateUIBB();
-        break;
-      case RLOfferKind.Supplies:
-        RLGear.GiveStack(player, pools.PickHealing(), 3);
-        RLGear.GiveStack(player, pools.PickGrenade(), 3);
-        RLGear.GiveEddies(player, offer.amount);
         break;
     }
     RLLog(s"Reward granted: \(offer.title)");

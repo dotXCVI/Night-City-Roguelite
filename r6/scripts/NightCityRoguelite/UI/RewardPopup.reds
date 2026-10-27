@@ -48,7 +48,7 @@ public class RLRewardPopup extends InGamePopup {
     header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
-    footer.SetFluffText("PICK ONE - YOUR COMPUTER OR F7 REOPENS THIS SCREEN");
+    footer.SetFluffText("PICK ONE - EVERY PICK ALSO GRANTS +1 LEVEL - F7 REOPENS THIS SCREEN");
     footer.Reparent(this);
 
     this.m_content = InGamePopupContent.Create();
@@ -124,6 +124,7 @@ public class RLRewardPopup extends InGamePopup {
         break;
       case RLOfferKind.Cyberware:
       case RLOfferKind.Quickhack:
+      case RLOfferKind.Grenade:
         if card.SetRecordIcon(RLIcons.ItemIcon(offer.record), 190.0, 190.0) {
           return;
         }
@@ -146,7 +147,7 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.Cyberware: return n"MainColors.Blue";
       case RLOfferKind.Quickhack: return n"MainColors.Green";
       case RLOfferKind.Boon: return n"MainColors.Purple";
-      case RLOfferKind.Supplies: return n"MainColors.Grey";
+      case RLOfferKind.Grenade: return n"MainColors.Yellow";
     }
     return n"MainColors.ActiveWhite";
   }
@@ -158,10 +159,9 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.Cyberware: return n"ico_cyberware";
       case RLOfferKind.Quickhack: return n"ico_deck";
       case RLOfferKind.Boon: return n"ico_tarot";
-      case RLOfferKind.Levels: return n"ico_character";
       case RLOfferKind.AttributePoints: return n"ico_stats";
       case RLOfferKind.PerkPoints: return n"ico_stats";
-      case RLOfferKind.Supplies: return n"ico_backpack";
+      case RLOfferKind.Grenade: return n"ico_backpack";
     }
     return n"ico_map";
   }

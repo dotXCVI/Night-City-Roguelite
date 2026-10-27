@@ -3,14 +3,14 @@
 // -----------------------------------------------------------------------------
 // Spawns waves with Codeware's DynamicEntitySystem inside the arena and keeps
 // them in the fight. Once a second each enemy is checked:
-//   - first sighting: god modes stripped, level matched to V (plus its tier),
+//   - first sighting: god modes stripped, level set from the run's curve,
 //     health refilled, made hostile with a persistent threat on V (the
 //     roguelite variants in r6/tweaks are already hostile, alert and
 //     level-scaled; this makes sure of it either way);
 //   - an enemy that hasn't closed in on V for a few seconds is sent running at
 //     V (then fights as normal);
 //   - an enemy that ends up outside the arena is put back inside;
-//   - dead enemies count as kills and their bodies get stocked with ammo.
+//   - dead enemies count as kills and their bodies are emptied (no looting).
 //
 // Spawn points are on the navmesh, inside the arena, near V's floor level and
 // reachable from V on foot (a path is calculated before spawning).
@@ -22,8 +22,7 @@ public class RLTrackedEnemy {
   public let id: EntityID;
   public let record: TweakDBID;
   public let isBoss: Bool;
-  public let isVariant: Bool;
-  public let levelOffset: Int32;
+  public let level: Int32;
   public let spawnTime: Float;
   public let seen: Bool;
   public let prepared: Bool;
@@ -43,7 +42,7 @@ public class RLEncounterPlan {
   // Flat list of records; waveStarts[i] is the index of wave i's first record.
   public let records: array<TweakDBID>;
   public let bossFlags: array<Bool>;
-  public let levelOffsets: array<Int32>;
+  public let levels: array<Int32>;
   public let waveStarts: array<Int32>;
   public let factionName: String;
 
@@ -60,11 +59,11 @@ public class RLEncounterPlan {
     ArrayPush(this.waveStarts, ArraySize(this.records));
   }
 
-  public func Add(record: TweakDBID, isBoss: Bool, levelOffset: Int32) {
+  public func Add(record: TweakDBID, isBoss: Bool, level: Int32) {
     if TDBID.IsValid(record) {
       ArrayPush(this.records, record);
       ArrayPush(this.bossFlags, isBoss);
-      ArrayPush(this.levelOffsets, levelOffset);
+      ArrayPush(this.levels, Max(1, level));
     }
   }
 }
@@ -166,7 +165,7 @@ public class RLWaveSpawner extends IScriptable {
       if this.GetAliveCount() >= RLConfig.MaxAlive() {
         break;
       }
-      if this.SpawnOne(player, this.m_plan.records[i], this.m_plan.bossFlags[i], this.m_plan.levelOffsets[i]) {
+      if this.SpawnOne(player, this.m_plan.records[i], this.m_plan.bossFlags[i], this.m_plan.levels[i]) {
         spawned += 1;
       }
       i += 1;
@@ -182,7 +181,7 @@ public class RLWaveSpawner extends IScriptable {
     }
   }
 
-  private func SpawnOne(player: ref<PlayerPuppet>, record: TweakDBID, isBoss: Bool, levelOffset: Int32) -> Bool {
+  private func SpawnOne(player: ref<PlayerPuppet>, record: TweakDBID, isBoss: Bool, level: Int32) -> Bool {
     let position: Vector4;
     if !this.FindSpawnPoint(player, position) {
       RLLog("No spawn point found for an enemy.");
@@ -207,8 +206,7 @@ public class RLWaveSpawner extends IScriptable {
     enemy.id = id;
     enemy.record = record;
     enemy.isBoss = isBoss;
-    enemy.isVariant = RLRoster.IsVariant(record);
-    enemy.levelOffset = levelOffset;
+    enemy.level = level;
     enemy.spawnTime = this.m_time;
     enemy.bestDistance = 9999.0;
     ArrayPush(this.m_tracked, enemy);
@@ -355,14 +353,11 @@ public class RLWaveSpawner extends IScriptable {
     return false;
   }
 
-  // Two passes: the first right after death, the second a second later (the
-  // game may still be generating the body's loot), which also adds the ammo.
+  // Two passes: right after death, and a second later (the game may still be
+  // generating the body's loot on the first).
   private func StockCorpse(enemy: ref<RLTrackedEnemy>, player: ref<PlayerPuppet>, entities: ref<DynamicEntitySystem>) {
     enemy.corpsePasses += 1;
-    let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
-    if IsDefined(puppet) {
-      RLLoot.PrepareCorpse(puppet, player, enemy.corpsePasses >= 2, enemy.isVariant);
-    }
+    RLLoot.EmptyCorpse(entities.GetEntity(enemy.id) as ScriptedPuppet);
   }
 
   // Updates one tracked enemy; returns true when it stopped counting as alive.
@@ -399,7 +394,7 @@ public class RLWaveSpawner extends IScriptable {
     }
     if !enemy.prepared {
       enemy.prepared = true;
-      RLWaveSpawner.Prepare(puppet, player, enemy.levelOffset);
+      RLWaveSpawner.Prepare(puppet, player, enemy.level);
       enemy.lastThreat = this.m_time;
     } else if this.m_time - enemy.lastThreat >= RLConfig.ThreatRefreshSeconds() {
       RLWaveSpawner.MakeHostile(puppet, player);
@@ -499,8 +494,8 @@ public class RLWaveSpawner extends IScriptable {
     RLWaveSpawner.ChargeAt(puppet, player);
   }
 
-  // First-sighting setup: no god modes, level matched to V, full health, hostile.
-  public static func Prepare(puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>, levelOffset: Int32) {
+  // First-sighting setup: no god modes, the planned level, full health, hostile.
+  public static func Prepare(puppet: ref<ScriptedPuppet>, player: ref<PlayerPuppet>, level: Int32) {
     let game = puppet.GetGame();
     let id = puppet.GetEntityID();
     let godModes = GameInstance.GetGodModeSystem(game);
@@ -518,7 +513,7 @@ public class RLWaveSpawner extends IScriptable {
     let stats = GameInstance.GetStatsSystem(game);
     let npcStats = Cast<StatsObjectID>(id);
     let playerLevel = stats.GetStatValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatType.PowerLevel);
-    let target = MaxF(1.0, playerLevel + Cast<Float>(levelOffset));
+    let target = Cast<Float>(Max(1, level));
     RLDebug(s"Enemy level \(stats.GetStatValue(npcStats, gamedataStatType.PowerLevel)) -> \(target) (V \(playerLevel)).");
     stats.RemoveAllModifiers(npcStats, gamedataStatType.PowerLevel);
     stats.AddModifier(npcStats, RPGManager.CreateStatModifier(gamedataStatType.PowerLevel, gameStatModifierType.Additive, target));

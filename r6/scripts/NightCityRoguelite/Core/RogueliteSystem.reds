@@ -57,6 +57,9 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_deathGuard: ref<RLDeathGuard>;
   private let m_hud: ref<RLHud>;
   private let m_apartment: ref<RLApartmentHub>;
+  private let m_music: ref<RLMusic>;
+  // The enemy faction of the fight being deployed to / fought.
+  private let m_faction: ref<RLFactionPool>;
   private let m_offers: array<ref<RLOffer>>;
   private let m_doors: array<ref<RLDoor>>;
   private let m_lootQueue: array<ItemID>;
@@ -94,6 +97,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_deathGuard = RLDeathGuard.Create(this);
     this.m_hud = new RLHud();
     this.m_apartment = RLApartmentHub.Create(this);
+    this.m_music = new RLMusic();
   }
 
   public func OnDetach() {
@@ -215,6 +219,7 @@ public class RogueliteSystem extends ScriptableSystem {
   // Called by RogueliteService on Session/BeforeEnd.
   public func OnSessionEnding() {
     this.CancelTimer();
+    this.m_music.Stop();
     if IsDefined(this.m_journalGuard) {
       this.m_journalGuard.Stop(this.GetGameInstance());
     }
@@ -486,6 +491,7 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     RLCharacterReset.RemoveGear(player);
     RLCharacterReset.RestoreBody(player);
+    RLPerks.GrantBaseline(player);
     RLCharacterReset.HealFull(player);
     this.m_takeoverDone = true;
     RLLog("Takeover complete.");
@@ -718,6 +724,7 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     RLCharacterReset.RemoveGear(player);
     RLCharacterReset.RestoreBody(player);
+    RLPerks.GrantBaseline(player);
     this.After(n"prepareKit", 0.6);
   }
 
@@ -747,7 +754,7 @@ public class RogueliteSystem extends ScriptableSystem {
     FastTravelSystem.AddFastTravelLock(n"NightCityRoguelite", game);
     this.RollDoors();
     this.EnterRunHome();
-    RLNotify(game, "Run started. Spend your attribute points in the Character menu, then press F7 to deploy.", 8.0);
+    RLNotify(game, "Run started. Spend your attribute points in the Character menu, then press F7 to deploy. Every reward you pick also grants a level.", 8.0);
   }
 
   // --- Between arenas (at home, run active) -----------------------------------------------
@@ -755,6 +762,15 @@ public class RogueliteSystem extends ScriptableSystem {
   private func EnterRunHome() {
     this.m_state = RLState.RunHome;
     this.m_apartment.StartLeash();
+    // V's health item never falls behind the run.
+    let player = GetPlayer(this.GetGameInstance());
+    if IsDefined(player) {
+      let upgraded = RLConsumables.ApplyHealthFloor(player, this.m_run.Depth(), this.m_run.TotalFloors());
+      if StrLen(upgraded) > 0 {
+        RLLog("Health item upgraded: " + upgraded + ".");
+        RLNotify(this.GetGameInstance(), "MaxDoc upgraded to " + upgraded + ".", 5.0);
+      }
+    }
     let status = ArraySize(this.m_offers) > 0 ? "HOME - F7: CHOOSE YOUR REWARD" : "HOME - F7: CHOOSE YOUR NEXT FIGHT";
     this.m_hud.Update(this.m_run.FloorLabel(), status);
     this.After(n"openTerminal", 1.5);
@@ -767,6 +783,7 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     this.m_arenas.StopWalls();
     this.m_spawner.DeleteAll();
+    this.m_music.Stop();
     this.m_run.Advance();
     this.Glitch(player);
     this.ReturnToHub(player);
@@ -823,6 +840,10 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_arenas.StartWalls();
     RLLoot.RefillForArena(player);
     this.UntrackQuest();
+    // The enemy faction is picked on arrival so the music can set the mood
+    // over the countdown.
+    this.m_faction = RogueliteService.Get().GetPools().PickFactionPreferred(arena.factions, this.m_run.act >= 3);
+    this.m_music.Prepare(this.m_faction.faction, this.m_run.Threat(), this.m_run);
     let reward = RLRewards.CategoryName(this.m_run.door.category);
     RLLog(s"Deploying to \(arena.name): \(reward), threat \(this.m_run.Threat()).");
     this.StartCountdown(RLConfig.DeployCountdown(), s"\(arena.name) - \(reward) - FIGHT IN", n"spawn");
@@ -847,34 +868,45 @@ public class RogueliteSystem extends ScriptableSystem {
     RLNotify(player.GetGame(), this.m_run.FloorLabel() + " - " + plan.factionName, 4.0);
   }
 
-  // Waves for a floor. Threat (from the door's reward type) scales the fight:
-  // light = smaller waves of weaker enemies, heavy = bigger waves, more
-  // elites, an extra wave and enemies a level above V.
+  // Waves for a floor. Size grows slowly with the floor; the door's threat
+  // (light / standard / heavy) adds or removes an enemy per wave, heavy fights
+  // get an extra wave from Act 2 on, and the elite floor puts one elite in
+  // every wave. Enemy levels come from the run (Run/Difficulty.reds), not V.
   private func BuildPlan(run: ref<RLRunState>, arena: ref<RLArenaDef>) -> ref<RLEncounterPlan> {
-    let pools = RogueliteService.Get().GetPools();
-    let faction = pools.PickFactionPreferred(arena.factions, run.act >= 3);
+    let faction = IsDefined(this.m_faction)
+      ? this.m_faction
+      : RogueliteService.Get().GetPools().PickFactionPreferred(arena.factions, run.act >= 3);
     let threat = run.Threat();
     let plan = new RLEncounterPlan();
     plan.factionName = RogueliteSystem.FactionName(faction.faction);
 
-    let weights = RogueliteSystem.TierWeights(run.act, run.IsEliteFloor(), threat);
-    let waves = run.IsEliteFloor() ? 3 : (run.act >= 2 ? 3 : 2);
-    if threat >= 3 {
+    let baseLevel = RLDifficulty.EnemyBaseLevel(run);
+    let threatLevel = threat - 2;
+    let weights = RogueliteSystem.TierWeights(run, threat);
+    let perWave = Max(2, 3 + run.Depth() / 3 + (threat - 2));
+    let waves = run.act >= 2 ? 3 : 2;
+    if threat >= 3 && run.act >= 2 {
       waves += 1;
+    }
+    if run.IsEliteFloor() {
+      waves = 3;
     }
     if run.IsBossFloor() {
       waves = 2;
     }
-    let size = Clamp(3 + run.floor + (run.act - 1) * 2 + (threat - 2) * 2, 2, RLConfig.MaxAlive() - 2);
-    let levelBonus = threat - 2;
 
     let w = 0;
     while w < waves {
       plan.BeginWave();
+      let size = w == waves - 1 ? perWave + 1 : perWave;
       let k = 0;
-      while k < size + w {
+      if run.IsEliteFloor() {
+        plan.Add(faction.Pick(2), false, baseLevel + 1 + threatLevel);
+        k = 1;
+      }
+      while k < size {
         let tier = RogueliteSystem.RollTier(weights);
-        plan.Add(faction.Pick(tier), false, tier + levelBonus);
+        plan.Add(faction.Pick(tier), false, baseLevel + (tier >= 2 ? 1 : 0) + threatLevel);
         k += 1;
       }
       w += 1;
@@ -885,44 +917,43 @@ public class RogueliteSystem extends ScriptableSystem {
       let bosses = RogueliteSystem.BossRecords(run.act);
       if ArraySize(bosses) == 0 {
         // Act 1, or no MaxTac records: faction elites lead the boss wave.
-        plan.Add(faction.Pick(2), true, 3 + run.act);
-        plan.Add(faction.Pick(2), true, 3 + run.act);
+        plan.Add(faction.Pick(2), true, baseLevel + 2);
+        plan.Add(faction.Pick(2), true, baseLevel + 2);
       } else {
         for boss in bosses {
-          plan.Add(boss, true, 2 + run.act);
+          plan.Add(boss, true, baseLevel + 2);
         }
       }
       let adds = run.act + 1;
       while adds > 0 {
-        plan.Add(faction.Pick(1), false, 1);
+        plan.Add(faction.Pick(1), false, baseLevel);
         adds -= 1;
       }
     }
     return plan;
   }
 
-  public static func TierWeights(act: Int32, elite: Bool, threat: Int32) -> array<Int32> {
+  // Grunt / tough / elite odds. Act 1 opens with grunts only; heavy fights
+  // trade grunts for elites, light fights the other way round.
+  public static func TierWeights(run: ref<RLRunState>, threat: Int32) -> array<Int32> {
     let weights: array<Int32>;
-    if act <= 1 {
-      weights = [70, 30, 0];
-    } else if act == 2 {
-      weights = [30, 55, 15];
+    if run.act <= 1 {
+      weights = run.floor <= 2 ? [85, 15, 0] : [70, 27, 3];
+    } else if run.act == 2 {
+      weights = [50, 42, 8];
     } else {
-      weights = [10, 50, 40];
+      weights = [30, 50, 20];
     }
-    if elite || threat >= 3 {
-      let shift = Min(20, weights[0]);
+    if threat >= 3 {
+      let shift = Min(10, weights[0]);
       weights[0] -= shift;
       weights[2] += shift;
-      weights[2] += 20 - shift;
-      weights[1] -= 20 - shift;
-    }
-    if threat <= 1 {
-      // Light fights: mostly grunts.
-      let down = Min(15, weights[2]);
-      weights[2] -= down;
-      weights[0] += down + 15;
-      weights[1] = Max(0, weights[1] - 15);
+    } else if threat <= 1 {
+      weights[1] += weights[2];
+      weights[2] = 0;
+      let down = Min(15, weights[1]);
+      weights[1] -= down;
+      weights[0] += down;
     }
     return weights;
   }
@@ -985,13 +1016,16 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_wave = wave;
     this.m_waveCount = waves;
     this.m_alive = this.m_spawner.GetAliveCount();
-    let label = wave == waves && IsDefined(this.m_run) && this.m_run.IsBossFloor() ? "BOSS WAVE" : s"WAVE \(wave)/\(waves)";
+    let bossWave = wave == waves && IsDefined(this.m_run) && this.m_run.IsBossFloor();
+    let label = bossWave ? "BOSS WAVE" : s"WAVE \(wave)/\(waves)";
+    this.m_music.OnWaveStarted(wave, waves, bossWave);
     RLNotify(this.GetGameInstance(), label, 3.0);
     this.RefreshHud();
   }
 
   public func OnWaveCleared(wave: Int32, waves: Int32) {
-    RLNotify(this.GetGameInstance(), s"Wave \(wave) cleared. Next wave incoming.", 3.0);
+    RLNotify(this.GetGameInstance(), s"Wave \(wave) cleared. Ammo and a health charge restored - next wave incoming.", 3.0);
+    RLLoot.RefillAfterWave(GetPlayer(this.GetGameInstance()));
     this.m_alive = 0;
     this.RefreshHud();
   }
@@ -1045,6 +1079,7 @@ public class RogueliteSystem extends ScriptableSystem {
     RLNotify(game, s"+\(cred) Cred.", 4.0);
 
     this.m_state = RLState.Cleared;
+    this.m_music.OnCleared();
     if this.m_run.IsFinalFloor() {
       RLNotify(game, "Night City is yours. Run complete!", 6.0);
       this.StartCountdown(RLConfig.ClearedCountdown(), "RUN COMPLETE - HOME IN", n"victoryHome");
@@ -1053,7 +1088,7 @@ public class RogueliteSystem extends ScriptableSystem {
 
     this.m_run.rerollsLeft = this.m_run.rerollsPerFloor;
     this.RollOffers();
-    RLNotify(game, "Area clear. Loot the bodies for ammo - you'll be sent home shortly (F7 to go now).", 6.0);
+    RLNotify(game, "Area clear. Heading home in a few seconds (F7 to go now).", 5.0);
     this.StartCountdown(RLConfig.ClearedCountdown(), "CLEARED - HOME IN", n"returnHome");
   }
 
@@ -1094,9 +1129,11 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     RLRewards.Grant(player, RogueliteService.Get().GetPools(), this.m_run, offer);
+    // Every reward also brings a level: the only XP V gets.
+    PlayerDevelopmentSystem.GetData(player).RL_GrantLevels(1);
     ArrayClear(this.m_offers);
     this.RollDoors();
-    RLNotify(game, s"\(offer.title) acquired.", 4.0);
+    RLNotify(game, s"\(offer.title) acquired. +1 level.", 4.0);
     this.m_hud.Update(this.m_run.FloorLabel(), "HOME - F7: CHOOSE YOUR NEXT FIGHT");
     this.After(n"openTerminal", 0.8);
   }
@@ -1141,6 +1178,7 @@ public class RogueliteSystem extends ScriptableSystem {
 
   private func Flatline() {
     this.m_state = RLState.Flatlined;
+    this.m_music.Stop();
     // Enemies vanish so the countdown is a breather, not a beating.
     this.m_spawner.Abort();
     RLNotify(this.GetGameInstance(), "FLATLINED", 4.0);
@@ -1162,6 +1200,7 @@ public class RogueliteSystem extends ScriptableSystem {
     let run = this.m_run;
     this.m_state = RLState.Ending;
     this.CancelTimer();
+    this.m_music.Stop();
     this.m_spawner.Abort();
     this.m_arenas.StopWalls();
     ArrayClear(this.m_offers);
@@ -1198,6 +1237,7 @@ public class RogueliteSystem extends ScriptableSystem {
     if IsDefined(player) {
       RLCharacterReset.RemoveGear(player);
       RLCharacterReset.RestoreBody(player);
+      RLPerks.GrantBaseline(player);
       RLCharacterReset.HealFull(player);
     }
     this.m_spawner.DeleteAll();

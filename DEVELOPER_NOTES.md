@@ -261,6 +261,18 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   saves, so **testers must quit through the menu**; a crash loses that
   session's log.
 - Compile errors: `r6/logs/redscript_rCURRENT.log`.
+- **Telemetry** (`Core/Telemetry.reds`): machine-readable records in the same
+  .dat, `T1|<seq>|<run id>|<KIND>|k=v;...` - RUN, FLOOR (door, objective,
+  arena, faction, waves, seconds, damage, lowest health, heals, kills), OFFER
+  (every card), PICK, BUILD (level, attributes, build tags, boons), DEATH (the
+  last attacker, with role and affixes), END, MARK. Last 1500 records.
+  Records are numbered because the store keeps identical names once.
+  `tools/runreport.py <game folder>` prints a floor table per run; `--csv`
+  writes runs/floors/picks CSVs; `--marks` prints every bug mark. When adding
+  a decision point (a new screen, door type or event), record its OFFER/PICK.
+- **Bug marks:** F8 (`RLConfig.BugKey()`) or the MARK BUG card logs
+  `===== BUG MARK #n =====` with the state machine, popup/countdown flags,
+  arena, run and the spawner's view of every enemy (`RLWaveSpawner.Describe`).
 - Useful log lines: `Pacing: floor N threat T cleared in Xs, damage taken
   ...` (one per arena), `Reward director: ...`, `Declined an incoming call
   (...)`, `Call from the story: ...`, `Flatlined: V is going down.`,

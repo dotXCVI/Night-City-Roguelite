@@ -113,6 +113,15 @@ public class RLPacing extends RLDelayTarget {
       + s"peak intensity \(this.m_peak) -> pressure \(this.m_pressure).");
   }
 
+  // The arena's numbers for telemetry.
+  public func Summary() -> String {
+    return RLTelemetry.IntField("secs", RoundF(this.m_seconds))
+      + RLTelemetry.IntField("dmg", RoundF(this.m_damage))
+      + RLTelemetry.IntField("low", RoundF(this.m_lowest))
+      + RLTelemetry.IntField("heals", this.m_heals)
+      + RLTelemetry.IntField("kills", this.m_kills);
+  }
+
   public func Stop() {
     if this.m_active {
       RLCancel(GetGameInstance(), this.m_tickID);

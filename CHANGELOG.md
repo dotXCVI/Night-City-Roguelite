@@ -18,6 +18,8 @@ Built overnight as one batch; not released yet and untested in game.
 - **Menus:** patron and gang logos on door cards, patron colours on boon cards, a boss health bar, and your boons listed by patron on the F7 screen during a fight.
 - Fixer's Cut makes the Fixer and paid rerolls cheaper; Afterlife Legend adds a card to every reward screen.
 - **Test runs:** the terminal can start a run on any floor (bosses, Act 2, Act 3) with the levels, eddies and a few boons a real run would have by then. Test runs show the new door types every time, pay no Cred and don't count in your stats.
+- **Bug marker:** press F8 (or MARK BUG on the F7 screen in a fight) when something goes wrong; the log gets a snapshot of the fight.
+- **Run telemetry:** every run records its doors, fight times, damage taken, reward offers, picks, build and cause of death. `tools/runreport.py` turns it into a floor-by-floor report or CSV.
 - Fixed: the HUD line stayed hidden for every run after the first one in a session.
 - Fixed: waves no longer keep coming for a few seconds after V goes down.
 

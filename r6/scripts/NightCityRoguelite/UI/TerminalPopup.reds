@@ -133,6 +133,7 @@ public class RLTerminalPopup extends InGamePopup {
     actions.SetMargin(inkMargin(0.0, 40.0, 0.0, 0.0));
     actions.Reparent(body);
     this.AddActionCard(actions, n"resume", "RESUME", "", n"MainColors.Blue");
+    this.AddActionCard(actions, n"markbug", "MARK BUG", "F8 WORKS TOO", n"MainColors.Grey");
     this.AddAbandonCard(actions);
   }
 
@@ -367,6 +368,9 @@ public class RLTerminalPopup extends InGamePopup {
 
     if Equals(name, "resume") {
       this.Close();
+    } else if Equals(name, "markbug") {
+      this.Close();
+      this.m_system.MarkBug();
     } else if Equals(name, "abandon") {
       if this.m_confirmAbandon {
         this.Close();

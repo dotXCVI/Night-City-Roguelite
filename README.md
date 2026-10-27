@@ -101,6 +101,10 @@ boons a run would have by then. Every door screen offers an event and (from Act
 2) a bounty, and fights roll objectives more often. Test runs pay no Cred and
 don't count in the stats - they're for trying bosses and new content quickly.
 
+**Found a bug?** Press **F8** (or MARK BUG on the F7 screen in a fight) the moment it
+happens. The log gets a snapshot of the fight - state, wave, every enemy's
+position and health - so the report can say exactly where to look.
+
 Closing a reward, Fixer or door screen (C / ESC) keeps it waiting - F7 brings it
 back. Saving is locked during a run. Normal story saves are never touched. For
 roguelite characters NCPD is switched off and the story stays out of the way:
@@ -352,12 +356,24 @@ log lines in Codeware's persistent store,
 the game closes; readable with any text viewer). Script compile errors are in
 `r6/logs/redscript_rCURRENT.log`; framework logs are in `red4ext/logs`.
 
+The same file holds **run telemetry**: one record per run start, door, fight,
+reward screen, pick, build, death and run end (about the last 50 runs). Read it
+with
+
+    python3 tools/runreport.py "<game folder>"            # floor-by-floor report
+    python3 tools/runreport.py "<game folder>" --csv out  # CSV for charts
+    python3 tools/runreport.py "<game folder>" --marks    # every F8 bug mark
+    python3 tools/runreport.py "<game folder>" --log 100  # the last log lines
+
+The record format is documented in `Core/Telemetry.reds`.
+
 ## Files
 
 | File | Purpose |
 | --- | --- |
 | `Core/Config.reds` | Settings: run shape, difficulty curves, pacing, toggles |
 | `Core/Runtime.reds` | Logging, notifications, delay callbacks |
+| `Core/Telemetry.reds` | Run telemetry records (read by `tools/runreport.py`) |
 | `Core/RogueliteService.reds` | Meta progression (outside saves), assist mode, hotkeys, session hooks |
 | `Core/RogueliteSystem.reds` | Per-save state machine: takeover, hub, run, trips, floors, rewards, rerolls, Fixer, death |
 | `Core/RunState.reds` | In-memory run state |

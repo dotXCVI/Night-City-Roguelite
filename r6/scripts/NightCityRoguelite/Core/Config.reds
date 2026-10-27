@@ -14,6 +14,8 @@ public abstract class RLConfig {
   // Opens the terminal (at home), run status (in an arena), or skips the
   // return-home countdown after an arena is cleared.
   public static func TerminalKey() -> EInputKey = EInputKey.IK_F7
+  // Marks a bug: a snapshot of the run goes into the log (RogueliteSystem.MarkBug).
+  public static func BugKey() -> EInputKey = EInputKey.IK_F8
 
   // --- Hub (V's apartment) --------------------------------------------------------
 

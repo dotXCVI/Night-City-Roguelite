@@ -74,7 +74,10 @@ new roguelite characters on the same PC.
 
 1. Always quit through the main menu (Esc -> Exit to Main Menu, or Quit Game).
    Don't use Alt+F4. The mod's log is only saved when you quit properly.
-2. Send me:
+2. Hit a bug mid-run? Press **F8** right away (or MARK BUG on the F7 screen in a fight).
+   It saves a snapshot of the fight to the log, so I know exactly when and
+   where it happened. Mark as many as you like.
+3. Send me:
    - **What happened** and roughly when: which floor, and what you were doing.
      A screenshot helps a lot.
    - **These two files** from your Cyberpunk 2077 game folder:

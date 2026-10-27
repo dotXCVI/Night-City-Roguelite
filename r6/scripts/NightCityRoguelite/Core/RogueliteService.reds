@@ -42,6 +42,9 @@ public class RogueliteService extends ScriptableService {
   // Numbered lines: the save format stores identical names once, so repeated
   // lines would otherwise collapse into one.
   private persistent let m_logSeq: Int32;
+  // Run telemetry records (Core/Telemetry.reds), oldest first.
+  private persistent let m_telemetry: array<CName>;
+  private persistent let m_telemetrySeq: Int32;
 
   // Content pools and the perk card catalog, built once per game process.
   private let m_pools: ref<RLTweakPools>;
@@ -62,6 +65,17 @@ public class RogueliteService extends ScriptableService {
     // CName because Codeware can't persist strings; it stores the text as-is.
     this.m_logSeq += 1;
     ArrayPush(this.m_log, StringToName(s"[\(this.m_logSeq)] " + line));
+  }
+
+  // About 50 runs' worth of telemetry. Numbered for the same reason as the log
+  // (two rerolls on one floor are identical records); the number follows the
+  // version tag: T1|<seq>|<run id>|...
+  public func AppendTelemetry(const version: String, const record: String) {
+    while ArraySize(this.m_telemetry) >= 1500 {
+      ArrayErase(this.m_telemetry, 0);
+    }
+    this.m_telemetrySeq += 1;
+    ArrayPush(this.m_telemetry, StringToName(version + "|" + IntToString(this.m_telemetrySeq) + "|" + record));
   }
 
   public static func Get() -> ref<RogueliteService> {
@@ -88,7 +102,8 @@ public class RogueliteService extends ScriptableService {
     // 2.5's native InputTarget.Key has no press/release filter; OnKeyInput
     // filters for release itself so each key press fires once.
     callbacks.RegisterCallback(n"Input/Key", this, n"OnKeyInput")
-      .AddTarget(InputTarget.Key(RLConfig.TerminalKey()));
+      .AddTarget(InputTarget.Key(RLConfig.TerminalKey()))
+      .AddTarget(InputTarget.Key(RLConfig.BugKey()));
 
     if !IsNameValid(this.m_selectedKit) {
       this.m_selectedKit = n"Solo";
@@ -154,6 +169,8 @@ public class RogueliteService extends ScriptableService {
     }
     if Equals(event.GetKey(), RLConfig.TerminalKey()) {
       system.OnTerminalKey();
+    } else if Equals(event.GetKey(), RLConfig.BugKey()) {
+      system.MarkBug();
     }
   }
 

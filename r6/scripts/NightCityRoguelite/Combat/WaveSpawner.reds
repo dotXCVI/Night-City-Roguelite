@@ -166,6 +166,26 @@ public class RLWaveSpawner extends RLDelayTarget {
     this.m_finishing = false;
   }
 
+  // One line per enemy still counted as alive, for bug marks.
+  public func Describe(player: ref<PlayerPuppet>) -> array<String> {
+    let lines: array<String>;
+    let entities = GameInstance.GetDynamicEntitySystem();
+    ArrayPush(lines, s"Spawner: active \(this.m_active), wave \(this.m_wave + 1)/\(IsDefined(this.m_plan) ? this.m_plan.WaveCount() : 0), waiting \(this.m_waitingForWave), hold \(this.m_holdOpen), finishing \(this.m_finishing), \(RoundF(this.m_time - this.m_lastProgress))s since progress.");
+    for enemy in this.m_tracked {
+      if !enemy.done {
+        let puppet = entities.GetEntity(enemy.id) as ScriptedPuppet;
+        let where = "not spawned";
+        if IsDefined(puppet) {
+          let p = puppet.GetWorldPosition();
+          let distance = IsDefined(player) ? Vector4.Distance(p, player.GetWorldPosition()) : 0.0;
+          where = s"(\(p.X), \(p.Y), \(p.Z)), \(RoundF(distance)) m from V, dead \(puppet.IsDead())";
+        }
+        ArrayPush(lines, s"  \(TDBID.ToStringDEBUG(enemy.record)) boss \(enemy.isBoss) elite \(enemy.isElite) affixes \(RLAffixes.Names(enemy.affixes)): \(where); idle \(enemy.idleTime)s, outside \(enemy.outsideTime)s, off floor \(enemy.offFloorTime)s");
+      }
+    }
+    return lines;
+  }
+
   private func ReportLost(enemy: ref<RLTrackedEnemy>) {
     if IsDefined(this.m_system) {
       this.m_system.OnEnemyLost(enemy);

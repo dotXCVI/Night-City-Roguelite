@@ -39,6 +39,8 @@ public class RLCombatState {
   // V's own blasts (boons, objectives) don't hurt V: hits from V until then
   // are ignored.
   public let selfBlastUntil: Float;
+  // The last enemy to hit V (telemetry: what killed V).
+  public let lastAttacker: String;
   // Boosted hits logged this arena (the first few, to check boons apply).
   public let loggedHits: Int32;
   // How each enemy was last hit by V (RLHitFlag bits).
@@ -63,6 +65,7 @@ public class RLCombatState {
   public func ResetArena() {
     this.kills = 0;
     this.loggedHits = 0;
+    this.lastAttacker = "";
     this.psychoKills = 0;
     this.berserkUntil = 0.0;
     this.familyUsed = false;

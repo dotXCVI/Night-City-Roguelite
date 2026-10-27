@@ -19,6 +19,9 @@ public class RLRunState {
   // A test run (terminal): starts on any floor, pays no Cred, doesn't count
   // in the stats, and rolls the new door types every time.
   public let isTest: Bool;
+  // Telemetry (Core/Telemetry.reds): this run's id and when it started.
+  public let id: Int32;
+  public let startTime: Float;
   // Boons held this run (Rewards/Boons.reds).
   public let boons: array<ref<RLBoonState>>;
   // Trade-offs taken at events (Run/Events.reds): extra damage V takes (0.15

@@ -1,0 +1,34 @@
+# Publishes a GitHub release for every version commit on main.
+#
+# A version commit is one whose message starts with "vX.Y.Z: <title>" (as made
+# by tools/release.sh). For each one without a release yet, oldest first, this
+# tags the commit, builds the ZIP from that commit's files, takes the release
+# notes from that commit's CHANGELOG.md entry and publishes the release with the
+# ZIP attached as NightCityRoguelite.zip (same name every time, so
+# .../releases/latest/download/NightCityRoguelite.zip is always the newest)
+# and as NightCityRoguelite-<tag>.zip. The newest version is marked latest.
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Publish missing releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: tools/publish-releases.sh

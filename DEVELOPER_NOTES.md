@@ -269,21 +269,24 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 
 ## 12. Version control and releases
 
-- Repo: https://github.com/dotXCVI/night-city-roguelite (public). One commit
-  and one tag per version (v0.0.3 onward; v0.0.3-v0.0.7 were first released as
-  v0.3.0-v0.7.0). `CHANGELOG.md` has every version, newest first.
-- Each version is a GitHub release with the ZIP attached twice: as
-  `NightCityRoguelite.zip` (same name every time) and
-  `NightCityRoguelite-<tag>.zip`. Testers use the permanent link
+- Repo: https://github.com/dotXCVI/night-city-roguelite (public, MIT
+  licensed - see LICENSE). One commit per version, oldest v0.0.3 (v0.0.3-v0.0.7
+  were first released as v0.3.0-v0.7.0). `CHANGELOG.md` has every version,
+  newest first.
+- **A version commit is any commit on main whose message starts with
+  `vX.Y.Z: <title>`.** The Release workflow (`.github/workflows/release.yml`
+  running `tools/publish-releases.sh`) tags each version commit that has no
+  release yet, builds the ZIP from that commit's files, takes the notes from
+  that version's CHANGELOG.md section, and publishes the release with the ZIP
+  attached as `NightCityRoguelite.zip` and `NightCityRoguelite-<tag>.zip`. The
+  highest version is marked latest.
+- Testers use the permanent link
   https://github.com/dotXCVI/night-city-roguelite/releases/latest/download/NightCityRoguelite.zip
-  which always serves the newest release. So: always attach an asset named
-  exactly `NightCityRoguelite.zip`, always mark the release as latest, and
-  never as a pre-release (latest skips pre-releases).
-- To publish a version (needs git + the GitHub CLI signed in):
-  `tools/release.sh v0.0.16 "Short title" notes.md` - it prepends the entry to
-  CHANGELOG.md, commits, tags, pushes, builds the ZIP and creates the release.
-- Without command-line access, hand the owner: the full mod folder as a ZIP
-  named `NightCityRoguelite.zip`, the changelog entry text, and the tag and
-  title. They can publish it from GitHub's "Draft a new release" page
-  (new tag, title, paste the notes, attach the ZIP, "Set as the latest
-  release"), and upload the changed files to the repo's main branch.
+  which always serves the newest release.
+- To publish a version: bump README.md's title/status, write the changelog
+  entry, then `tools/release.sh v0.0.16 "Short title" notes.md` (it adds the
+  entry to CHANGELOG.md, commits as `v0.0.16: Short title` and pushes).
+  Non-version commits (docs, tooling) must NOT start with `vX.Y.Z:`.
+- Without a shell: on github.com, edit/upload the changed files, add the
+  CHANGELOG.md entry (`## v0.0.16 - Title (date)` at the top), and commit with
+  the message `v0.0.16: Title`. The workflow does the rest.

@@ -73,6 +73,7 @@ public class RLRewardPopup extends InGamePopup {
   private func Build() {
     let column = RLUI.VPanel(12.0);
     column.SetAnchor(inkEAnchor.Fill);
+    column.SetMargin(RLUI.ContentMargin());
     column.Reparent(this.m_content.GetRootCompoundWidget());
 
     let cards = RLUI.HPanel(18.0);

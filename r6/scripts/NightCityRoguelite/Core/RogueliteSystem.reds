@@ -112,6 +112,10 @@ public class RogueliteSystem extends ScriptableSystem {
   // V is standing in the armory (the HUD says so).
   private let m_inArmory: Bool;
   private let m_guideWaits: Int32;
+  // Times the armory door had to be opened this session (it stops trying
+  // after a few, in case something keeps shutting it).
+  private let m_armoryDoorTries: Int32;
+  private let m_armoryReportIn: Int32;
   private let m_takeoverElapsed: Float;
   private let m_readyElapsed: Float;
   private let m_openWaits: Int32;
@@ -507,6 +511,9 @@ public class RogueliteSystem extends ScriptableSystem {
       case n"guide":
         this.OpenGuide();
         break;
+      case n"popupCheck":
+        this.CheckPopupShown();
+        break;
       case n"styles":
         let stylePlayer = GetPlayer(this.GetGameInstance());
         if IsDefined(this.m_run) && IsDefined(stylePlayer) {
@@ -631,7 +638,7 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     let message = firstTime
-      ? "Home sweet home. Computer for runs, back room for gear. F7 works anywhere. Save here."
+      ? "Home sweet home. Computer for runs, the back room for gear. Save here."
       : "Home. Computer for runs, back room for gear.";
     RLNotify(this.GetGameInstance(), message, 8.0);
   }
@@ -780,21 +787,34 @@ public class RogueliteSystem extends ScriptableSystem {
   // apartment (Hub/HomeDevices.reds): its stash, or F7 in there. Only between
   // runs.
   public func OpenArmory() {
+    if this.m_popupOpen && !this.IsPopupAlive() {
+      this.m_popupOpen = false;
+    }
     if !Equals(this.m_state, RLState.Hub) || this.m_popupOpen {
       return;
     }
     this.m_popupOpen = true;
     this.m_popup = RLArmoryPopup.Open(this);
+    this.After(n"popupCheck", 1.0);
   }
 
-  // From the terminal (after it has closed).
+  // A popup that never showed up leaves nothing open.
+  private func CheckPopupShown() {
+    if this.m_popupOpen && !this.IsPopupAlive() {
+      RLLog("A menu didn't open - cleared.");
+      this.m_popupOpen = false;
+    }
+  }
+
+  // From the terminal: once its fade-out is over (Codeware drops a popup
+  // shown while another is still closing).
   public func OpenArmoryLater() {
-    this.After(n"armory", 0.3);
+    this.After(n"armory", 0.6);
   }
 
   public func OpenGuideLater() {
     this.m_guideWaits = 0;
-    this.After(n"guide", 0.3);
+    this.After(n"guide", 0.6);
   }
 
   // The armory's stash was used.
@@ -820,35 +840,54 @@ public class RogueliteSystem extends ScriptableSystem {
   // Once a second while V is home: the HUD names the armory while V stands
   // in it.
   public func OnHomeTick(player: ref<PlayerPuppet>) {
+    let game = this.GetGameInstance();
+    if this.m_armoryDoorTries < 5 && this.m_apartment.IsInApartment() && RLHomeDevices.KeepArmoryOpen(game) {
+      this.m_armoryDoorTries += 1;
+    }
     if !Equals(this.m_state, RLState.Hub) {
       this.m_inArmory = false;
       return;
     }
-    let inside = this.IsInArmory(player);
+    // Once per session, after the room has had time to stream in.
+    if this.m_armoryReportIn < 10 && this.m_apartment.IsSettled() {
+      this.m_armoryReportIn += 1;
+      if this.m_armoryReportIn == 10 {
+        RLHomeDevices.Report(game);
+      }
+    }
+    // With the stash there and the door open, the stash's prompt is all V
+    // needs; otherwise the HUD points at F7.
+    let inside = this.IsInArmory(player) && (!RLHomeDevices.IsStashLoaded(game) || !RLHomeDevices.IsArmoryDoorOpen(game));
     if Equals(inside, this.m_inArmory) {
       return;
     }
     this.m_inArmory = inside;
     if inside {
-      this.m_hud.Update("ARMORY", "F7: PICK YOUR KIT");
+      this.m_hud.Update("ARMORY", "F7: OPEN THE ARMORY");
     } else {
       this.m_hud.Hide();
     }
   }
 
   // The how-it-works guide: on the first homecoming, and from the terminal.
+  // Only at home between runs, once V has been put in the apartment.
   public func OpenGuide() {
     let player = GetPlayer(this.GetGameInstance());
-    if this.m_popupOpen || !IsDefined(player) {
+    if this.m_popupOpen && !this.IsPopupAlive() {
+      this.m_popupOpen = false;
+    }
+    if this.m_popupOpen || !IsDefined(player) || !Equals(this.m_state, RLState.Hub) {
       return;
     }
-    if StrLen(RogueliteSystem.BusyReason(player)) > 0 && this.m_guideWaits < 30 {
+    let settled = this.m_apartment.IsSettled() || !this.m_apartment.IsEnabled();
+    if (!settled || StrLen(RogueliteSystem.BusyReason(player)) > 0) && this.m_guideWaits < 30 {
       this.m_guideWaits += 1;
       this.After(n"guide", 1.0);
       return;
     }
     this.m_popupOpen = true;
     this.m_popup = RLGuidePopup.Open(this);
+    this.After(n"popupCheck", 1.0);
   }
 
   private func IsPopupAlive() -> Bool {

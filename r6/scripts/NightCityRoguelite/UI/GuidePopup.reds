@@ -36,15 +36,15 @@ public class RLGuidePopup extends InGamePopup {
     header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
-    footer.SetFluffText("F7 - TERMINAL, OR WHATEVER'S WAITING ON YOU");
+    footer.SetFluffText("CLOSED A SCREEN? F7 BRINGS IT BACK");
     footer.Reparent(this);
 
     this.m_content = InGamePopupContent.Create();
     this.m_content.Reparent(this);
 
     let column = RLUI.VPanel(9.0);
-    column.SetHAlign(inkEHorizontalAlign.Center);
-    column.SetMargin(inkMargin(0.0, 6.0, 0.0, 0.0));
+    column.SetAnchor(inkEAnchor.Fill);
+    column.SetMargin(inkMargin(0.0, 6.0, RLUI.ContentInset(), 0.0));
     column.Reparent(this.m_content.GetRootCompoundWidget());
 
     let top = RLUI.HPanel(9.0);
@@ -53,9 +53,9 @@ public class RLGuidePopup extends InGamePopup {
     this.AddPage(top, 0, RLArts.Home(), "HOME",
       "Megabuilding H10. The front door stays sealed - runs take you where you need to go. Save in here.");
     this.AddPage(top, 1, RLArts.Terminal(), "TERMINAL",
-      "Your desk computer. Start a run, spend Cred on upgrades, check your record. F7 pulls it up anywhere.");
+      "Your desk computer. Start a run, spend Cred on upgrades, check your record.");
     this.AddPage(top, 2, RLArts.Armory(), "ARMORY",
-      "The back room. Pick the kit you walk out with. New kits cost Cred.");
+      "The weapon room in the back. Open the stash, pick the kit you walk out with. New kits cost Cred.");
 
     let bottom = RLUI.HPanel(9.0);
     bottom.SetHAlign(inkEHorizontalAlign.Center);

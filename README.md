@@ -58,18 +58,18 @@ Your story saves are never touched.
 1. Main menu -> **ROGUELITE**. Make your V.
 2. The screen stays black for up to 45 seconds while the mod sets you up.
    Don't touch anything. You'll wake up at home.
-3. Read the guide that pops up. Then head to the **armory** in the back room
-   and press **F7** to pick a kit.
-4. Use your **computer** (or **F7** anywhere else) and hit **START RUN**.
+3. Read the guide that pops up. Then head to the **armory** - the weapon room
+   in the back - and open the stash to pick your kit.
+4. Sit down at your **computer** and hit **START RUN**.
 
-**F7** is the only key you need: it opens whatever's waiting on you - the
-terminal, your reward, the Fixer, the next door.
+Closed a screen by accident mid-run? **F7** brings back whatever's waiting on
+you - your reward, the Fixer, the next door.
 
 ## Known issues
 
 - Saving is locked during a run, and quitting mid-run counts as a flatline.
-- If the armory door won't open on your character, stand in the doorway and
-  press F7 - it works from there too.
+- If the armory has no stash on your character, press F7 inside the room
+  instead.
 - English only for now.
 - A future game patch can break the opening skip. If it does, the mod waits
   out the opening call instead.

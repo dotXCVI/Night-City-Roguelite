@@ -66,6 +66,7 @@ public class RLFixerPopup extends InGamePopup {
     root.RemoveAllChildren();
     let column = RLUI.VPanel(10.0);
     column.SetAnchor(inkEAnchor.Fill);
+    column.SetMargin(RLUI.ContentMargin());
     column.Reparent(root);
 
     let top = RLUI.HPanel(10.0);

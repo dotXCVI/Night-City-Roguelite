@@ -1,4 +1,4 @@
-# Night City Roguelite - developer handoff (v0.0.17 + unreleased dev work)
+# Night City Roguelite - developer handoff (v0.0.18)
 
 You are picking up an in-progress Cyberpunk 2077 mod from another AI. Read this
 whole file before changing anything. The mod's source is the attached ZIP; the
@@ -115,8 +115,8 @@ Every file starts with a header comment explaining its design - read it.
 | Rewards | `RewardSystem.reds` (doors, offers, granting, skip/banish), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Patrons.reds`, `Boons.reds` (catalogue, rarities, stat boons), `BoonEffects.reds` (RLCombatState + the hit/kill/tick hooks everything plugs into), `Styles.reds`, `Weapons.reds` (families, DPS previews, evolution, quality curve), `WeaponMods.reds`, `LevelUp.reds` |
 | Combat | `Arenas.reds` (8 arenas), `ArenaDirector.reds` (teleport, walls tick, bounds), `ArenaWalls.reds`, `ArenaCleaner.reds`, `WaveSpawner.reds` (+ boss phases, objective hold-open), `Affixes.reds` (elite affixes, `RLExplosions`), `DamageHooks.reds` (outgoing hit + NPC death hooks), `Loot.reds` |
 | Player | `CharacterReset.reds`, `Kits.reds`, `Perks.reds`, `Consumables.reds` (quality steps, MaxDoc ladder, grenades), `DeathGuard.reds`, `Death.reds`, `OSHooks.reds` (OS activation -> Overdrive) |
-| Hub/Menu/Audio | `ApartmentHub.reds`, `HomeDevices.reds`, `MainMenuEntry.reds`, `Music.reds` |
-| UI | `Card.reds` (the one card widget everything uses; `RLIcons` incl. the gang logo atlas), `Widgets.reds`, `Hud.reds` (+ boss bar), `Transition.reds`, `TerminalPopup.reds`, `RewardPopup.reds`, `EventPopup.reds`, `FixerPopup.reds` |
+| Hub/Menu/Audio | `ApartmentHub.reds`, `HomeDevices.reds` (front door, computer, armory door and stash), `MainMenuEntry.reds`, `Music.reds` |
+| UI | `Card.reds` (the one card widget everything uses - banner art, badge, hover lift; `RLIcons` incl. the gang logo atlas), `Art.reds` (codex pictures), `Widgets.reds`, `Hud.reds` (+ boss bar), `Transition.reds`, `TerminalPopup.reds`, `ArmoryPopup.reds` (kits), `GuidePopup.reds` (first-run guide), `RewardPopup.reds`, `EventPopup.reds`, `FixerPopup.reds` |
 
 Generated files - edit the generator, not the output:
 - `Rewards/PerkCatalogData.reds` <- `source/perks/catalog.tsv` via `source/perks/build_catalog.py`
@@ -289,6 +289,18 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 
 ## 10. Status and what's next
 
+- **v0.0.18 (released, untested in game)** is the content patch below plus a
+  home and menu polish: kits picked at the armory stash (the weapon room's
+  door is opened by the mod), a first-run guide, codex art on cards, hover as
+  an animation. Check first in the next log:
+  1. The line "Armory: stash loaded/NOT loaded, door ..." - whether the
+     `pr_v_room_stash` quest node exists on a Phantom Liberty start, and
+     whether "Armory door opened" fired. If the stash is missing, F7 in the
+     room is the fallback.
+  2. That the codex atlases (`assets_preview1..6.inkatlas`) render on cards
+     and nothing overflows its card.
+  3. The owner wants to drop F7 for in-world interactions over time: home
+     already works by devices; between fights is still F7 / auto-open.
 - **The content patch (dev, untested in game):** level-ups after every floor,
   styles, the weapons rework (DPS on cards, mods, evolutions), Overdrive from
   an OS at the Act 1 boss, gigs, capacity overclock, skip/banish/buy-back,

@@ -259,7 +259,13 @@ public class RogueliteService extends ScriptableService {
     return MinF(0.8, 0.2 + 0.02 * Cast<Float>(this.m_assistLevel));
   }
 
-  public func GetSelectedKit() -> CName = this.m_selectedKit
+  // Solo until another kit is picked (and if the picked one isn't owned).
+  public func GetSelectedKit() -> CName {
+    if !IsNameValid(this.m_selectedKit) || !RLMeta.IsKitAvailable(this, this.m_selectedKit) {
+      return n"Solo";
+    }
+    return this.m_selectedKit;
+  }
 
   // Test runs (terminal): the floor they start on. Session only.
   public static func TestFloors() -> array<Int32> = [1, 5, 6, 7, 11, 12, 13, 17, 18]

@@ -27,6 +27,13 @@ public abstract class RLUI {
     return text;
   }
 
+  // Codeware's popup content starts 76 px in on the left and runs to the
+  // container's edge; the same margin on the right centres things in the
+  // frame.
+  public static func ContentInset() -> Float = 76.0
+
+  public static func ContentMargin() -> inkMargin = inkMargin(0.0, 0.0, RLUI.ContentInset(), 0.0)
+
   public static func VPanel(childSpacing: Float) -> ref<inkVerticalPanel> {
     let panel = new inkVerticalPanel();
     panel.SetFitToContent(true);
@@ -61,7 +68,7 @@ public abstract class RLUI {
   // A small panel with a caption and a big value (terminal stats row).
   public static func StatTile(const caption: String, const value: String, color: CName) -> ref<inkWidget> {
     let tile = new inkCanvas();
-    tile.SetSize(Vector2(392.0, 108.0));
+    tile.SetSize(Vector2(388.0, 108.0));
     let bg = new inkImage();
     bg.SetAtlasResource(r"base\\gameplay\\gui\\common\\shapes\\atlas_shapes_sync.inkatlas");
     bg.SetTexturePart(n"cell_bg");

@@ -34,7 +34,7 @@ public class RLArmoryPopup extends InGamePopup {
 
   protected cb func OnCreate() {
     super.OnCreate();
-    this.m_container.SetSize(Vector2(2200.0, 1300.0));
+    this.m_container.SetSize(Vector2(2200.0, 1320.0));
 
     this.m_header = InGamePopupHeader.Create();
     this.m_header.SetTitle("ARMORY");
@@ -58,8 +58,8 @@ public class RLArmoryPopup extends InGamePopup {
     let root = this.m_content.GetRootCompoundWidget();
     root.RemoveAllChildren();
     let rows = RLUI.VPanel(9.0);
-    rows.SetHAlign(inkEHorizontalAlign.Center);
-    rows.SetMargin(inkMargin(0.0, 10.0, 0.0, 0.0));
+    rows.SetAnchor(inkEAnchor.Fill);
+    rows.SetMargin(inkMargin(0.0, 10.0, RLUI.ContentInset(), 0.0));
     rows.Reparent(root);
     let row: ref<inkHorizontalPanel>;
     let i = 0;
@@ -80,7 +80,7 @@ public class RLArmoryPopup extends InGamePopup {
     let unlock = RLMeta.Get(StringToName("kit." + NameToString(kit)));
     let affordable = IsDefined(unlock) && RLMeta.CanBuy(service, unlock);
     let accent = selected ? n"MainColors.ActiveYellow" : (available ? n"MainColors.Blue" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
-    let card = RLCard.Create(StringToName("kit_" + NameToString(kit)), 404.0, 500.0, accent);
+    let card = RLCard.Create(StringToName("kit_" + NameToString(kit)), 390.0, 500.0, accent);
     card.SetCompact();
     card.SetBanner(RLArts.Kit(kit));
     card.SetBadge(RLIcons.CommonAtlas(), RLIcons.KitPart(kit));

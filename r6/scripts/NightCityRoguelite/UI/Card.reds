@@ -42,6 +42,7 @@ public class RLCard extends CustomButton {
   protected let m_compact: Bool;
   // The card is (being) lifted by a hover.
   protected let m_lifted: Bool;
+  protected let m_lift: wref<inkCanvas>;
   protected let m_body: wref<inkVerticalPanel>;
   protected let m_iconBox: wref<inkCanvas>;
   protected let m_icon: wref<inkImage>;
@@ -75,11 +76,18 @@ public class RLCard extends CustomButton {
     root.SetName(n"card");
     root.SetSize(Vector2(this.m_width, this.m_height));
     root.SetInteractive(true);
-    root.SetRenderTransformPivot(Vector2(0.5, 0.5));
+
+    // Everything sits on an inner canvas that the hover lifts, so the lift
+    // never fights the intro slide (which moves the root).
+    let lift = new inkCanvas();
+    lift.SetName(n"lift");
+    lift.SetAnchor(inkEAnchor.Fill);
+    lift.SetRenderTransformPivot(Vector2(0.5, 0.5));
+    lift.Reparent(root);
 
     let bg = RLCard.Shape(n"cell_bg", n"MainColors.Fullscreen_PrimaryBackgroundDarkest");
     bg.SetOpacity(0.94);
-    bg.Reparent(root);
+    bg.Reparent(lift);
 
     // Art across the top of the card (SetBanner), with an icon badge in its
     // lower left corner (SetBadge).
@@ -88,7 +96,7 @@ public class RLCard extends CustomButton {
     bannerBox.SetAnchor(inkEAnchor.TopLeft);
     bannerBox.SetMargin(inkMargin(6.0, 6.0, 0.0, 0.0));
     bannerBox.SetVisible(false);
-    bannerBox.Reparent(root);
+    bannerBox.Reparent(lift);
 
     let banner = new inkImage();
     banner.SetName(n"banner");
@@ -123,15 +131,15 @@ public class RLCard extends CustomButton {
 
     let frame = RLCard.Shape(n"cell_fg", n"MainColors.Red");
     frame.SetOpacity(0.45);
-    frame.Reparent(root);
+    frame.Reparent(lift);
 
     let hoverFrame = RLCard.Shape(n"cell_fg", this.m_accent);
     hoverFrame.SetOpacity(0.0);
-    hoverFrame.Reparent(root);
+    hoverFrame.Reparent(lift);
 
     let selectedFrame = RLCard.Shape(n"cell_fg_thick", n"MainColors.ActiveYellow");
     selectedFrame.SetVisible(false);
-    selectedFrame.Reparent(root);
+    selectedFrame.Reparent(lift);
 
     let bar = new inkRectangle();
     bar.SetName(n"accentBar");
@@ -140,14 +148,14 @@ public class RLCard extends CustomButton {
     bar.SetSize(Vector2(100.0, 5.0));
     bar.SetStyle(RLUI.Style());
     bar.BindProperty(n"tintColor", this.m_accent);
-    bar.Reparent(root);
+    bar.Reparent(lift);
 
     let body = new inkVerticalPanel();
     body.SetName(n"body");
     body.SetAnchor(inkEAnchor.Fill);
     body.SetMargin(inkMargin(28.0, 34.0, 28.0, 24.0));
     body.SetChildMargin(inkMargin(0.0, 4.0, 0.0, 4.0));
-    body.Reparent(root);
+    body.Reparent(lift);
 
     let iconBox = new inkCanvas();
     iconBox.SetName(n"iconBox");
@@ -198,9 +206,10 @@ public class RLCard extends CustomButton {
     footer.SetAnchor(inkEAnchor.BottomLeft);
     footer.SetAnchorPoint(Vector2(0.0, 1.0));
     footer.SetMargin(inkMargin(28.0, 0.0, 0.0, 22.0));
-    footer.Reparent(root);
+    footer.Reparent(lift);
 
     this.m_root = root;
+    this.m_lift = lift;
     this.m_label = title;
     this.m_bg = bg;
     this.m_bannerBox = bannerBox;
@@ -286,7 +295,7 @@ public class RLCard extends CustomButton {
     if IsDefined(this.m_liftProxy) {
       this.m_liftProxy.Stop();
     }
-    this.m_liftProxy = this.m_root.PlayAnimationWithOptions(this.m_liftAnimDef, options);
+    this.m_liftProxy = this.m_lift.PlayAnimationWithOptions(this.m_liftAnimDef, options);
     if this.m_bannerHeight > 0.0 {
       if IsDefined(this.m_bannerProxy) {
         this.m_bannerProxy.Stop();
@@ -295,14 +304,9 @@ public class RLCard extends CustomButton {
     }
   }
 
-  // A press settles the card back down for a moment.
-  protected func ApplyPressedState() {
-    if this.m_isDisabled {
-      return;
-    }
-    let scale = this.m_isPressed ? 0.99 : (this.m_lifted ? 1.025 : 1.0);
-    this.m_root.SetScale(Vector2(scale, scale));
-  }
+  // Pressing needs no extra feedback: the click sound and the screen
+  // changing are enough, and a scale here would fight the hover lift.
+  protected func ApplyPressedState() {}
 
   // --- Content ---------------------------------------------------------------------------
 

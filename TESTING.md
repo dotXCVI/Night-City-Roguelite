@@ -53,9 +53,9 @@ entry at the top.
    up. That's normal, so don't press anything. You'll fade in at V's apartment.
 3. A guide pops up the first time. Read it - it's six pictures, not homework.
 4. Walk into the **armory** (the weapon room at the back of the apartment) and
-   press **F7** to pick your kit. Locked kits are bought there with Cred.
-5. Use **V's computer** (or press **F7** anywhere else at home) and hit
-   **START RUN**. You can save at the apartment between runs; saving is locked
+   open the stash ("Gear") to pick your kit. Locked kits are bought there with
+   Cred.
+5. Use **V's computer** and hit **START RUN**. You can save at the apartment between runs; saving is locked
    during a run.
 6. In a run:
    - Take a gig, then clear every wave in the arena.
@@ -108,10 +108,11 @@ Big content patch plus a polish pass. Tell me how these feel:
 
 **Home**
 - Did the guide show up the first time? Did the pictures load?
-- Can you get into the armory? Does the HUD say ARMORY when you're in there,
-  and does F7 open the kit screen? If the room has a stash on the wall, does
-  it say "Gear" and open the same screen?
-- Does the terminal still open from the computer and from F7 elsewhere?
+- Is the armory door open? Is there a stash in there that says "Gear" and
+  opens the kit screen? (If there's no stash, the HUD should say ARMORY and
+  F7 opens it instead - tell me if that happens.)
+- Does the computer open the terminal? (F7 inside the armory opens the kit
+  screen instead - that's on purpose.)
 
 **Menus**
 - Door, reward, kit and event cards now have pictures. Do they load, and do

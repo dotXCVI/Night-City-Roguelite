@@ -49,6 +49,7 @@ public class RLEventPopup extends InGamePopup {
   private func Build() {
     let column = RLUI.VPanel(12.0);
     column.SetAnchor(inkEAnchor.Fill);
+    column.SetMargin(RLUI.ContentMargin());
     column.Reparent(this.m_content.GetRootCompoundWidget());
 
     // Who's talking, and what they say.

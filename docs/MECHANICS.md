@@ -13,12 +13,13 @@ short version; [TESTING.md](../TESTING.md) is the tester guide.
    H10**, then fades in with V standing inside. The front door is sealed. The
    first time home, a six-page guide explains the apartment and the run (the
    terminal's HOW IT WORKS card brings it back).
-3. Walk into the **armory** - the weapon room at the back - and press **F7**
-   (or use its stash, prompt "Gear") to pick one of 9 kits; locked kits are
-   bought there with Cred. Then use **V's computer** (prompt: "Roguelite
-   Terminal") or press **F7** anywhere else for the terminal: buy upgrades,
-   toggle **ASSIST**, then **START RUN**. If the apartment didn't load and
-   home is the hallway, the terminal's kit card opens the armory instead.
+3. Walk into the **armory** - the weapon room at the back, opened up by the
+   mod - and use its stash (prompt "Gear") to pick one of 9 kits; locked kits
+   are bought there with Cred. (No stash on a character? F7 in the room
+   does the same.) Then use **V's computer** (prompt: "Roguelite Terminal")
+   or press **F7** anywhere else for the terminal: buy upgrades, toggle
+   **ASSIST**, then **START RUN**. If the apartment didn't load and home is
+   the hallway, the terminal's kit card opens the armory instead.
 4. A run opens with a choice of three **gigs** (see Gigs). The first fight is
    a light fight in a random arena. Every trip fades to
    black with the destination on screen and fades back in once the area has

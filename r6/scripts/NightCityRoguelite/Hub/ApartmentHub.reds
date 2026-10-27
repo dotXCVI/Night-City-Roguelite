@@ -269,7 +269,7 @@ public class RLApartmentHub extends RLDelayTarget {
     this.m_outsideSeconds += 1.0;
     if this.m_outsideSeconds >= RLConfig.ApartmentLeashSeconds() {
       this.TeleportHome(player);
-      RLNotify(player.GetGame(), "The door's sealed. Use your computer (or F7) for the terminal.", 5.0);
+      RLNotify(player.GetGame(), "Door's sealed. Your computer starts the next run.", 5.0);
     }
   }
 

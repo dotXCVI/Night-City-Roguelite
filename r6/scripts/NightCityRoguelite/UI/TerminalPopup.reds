@@ -103,6 +103,7 @@ public class RLTerminalPopup extends InGamePopup {
     root.RemoveAllChildren();
     let body = RLUI.VPanel(8.0);
     body.SetAnchor(inkEAnchor.Fill);
+    body.SetMargin(RLUI.ContentMargin());
     body.Reparent(root);
     switch this.m_view {
       case RLTerminalView.DoorPicker:
@@ -300,7 +301,7 @@ public class RLTerminalPopup extends InGamePopup {
     this.Hook(start, main);
     this.Intro(start, 0);
 
-    // Kits are picked in the armory; from here only when V can't walk there.
+    // Kits are picked at the armory stash; the card opens the same screen.
     let reachable = IsDefined(this.m_system) && this.m_system.IsArmoryReachable();
     let kitCard = RLCard.Create(n"kit", 520.0, 600.0, n"MainColors.ActiveYellow");
     kitCard.SetCompact();
@@ -311,13 +312,8 @@ public class RLTerminalPopup extends InGamePopup {
     kitCard.SetTitleSize(40);
     kitCard.AddLine(RLMeta.KitTagline(kit), n"MainColors.ActiveWhite", 24);
     kitCard.AddLine(RLMeta.KitDescription(kit), n"MainColors.Grey", 22);
-    kitCard.AddLine(reachable ? "Swap it in the armory. Back room." : "Click to swap.", n"MainColors.Blue", 22);
-    if reachable {
-      kitCard.SetStatic();
-      kitCard.Reparent(main);
-    } else {
-      this.Hook(kitCard, main);
-    }
+    kitCard.AddLine(reachable ? "Swap it at the armory stash, in the back." : "Click to swap.", n"MainColors.Blue", 22);
+    this.Hook(kitCard, main);
     this.Intro(kitCard, 1);
 
     let side = RLUI.VPanel(5.0);
@@ -350,7 +346,7 @@ public class RLTerminalPopup extends InGamePopup {
         }
         let owned = service.HasUnlock(def.id);
         let affordable = RLMeta.CanBuy(service, def);
-        let card = RLCard.Create(StringToName("buy_" + NameToString(def.id)), 398.0, 124.0, owned ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
+        let card = RLCard.Create(StringToName("buy_" + NameToString(def.id)), 392.0, 124.0, owned ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
         card.SetCompact();
         card.SetKicker(owned ? "OWNED" : s"\(def.cost) CRED");
         card.SetTitle(def.name);

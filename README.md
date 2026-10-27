@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.0.10)
+# Night City Roguelite (v0.0.11)
 
 > **Versions:** alpha builds are v0.0.X. v0.X.X starts once the foundation is
 > solid, v1.0.0 is the finished mod. (Builds before v0.0.8 were numbered
@@ -85,11 +85,11 @@ give none. Trips between home and arenas use the game's glitch transition.
 | Terminal (kit, run start, rewards, next fight) | Run status, abandon | Go home now |
 
 Saving works only between runs. Normal story saves are never touched. For
-roguelite characters NCPD is switched off and there is no story at all: the
-base-game quests never start (no calls, texts or side jobs), and the journal
-is kept empty (`SilenceStory()` in `Config.reds`; applies to characters
-created afterwards). The Phantom Liberty opening is skipped by the quest patch in the
-archive. If the story ever starts a call or conversation anyway, teleports,
+roguelite characters NCPD is switched off and the story stays out of the way:
+incoming calls never ring, message and quest pop-ups are hidden, and the
+journal is kept empty (anything that turns up is cleared within a moment;
+`SilenceStory()` in `Config.reds`). The Phantom Liberty opening is skipped by
+the quest patch in the archive. If the story ever starts a call or conversation anyway, teleports,
 the terminal and the reward screen wait until it's over (looking at something
 with a prompt doesn't count).
 
@@ -168,7 +168,7 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Core/Config.reds` | Settings, logging, delay helper |
 | `Core/RogueliteService.reds` | Meta progression (outside saves), hotkeys, session hooks |
 | `Core/RogueliteSystem.reds` | Per-save state machine: takeover, hub, run, floors, rewards, death |
-| `Core/Story.reds` | Keeps the story quiet: quest untracked, busy checks for calls/dialogue, stale caller cards |
+| `Core/Story.reds` | Keeps the story quiet: journal guard, blocked incoming calls, hidden message/quest pop-ups, busy checks for calls/dialogue, stale caller cards |
 | `Hub/ApartmentHub.reds` | V's apartment hub, getting in, soft lock |
 | `Hub/HomeDevices.reds` | Sealed front door, desk computer as the terminal |
 | `Core/RunState.reds` | In-memory run state |

@@ -3,6 +3,15 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.11 - New-game freeze fix (2026-10-26)
+
+- Fixed new characters freezing on a black screen:
+  - The journal guard no longer changes entries inside the journal's own callback. It queues them and sweeps 0.25 s later.
+  - The quest gate is removed.
+- Quiet world without the gate:
+  - incoming calls are dropped;
+  - message, contact and quest pop-ups are muted for roguelite characters.
+
 ## v0.0.10 - Quiet world, XP only from rewards (2026-10-26)
 
 - Quiet world, first attempt: a base-game quest gate plus a journal guard. It caused a freeze and was replaced in v0.0.11.

@@ -97,11 +97,7 @@ public class RogueliteService extends ScriptableService {
     if event.IsPreGame() || event.IsRestored() || !this.m_pendingStart {
       return;
     }
-    let quests = GameInstance.GetQuestsSystem(GetGameInstance());
-    quests.SetFact(n"nc_roguelite_start", 1);
-    if RLConfig.SilenceStory() {
-      quests.SetFact(n"nc_roguelite_quiet_world", 1);
-    }
+    GameInstance.GetQuestsSystem(GetGameInstance()).SetFact(n"nc_roguelite_start", 1);
     RLLog("Roguelite start flagged for the quest patch.");
   }
 

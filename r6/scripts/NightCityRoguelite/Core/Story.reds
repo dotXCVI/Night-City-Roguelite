@@ -100,16 +100,36 @@ public final func RL_EndActiveCall() -> Bool {
 }
 
 // --- Quiet world ---------------------------------------------------------------------------
-// Roguelite characters get no story at all:
-//   - the quest patch doesn't start the base-game quest graph for them (fact
-//     nc_roguelite_quiet_world, set at Session/Start): no calls, texts,
-//     side jobs or objectives from the base game;
-//   - every active quest and message in the journal is set inactive on load,
-//     and anything that becomes active later is set inactive straight away,
-//     so nothing shows on the HUD, the map or the journal.
+// Roguelite characters get no story distractions (RLConfig.SilenceStory):
+//   - every active quest and message in the journal is set inactive shortly
+//     after load, and anything that becomes active later is set inactive a
+//     moment after (RLJournalGuard), so nothing shows on the HUD, the map or
+//     the journal;
+//   - incoming calls never ring (PhoneSystem.OnTriggerCall), so their scenes
+//     never start;
+//   - the "new message" and quest pop-ups aren't shown.
+// The base-game quest graph itself keeps running: gating it (v0.0.10) left new
+// characters on a frozen black screen.
 
+public abstract class RLQuiet {
+  public static func IsOn(game: GameInstance) -> Bool {
+    if !RLConfig.SilenceStory() {
+      return false;
+    }
+    let system = RogueliteSystem.Get(game);
+    return IsDefined(system) && system.IsRoguelitePlaythrough();
+  }
+}
+
+// Journal state is never changed from inside a journal callback (the journal
+// is mid-notification there; doing so in v0.0.10 is the likely cause of the
+// new-game freeze). The callback only notes the entry; a sweep 0.25 s later,
+// from the delay system, sets it inactive.
 public class RLJournalGuard extends IScriptable {
   private let m_registered: Bool;
+  private let m_pending: array<Uint32>;
+  private let m_sweepQueued: Bool;
+  private let m_clearQueued: Bool;
   private let m_cleared: Int32;
 
   public func Start(game: GameInstance) {
@@ -121,9 +141,9 @@ public class RLJournalGuard extends IScriptable {
       journal.RegisterScriptCallback(this, n"OnJournalStateChanged", gameJournalListenerType.State);
       this.m_registered = true;
     }
-    let count = RLJournalGuard.ClearAll(journal);
-    if count > 0 {
-      RLLog(s"Journal: set \(count) quest/message entr(ies) inactive.");
+    if !this.m_clearQueued {
+      this.m_clearQueued = true;
+      RLDelay(game, this, n"clearAll", 1.0);
     }
   }
 
@@ -135,6 +155,7 @@ public class RLJournalGuard extends IScriptable {
       }
       this.m_registered = false;
     }
+    ArrayClear(this.m_pending);
   }
 
   public static func IsQuiet(className: CName) -> Bool {
@@ -152,17 +173,58 @@ public class RLJournalGuard extends IScriptable {
     return false;
   }
 
+  // Read-only: notes the entry and schedules a sweep.
   protected cb func OnJournalStateChanged(entryHash: Uint32, className: CName, notifyOption: JournalNotifyOption, changeType: JournalChangeType) -> Bool {
-    if !RLJournalGuard.IsQuiet(className) {
+    if !this.m_registered || !RLJournalGuard.IsQuiet(className) {
       return false;
     }
-    let journal = GameInstance.GetJournalManager(GetGameInstance());
-    let entry = journal.GetEntry(entryHash);
-    if IsDefined(entry) && Equals(journal.GetEntryState(entry), gameJournalEntryState.Active) {
-      journal.ChangeEntryStateByHash(entryHash, gameJournalEntryState.Inactive, JournalNotifyOption.DoNotNotify);
-      this.m_cleared += 1;
+    if !ArrayContains(this.m_pending, entryHash) {
+      ArrayPush(this.m_pending, entryHash);
+    }
+    if !this.m_sweepQueued {
+      this.m_sweepQueued = true;
+      RLDelay(GetGameInstance(), this, n"sweep", 0.25);
     }
     return false;
+  }
+
+  public func OnDelayed(action: CName) {
+    let game = GetGameInstance();
+    let journal = GameInstance.GetJournalManager(game);
+    switch action {
+      case n"sweep":
+        this.m_sweepQueued = false;
+        if !this.m_registered || !IsDefined(journal) {
+          ArrayClear(this.m_pending);
+          return;
+        }
+        let hashes = this.m_pending;
+        ArrayClear(this.m_pending);
+        let count = 0;
+        for hash in hashes {
+          let entry = journal.GetEntry(hash);
+          if IsDefined(entry) && Equals(journal.GetEntryState(entry), gameJournalEntryState.Active) {
+            journal.ChangeEntryStateByHash(hash, gameJournalEntryState.Inactive, JournalNotifyOption.DoNotNotify);
+            count += 1;
+          }
+        }
+        if count > 0 {
+          journal.UntrackEntry();
+          this.m_cleared += count;
+          RLDebug(s"Journal: set \(count) new entr(ies) inactive.");
+        }
+        break;
+      case n"clearAll":
+        this.m_clearQueued = false;
+        if !this.m_registered || !IsDefined(journal) {
+          return;
+        }
+        let total = RLJournalGuard.ClearAll(journal);
+        if total > 0 {
+          RLLog(s"Journal: set \(total) quest/message entr(ies) inactive.");
+        }
+        break;
+    }
   }
 
   // Every active quest (with its phases and objectives) to inactive.
@@ -199,4 +261,34 @@ public class RLJournalGuard extends IScriptable {
     }
     return count;
   }
+}
+
+// Incoming calls don't ring for roguelite characters. The call never starts,
+// so its scene never plays (calls the quest starts directly are left alone:
+// hiding those would leave the scene running unseen).
+@wrapMethod(PhoneSystem)
+private final func OnTriggerCall(request: ref<questTriggerCallRequest>) {
+  if Equals(request.callPhase, questPhoneCallPhase.IncomingCall) && RLQuiet.IsOn(this.GetGameInstance()) {
+    RLLog("Blocked an incoming call (" + NameToString(request.caller) + ").");
+    return;
+  }
+  wrappedMethod(request);
+}
+
+// No "new message" / "new contact" pop-ups.
+@wrapMethod(NewHudPhoneGameController)
+protected cb func OnJournalUpdate(hash: Uint32, className: CName, notifyOption: JournalNotifyOption, changeType: JournalChangeType) -> Bool {
+  if RLQuiet.IsOn(GetGameInstance()) {
+    return false;
+  }
+  return wrappedMethod(hash, className, notifyOption, changeType);
+}
+
+// No quest pop-ups.
+@wrapMethod(JournalNotificationQueue)
+protected cb func OnJournalUpdate(hash: Uint32, className: CName, notifyOption: JournalNotifyOption, changeType: JournalChangeType) -> Bool {
+  if Equals(className, n"gameJournalQuest") && RLQuiet.IsOn(GetGameInstance()) {
+    return false;
+  }
+  return wrappedMethod(hash, className, notifyOption, changeType);
 }

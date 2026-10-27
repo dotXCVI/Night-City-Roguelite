@@ -42,9 +42,8 @@ public abstract class RLConfig {
   // The game difficulty for roguelite characters (the difficulty screen is
   // skipped for them and this is applied every session).
   public static func GameDifficulty() -> gameDifficulty = gameDifficulty.Hard
-  // No story for roguelite characters: the base-game quest graph isn't
-  // started (no calls, texts, side jobs) and the journal is kept empty. Takes
-  // effect for characters created after changing it.
+  // No story distractions for roguelite characters: the journal is kept
+  // empty, incoming calls don't ring and message/quest pop-ups are hidden.
   public static func SilenceStory() -> Bool = true
   // Turn NCPD off for roguelite characters (gunfire in arenas won't draw police).
   public static func DisablePolice() -> Bool = true
@@ -193,6 +192,11 @@ public class RLDelayCallback extends DelayCallback {
     let apartment = this.m_target as RLApartmentHub;
     if IsDefined(apartment) {
       apartment.OnDelayed(this.m_action);
+      return;
+    }
+    let guard = this.m_target as RLJournalGuard;
+    if IsDefined(guard) {
+      guard.OnDelayed(this.m_action);
     }
   }
 }

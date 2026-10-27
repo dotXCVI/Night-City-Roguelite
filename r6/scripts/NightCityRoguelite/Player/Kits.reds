@@ -137,10 +137,40 @@ public abstract class RLGear {
 }
 
 // Starting kits: Common weapons (no Smart or Tech weapons at the start), one
-// identity perk, and a basic MaxDoc (an Uncommon one with the Med Kit unlock).
-// Grenades are rewards, except for the Demolitions kit.
+// identity perk, the kit's attributes, and a basic MaxDoc (an Uncommon one with
+// the Med Kit unlock). Grenades are rewards, except for the Demolitions kit.
+//
+// Attributes are the kit's, not spent by hand: from the base 3, the kit's main
+// attribute gets +4 and its second +3 (the Edge unlocks add to the main one).
+// After that they grow with the perks V takes.
 public abstract class RLKits {
-  public static func Apply(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, kit: CName, healthStep: Int32) {
+  public static func MainAttribute(kit: CName) -> gamedataStatType {
+    switch kit {
+      case n"Blade": return gamedataStatType.Reflexes;
+      case n"Netrunner": return gamedataStatType.Intelligence;
+      case n"Marksman": return gamedataStatType.Cool;
+      case n"Brawler": return gamedataStatType.Strength;
+      case n"Gunslinger": return gamedataStatType.Cool;
+      case n"Demolitions": return gamedataStatType.TechnicalAbility;
+      case n"Juggernaut": return gamedataStatType.Strength;
+    }
+    return gamedataStatType.Reflexes;
+  }
+
+  public static func SecondAttribute(kit: CName) -> gamedataStatType {
+    switch kit {
+      case n"Blade": return gamedataStatType.Cool;
+      case n"Netrunner": return gamedataStatType.TechnicalAbility;
+      case n"Marksman": return gamedataStatType.Reflexes;
+      case n"Brawler": return gamedataStatType.TechnicalAbility;
+      case n"Gunslinger": return gamedataStatType.Reflexes;
+      case n"Demolitions": return gamedataStatType.Strength;
+      case n"Juggernaut": return gamedataStatType.TechnicalAbility;
+    }
+    return gamedataStatType.Strength;
+  }
+
+  public static func Apply(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, kit: CName, healthStep: Int32, bonusAttributePoints: Int32) {
     let basic = RLRewards.AllowedEvolutions(1);
     let pistols = [gamedataItemType.Wea_Handgun, gamedataItemType.Wea_Revolver];
     let noIDs: array<TweakDBID>;
@@ -192,6 +222,8 @@ public abstract class RLKits {
     }
     let data = PlayerDevelopmentSystem.GetData(player);
     if IsDefined(data) {
+      data.RL_RaiseAttribute(RLKits.MainAttribute(kit), 4 + bonusAttributePoints);
+      data.RL_RaiseAttribute(RLKits.SecondAttribute(kit), 3);
       RLPerks.Grant(data, perk, 0);
       data.UpdateUIBB();
     }

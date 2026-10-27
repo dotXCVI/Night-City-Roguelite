@@ -3,6 +3,26 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## v0.0.14 - Arena-to-arena runs, real death, rerolls (2026-10-27)
+
+From the v0.0.13 playtest, the first build that felt like a real game mode.
+
+- Arena to arena: home only at the start and end of a run. The reward, the Fixer and the doors open in the arena after a clear.
+- Real transitions: a fade to black with the destination's name. V is moved only while the screen is black, and it fades back in once the arena has loaded.
+- Real death: V dies with the game's own death and comes to at home. The game-over menu is held back and the Second Heart revive is used.
+- Rerolls on reward screens and door choices: one free per act, then eddies with an escalating price.
+- No attribute or perk points: kits set attributes, and each perk taken adds +1 to its attribute.
+- Rewards: no duplicates in any quality, at most one grenade per screen, nothing you already carry; quality-coloured bars on cards.
+- Fixes:
+  - half-buried enemies;
+  - overlapping music;
+  - two MaxDoc drops in one boss fight;
+  - Judy's call (calls are now declined);
+  - the campaign screen still showing.
+- UI polish: centred, staggered cards with less text. The Fixer shows your balance and how much you're short.
+- Saving is locked during runs.
+- Added a tester guide (TESTING.md) and developer handoff notes (DEVELOPER_NOTES.md).
+
 ## v0.0.13 - Balance pass, part 2 (2026-10-26)
 
 - Code cleanup: runtime helpers in one place, and a Run/ folder for encounters, pacing and the Fixer.

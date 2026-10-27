@@ -11,6 +11,10 @@
 //   Boss            Act 1 Royce (Maelstrom), Act 2 the mall fight,
 //                   Act 3 Adam Smasher; the boss wave gets the boss cue
 //
+// Each set only uses events from its own Wwise combo (mixing combos started a
+// second track that the set's stop event didn't end), and stopping sends the
+// stop event of every set played this session.
+//
 // Arrival plays the set's "alerted" state over the countdown; clearing the
 // arena plays its cooldown and stops a few seconds later; going home, a
 // flatline or the end of the session stop it at once.
@@ -55,6 +59,9 @@ public class RLMusic extends IScriptable {
   private let m_set: ref<RLMusicSet>;
   private let m_lightUntilLastWave: Bool;
   private let m_playing: Bool;
+  // Stop events of every set started this session: stopping sends them all,
+  // so a set can never be left playing under the next one.
+  private let m_stops: array<CName>;
 
   // --- Sets ------------------------------------------------------------------------------
 
@@ -89,7 +96,8 @@ public class RLMusic extends IScriptable {
 
   public static func BossSet(act: Int32) -> ref<RLMusicSet> {
     if act <= 1 {
-      return RLMusicSet.Make(n"mus_q003_maelstrom_START_silent", n"mus_q003_maelstrom_STOP_silent", n"mus_q003_royce_combat", n"mus_q003_royce_combat", n"mus_q003_royce_boss_outro", n"mus_q003_royce_boss_loop");
+      // Every state from the one Maelstrom combo, so its stop event ends it all.
+      return RLMusicSet.Make(n"mus_q003_maelstrom_START_silent", n"mus_q003_maelstrom_STOP_silent", n"mus_q003_maelstrom_alerted", n"mus_q003_maelstrom_combat", n"mus_q003_maelstrom_combat_cooldown", n"mus_q003_royce_boss_loop");
     }
     if act == 2 {
       return RLMusicSet.Make(n"mus_q110_mall_START_silent", n"mus_q110_mall_STOP_silent", n"mus_q110_mall_alerted", n"mus_q110_mall_combat", n"mus_q110_mall_cooldown", n"mus_q110_mall_02_boss_combat");
@@ -111,6 +119,9 @@ public class RLMusic extends IScriptable {
     }
     this.m_lightUntilLastWave = threat <= 1 && !run.IsBossFloor() && !run.IsEliteFloor();
     this.m_playing = true;
+    if !ArrayContains(this.m_stops, this.m_set.stop) {
+      ArrayPush(this.m_stops, this.m_set.stop);
+    }
     this.Play(this.m_set.start);
     this.Play(this.m_set.alerted);
     RLDebug("Music: " + NameToString(this.m_set.start));
@@ -137,8 +148,10 @@ public class RLMusic extends IScriptable {
   }
 
   public func Stop() {
-    if this.m_playing && IsDefined(this.m_set) {
-      this.Play(this.m_set.stop);
+    if this.m_playing {
+      for stop in this.m_stops {
+        this.Play(stop);
+      }
     }
     this.m_playing = false;
   }

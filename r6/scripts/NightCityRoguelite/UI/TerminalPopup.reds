@@ -4,9 +4,9 @@
 // One popup, three views:
 //   Hub         (home, no run): stats, kit cards (locked ones are bought by
 //               clicking them), START RUN, unlocks.
-//   DoorPicker  (home, run active): one card per door - pick the next fight
-//               by its reward, or abandon.
-//   InArena     (in an arena): run status, abandon.
+//   DoorPicker  (between fights): one card per door - pick the next fight
+//               by its reward; reroll the doors, or abandon.
+//   InArena     (during a fight): run status, abandon.
 // Everything clickable is an RLCard (UI/Card.reds).
 // -----------------------------------------------------------------------------
 
@@ -24,6 +24,7 @@ public class RLTerminalPopup extends InGamePopup {
   private let m_view: RLTerminalView;
   private let m_summary: String;
   private let m_doors: array<ref<RLDoor>>;
+  private let m_introPlayed: Bool;
   private let m_content: ref<InGamePopupContent>;
   private let m_confirmAbandon: Bool;
 
@@ -32,8 +33,9 @@ public class RLTerminalPopup extends InGamePopup {
     return RLTerminalPopup.Open(system, RLTerminalView.Hub, "", none);
   }
 
-  public static func OpenDoorPicker(system: ref<RogueliteSystem>, const summary: String, doors: array<ref<RLDoor>>) -> ref<RLTerminalPopup> {
-    return RLTerminalPopup.Open(system, RLTerminalView.DoorPicker, summary, doors);
+  public static func OpenDoorPicker(system: ref<RogueliteSystem>, doors: array<ref<RLDoor>>) -> ref<RLTerminalPopup> {
+    let run = system.GetRun();
+    return RLTerminalPopup.Open(system, RLTerminalView.DoorPicker, IsDefined(run) ? run.FloorLabel() : "", doors);
   }
 
   public static func OpenInArena(system: ref<RogueliteSystem>, const summary: String) -> ref<RLTerminalPopup> {
@@ -65,30 +67,33 @@ public class RLTerminalPopup extends InGamePopup {
 
   protected cb func OnCreate() {
     super.OnCreate();
-    this.m_container.SetSize(Vector2(2200.0, 1640.0));
-
     let header = InGamePopupHeader.Create();
     switch this.m_view {
       case RLTerminalView.DoorPicker:
+        this.m_container.SetSize(Vector2(2200.0, 1000.0));
         header.SetTitle(ArraySize(this.m_doors) == 1 ? "YOUR NEXT FIGHT" : "CHOOSE YOUR NEXT FIGHT");
+        header.SetFluffRight(this.m_summary);
         break;
       case RLTerminalView.InArena:
+        this.m_container.SetSize(Vector2(1800.0, 700.0));
         header.SetTitle("RUN IN PROGRESS");
+        header.SetFluffRight("NIGHT CITY ROGUELITE");
         break;
       default:
+        this.m_container.SetSize(Vector2(2200.0, 1640.0));
         header.SetTitle("ROGUELITE TERMINAL");
+        header.SetFluffRight("NIGHT CITY ROGUELITE");
     }
-    header.SetFluffRight("NIGHT CITY ROGUELITE");
     header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
-    footer.SetFluffText("YOUR COMPUTER OR F7 OPENS THIS TERMINAL");
     footer.Reparent(this);
 
     this.m_content = InGamePopupContent.Create();
     this.m_content.Reparent(this);
 
     this.Rebuild();
+    this.m_introPlayed = true;
     RLLog("Terminal menu: built.");
   }
 
@@ -113,12 +118,11 @@ public class RLTerminalPopup extends InGamePopup {
   // --- In-arena view --------------------------------------------------------------------
 
   private func BuildInArena(body: ref<inkCompoundWidget>) {
-    RLUI.SectionLabel("STATUS").Reparent(body);
-    RLUI.WrappedText(this.m_summary, 34, n"MainColors.Blue", 1900.0).Reparent(body);
+    RLUI.WrappedText(this.m_summary, 34, n"MainColors.Blue", 1600.0).Reparent(body);
     let actions = RLUI.HPanel(14.0);
     actions.SetMargin(inkMargin(0.0, 40.0, 0.0, 0.0));
     actions.Reparent(body);
-    this.AddActionCard(actions, n"resume", "RESUME", "Back to the fight", n"MainColors.Blue");
+    this.AddActionCard(actions, n"resume", "RESUME", "", n"MainColors.Blue");
     this.AddAbandonCard(actions);
   }
 
@@ -126,35 +130,35 @@ public class RLTerminalPopup extends InGamePopup {
   // One card per door: the reward, the threat, where and against whom.
 
   private func BuildDoorPicker(body: ref<inkCompoundWidget>) {
-    RLUI.Text(this.m_summary, 32, n"MainColors.Red", true).Reparent(body);
-    let hint = ArraySize(this.m_doors) == 1
-      ? "The first fight is picked for you. From here on you choose the reward - bigger rewards mean harder fights."
-      : "Pick the reward you want. The reward sets the fight: training is light, chrome and iconics are heavy.";
-    RLUI.WrappedText(hint, 26, n"MainColors.Grey", 2000.0).Reparent(body);
-
-    let row = RLUI.HPanel(14.0);
-    row.SetMargin(inkMargin(0.0, 20.0, 0.0, 10.0));
+    let row = RLUI.HPanel(18.0);
+    row.SetHAlign(inkEHorizontalAlign.Center);
+    row.SetMargin(inkMargin(0.0, 16.0, 0.0, 0.0));
     row.Reparent(body);
-    let count = Max(1, ArraySize(this.m_doors));
-    let width = MinF(660.0, (2040.0 / Cast<Float>(count)) - 28.0);
+    let count = ArraySize(this.m_doors);
+    let width = count > 3 ? 470.0 : 540.0;
     let i = 0;
     for door in this.m_doors {
       this.AddDoorCard(row, door, i, width);
       i += 1;
     }
 
-    let actions = RLUI.HPanel(14.0);
-    actions.SetMargin(inkMargin(0.0, 16.0, 0.0, 0.0));
+    let actions = RLUI.HPanel(18.0);
+    actions.SetHAlign(inkEHorizontalAlign.Center);
+    actions.SetMargin(inkMargin(0.0, 28.0, 0.0, 0.0));
     actions.Reparent(body);
-    this.AddActionCard(actions, n"resume", "NOT YET", "Close the terminal", n"MainColors.Blue");
-    this.AddAbandonCard(actions);
+    if count > 1 && IsDefined(this.m_system) {
+      let reroll = RLRewardPopup.RerollCard(this.m_system);
+      this.Hook(reroll, actions);
+      this.Intro(reroll, count);
+    }
+    this.Intro(this.AddAbandonCard(actions), count + 1);
   }
 
   private func AddDoorCard(parent: ref<inkCompoundWidget>, door: ref<RLDoor>, index: Int32, width: Float) {
     let accent = door.boss ? n"MainColors.Red" : RLIcons.CategoryAccent(door.category);
-    let card = RLCard.Create(StringToName(s"door_\(index)"), width, 660.0, accent);
+    let card = RLCard.Create(StringToName(s"door_\(index)"), width, 520.0, accent);
     card.SetAtlasIcon(RLIcons.HubAtlas(), RLIcons.CategoryPart(door.category), 104.0);
-    card.SetKicker(door.boss ? "BOSS FIGHT" : RLRewards.ThreatName(door.threat));
+    card.SetKicker(door.boss ? "BOSS" : RLRewards.ThreatName(door.threat));
     card.SetPips(door.threat, 3, RLIcons.ThreatAccent(door.threat));
     card.SetTitle(RLRewards.CategoryName(door.category));
     card.AddLine(RLRewards.CategoryDescription(door.category), n"MainColors.Blue", 28);
@@ -163,12 +167,16 @@ public class RLTerminalPopup extends InGamePopup {
     if IsDefined(arena) {
       card.AddLine(arena.name, n"MainColors.Red", 30);
       let enemies = IsDefined(door.faction) ? RLEncounters.FactionName(door.faction.faction) : RLTerminalPopup.FactionList(arena.factions);
-      card.AddLine(arena.area + " - vs " + enemies, n"MainColors.Grey", 24);
+      card.AddLine("vs " + enemies, n"MainColors.Grey", 26);
     }
-    card.AddSpacer(6.0);
-    card.AddLine(RLRewards.ThreatDescription(door.threat), n"MainColors.Grey", 24);
-    card.SetFooter("Deploy");
     this.Hook(card, parent);
+    this.Intro(card, index);
+  }
+
+  private func Intro(card: ref<RLCard>, index: Int32) {
+    if !this.m_introPlayed {
+      card.PlayIntro(0.08 * Cast<Float>(index));
+    }
   }
 
   public static func FactionList(factions: array<gamedataAffiliation>) -> String {
@@ -182,21 +190,19 @@ public class RLTerminalPopup extends InGamePopup {
     return text;
   }
 
-  private func AddAbandonCard(parent: ref<inkCompoundWidget>) {
-    if this.m_confirmAbandon {
-      this.AddActionCard(parent, n"abandon", "CONFIRM ABANDON", "Ends the run as a flatline", n"MainColors.Red");
-    } else {
-      this.AddActionCard(parent, n"abandon", "ABANDON RUN", "Asks for confirmation", n"MainColors.Red");
-    }
+  private func AddAbandonCard(parent: ref<inkCompoundWidget>) -> ref<RLCard> {
+    return this.m_confirmAbandon
+      ? this.AddActionCard(parent, n"abandon", "CONFIRM ABANDON", "COUNTS AS A FLATLINE", n"MainColors.Red")
+      : this.AddActionCard(parent, n"abandon", "ABANDON RUN", "", n"MainColors.Red");
   }
 
   // A wide, short card used for plain actions.
   private func AddActionCard(parent: ref<inkCompoundWidget>, name: CName, const title: String, const kicker: String, accent: CName) -> ref<RLCard> {
-    let card = RLCard.Create(name, 560.0, 140.0, accent);
+    let card = RLCard.Create(name, 420.0, 120.0, accent);
     card.SetCompact();
     card.SetKicker(kicker);
     card.SetTitle(title);
-    card.SetTitleSize(40);
+    card.SetTitleSize(36);
     this.Hook(card, parent);
     return card;
   }
@@ -256,14 +262,14 @@ public class RLTerminalPopup extends InGamePopup {
     let actions = RLUI.HPanel(10.0);
     actions.SetMargin(inkMargin(0.0, 14.0, 0.0, 4.0));
     actions.Reparent(body);
-    let start = this.AddActionCard(actions, n"start", "START RUN", "Kit: " + RLMeta.KitName(service.GetSelectedKit()), n"MainColors.Red");
+    let start = this.AddActionCard(actions, n"start", "START RUN", "KIT: " + RLMeta.KitName(service.GetSelectedKit()), n"MainColors.Red");
     start.SetTitleSize(48);
     // Assist mode (Hades' God Mode): less damage taken, a little more with
     // every run lost while it is on.
     let reduction = RoundF(service.AssistReduction() * 100.0);
     let assist = this.AddActionCard(actions, n"assist",
-      service.IsAssistOn() ? s"ASSIST: ON" : "ASSIST: OFF",
-      service.IsAssistOn() ? s"\(reduction)% less damage taken" : s"Take \(reduction)% less damage (grows as you lose)",
+      service.IsAssistOn() ? "ASSIST: ON" : "ASSIST: OFF",
+      s"\(reduction)% LESS DAMAGE TAKEN",
       service.IsAssistOn() ? n"MainColors.Green" : n"MainColors.Grey");
     assist.SetSelected(service.IsAssistOn());
 
@@ -319,6 +325,9 @@ public class RLTerminalPopup extends InGamePopup {
         this.m_confirmAbandon = true;
         this.Rebuild();
       }
+    } else if Equals(name, "reroll") {
+      this.Close();
+      this.m_system.OnDoorReroll();
     } else if StrBeginsWith(name, "door_") {
       this.Close();
       this.m_system.DeployToDoor(StringToInt(StrAfterFirst(name, "_")));

@@ -27,8 +27,8 @@ public abstract class RLMeta {
     ArrayPush(list, RLMeta.Def(n"kit.Gunslinger", "Kit: Gunslinger", "Revolver, pistol, Double Trouble.", 250, n""));
     ArrayPush(list, RLMeta.Def(n"kit.Demolitions", "Kit: Demolitions", "SMG, frag grenades, Glutton for War.", 300, n""));
     ArrayPush(list, RLMeta.Def(n"kit.Juggernaut", "Kit: Juggernaut", "Light machine gun, pistol, Painkiller.", 350, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts I", "One reward reroll per floor.", 200, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Reroll2", "Fixer Contacts II", "Two reward rerolls per floor.", 450, n"perk.Reroll"));
+    ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts I", "+1 free reroll every act.", 200, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.Reroll2", "Fixer Contacts II", "+1 more free reroll every act.", 450, n"perk.Reroll"));
     ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Reward screens show 4 options.", 400, n""));
     ArrayPush(list, RLMeta.Def(n"perk.FourthDoor", "Street Map", "Choose between 4 doors instead of 3.", 350, n""));
     ArrayPush(list, RLMeta.Def(n"perk.StarterPick", "Quartermaster", "Every run opens with an Armory pick.", 300, n""));
@@ -37,9 +37,9 @@ public abstract class RLMeta {
     ArrayPush(list, RLMeta.Def(n"perk.HeadStart", "Head Start", "Start every run at level 3.", 300, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Vitality1", "Vitality I", "Start every run with Reinforced Frame.", 120, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Vitality2", "Vitality II", "A second stack of Reinforced Frame.", 240, n"perk.Vitality1"));
-    ArrayPush(list, RLMeta.Def(n"perk.Attribute1", "Edge I", "+1 starting attribute point.", 100, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Attribute2", "Edge II", "+1 more starting attribute point.", 200, n"perk.Attribute1"));
-    ArrayPush(list, RLMeta.Def(n"perk.Attribute3", "Edge III", "+1 more starting attribute point.", 350, n"perk.Attribute2"));
+    ArrayPush(list, RLMeta.Def(n"perk.Attribute1", "Edge I", "+1 to your kit's main attribute.", 100, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.Attribute2", "Edge II", "Another +1 to it.", 200, n"perk.Attribute1"));
+    ArrayPush(list, RLMeta.Def(n"perk.Attribute3", "Edge III", "Another +1 to it.", 350, n"perk.Attribute2"));
     return list;
   }
 
@@ -94,6 +94,15 @@ public abstract class RLMeta {
     if RLMeta.PerkActive(service, n"perk.Attribute2") { bonus += 1; }
     if RLMeta.PerkActive(service, n"perk.Attribute3") { bonus += 1; }
     return bonus;
+  }
+
+  // Free reroll charges per act (Rewards and doors): one for everyone, more
+  // with the Fixer Contacts unlocks. Out of charges, rerolls cost eddies.
+  public static func RerollsPerAct(service: ref<RogueliteService>) -> Int32 {
+    let charges = 1;
+    if RLMeta.PerkActive(service, n"perk.Reroll") { charges += 1; }
+    if RLMeta.PerkActive(service, n"perk.Reroll2") { charges += 1; }
+    return charges;
   }
 
   // Cred for a cleared arena: more for later acts, harder fights and bosses.

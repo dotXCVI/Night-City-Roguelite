@@ -1,4 +1,4 @@
-# Night City Roguelite (v0.0.13)
+# Night City Roguelite (v0.0.14)
 
 > **Versions:** alpha builds are v0.0.X. v0.X.X starts once the foundation is
 > solid, v1.0.0 is the finished mod. (Builds before v0.0.8 were numbered
@@ -7,13 +7,12 @@
 A run-based arena mode for Cyberpunk 2077 2.5, built only from the game's own
 assets and systems. Start a new roguelite character from the main menu, fight
 through 3 acts of 6 arenas (bosses on floors 6, 12 and 18), pick one of three
-rewards after every floor, and bank meta Cred when you flatline. The design
-rule: fights should be easy to read, and all the thinking happens at home
-between them.
+rewards after every floor, and bank meta Cred when you flatline. Home is where
+a run starts and ends; in between you go from arena to arena. The design rule:
+fights should be easy to read, and all the thinking happens between them.
 
-> **Status:** v0.0.9 is the last build tested in game; v0.0.11-v0.0.13 (the
-> balance pass) are untested. Start a **new** roguelite character for this
-> build. Compiles cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0
+> **Status:** v0.0.13 was tested in game; v0.0.14 fixes what that test turned
+> up and is untested. Start a **new** roguelite character for this build. Compiles cleanly with redscript 0.5.32 against the 2.5 game scripts, Codeware 1.21.0
 > and TweakXL 1.12.0.
 
 ## Requirements
@@ -54,19 +53,21 @@ works: it just waits for the opening call to end before taking over.
 3. Use **V's computer** (prompt: "Roguelite Terminal") or press **F7** for the
    terminal: pick one of 8 kits (locked kits are bought by clicking them), buy
    unlocks, toggle **ASSIST**, then **START RUN**.
-4. The first fight is a light fight in a random arena. You arrive with full ammo,
-   health and charges; the first wave comes after a 5-second countdown. The
-   arena is ringed by a solid wall: invisible from a distance, it lights up as
-   red NCPD holo-tape ("POLICE LINE - DO NOT CROSS") as you walk up to it.
+4. The first fight is a light fight in a random arena. Every trip fades to
+   black with the destination on screen and fades back in once the area has
+   loaded; the first wave comes after a 5-second countdown. The arena is
+   ringed by a solid wall that lights up as red NCPD holo-tape as you walk up
+   to it.
 5. Clearing a wave refills part of your ammo and one health charge. Clear the
-   last one and you're sent home a few seconds later (F7 goes at once). Pick
-   one of three rewards of that fight's type - every pick also grants +1 level.
-6. Then pick your next fight by its reward, Hades-style. Each door shows the
-   reward type, the arena, the gang you'll face and the threat:
+   last one and the reward screen opens right there: pick one of three rewards
+   of that fight's type - every pick also grants +1 level.
+6. Then pick your next fight by its reward, Hades-style, and travel straight
+   there (V patches up on the way). Each door shows the reward type, the
+   threat, the arena and the gang you'll face:
 
    | Reward | What you choose from | Threat |
    | --- | --- | --- |
-   | TRAINING | Perks, granted outright (no attribute requirement) | Light |
+   | TRAINING | Perks, granted outright | Light |
    | ARMORY | Weapons and grenades (sometimes an iconic) | Standard |
    | BOONS | Run-only bonuses | Standard |
    | DAEMONS | Quickhacks | Standard |
@@ -77,24 +78,26 @@ works: it just waits for the opening call to end before taking over.
    Light fights have smaller waves of weaker enemies; heavy fights have bigger
    waves (an extra wave in Act 3) and roll better rewards. Before a boss floor
    there is a single boss door.
-7. After every boss the **Fixer** is in: spend the eddies you earned in the
-   last act, then pick your next door.
-8. When health hits zero the run ends: enemies vanish, a 5-second countdown runs,
-   and you're sent home. Quitting or crashing mid-run counts as a flatline too.
+7. After each elite floor, before the boss door, the **Fixer** is in: spend
+   the eddies you've earned.
+8. When health hits zero V dies - for real, the game's own death - and comes
+   to back home, ready for the next run. Quitting or crashing mid-run counts as
+   a flatline too. A run won ends with the trip home as well.
 
 Cred is earned for every arena you clear (never for a lost one), plus a bonus
 for completing a run. Experience comes only from rewards: kills and skill use
-give none. Trips between home and arenas use the game's glitch transition.
+give none, and levels bring no attribute or perk points (see Character).
 
-| Computer or F7 at home | F7 in an arena | F7 after clearing |
+| Computer or F7 at home | F7 during a fight | F7 between fights |
 | --- | --- | --- |
-| Terminal (kit, run start, rewards, Fixer, next fight) | Run status, abandon | Go home now |
+| Terminal (kit, run start) | Run status, abandon | Reward, Fixer or next fight |
 
-Saving works only between runs. Normal story saves are never touched. For
+Closing a reward, Fixer or door screen (C / ESC) keeps it waiting - F7 brings it
+back. Saving is locked during a run. Normal story saves are never touched. For
 roguelite characters NCPD is switched off and the story stays out of the way:
-incoming calls never ring, message and quest pop-ups are hidden, and the
-journal is kept empty (`SilenceStory()` in `Config.reds`). The Phantom Liberty
-opening is skipped by the quest patch in the archive.
+incoming calls are declined before they ring, message and quest pop-ups are
+hidden, and the journal is kept empty (`SilenceStory()` in `Config.reds`). The
+Phantom Liberty opening is skipped by the quest patch in the archive.
 
 ### Rewards and the director
 
@@ -115,6 +118,26 @@ A director keeps the rolls interesting without choosing for you:
 - **Signature perks.** Master perks only show up once your build uses their
   style, and a perk is only offered once its tree prerequisites are owned.
 
+A screen never offers the same item twice (in any quality), shows at most one
+grenade, and never offers a weapon or grenade you already carry - the Workshop
+is where owned gear gets better. Cards carry a bar in the item's quality
+colour.
+
+### Rerolls
+
+Reward screens and door picks can be rerolled (Hades' Fated Authority,
+Balatro's shop). Every act gives one free reroll (Fixer Contacts I/II add one
+more each, and the Fixer sells two). Out of free ones, a reroll costs eddies:
+the price grows with the run and by half again for each paid reroll on the
+same screen.
+
+### Character
+
+There are no points to spend. Each kit sets two attributes (+4 to its main
+one, +3 to the second; the Edge unlocks add to the main one), and every perk
+you take raises its attribute by 1, up to 20. The Character menu can't buy,
+sell or reset anything for roguelite characters.
+
 ### Workshop
 
 Workshop doors show up on floors 4 and 10 (if you pass one over, it comes back
@@ -124,15 +147,16 @@ two quality steps, your MaxDoc, or your grenade.
 ### The Fixer
 
 Clearing arenas also pays eddies (more on heavy fights and bosses). After each
-boss the Fixer sells a short stock - a MaxDoc upgrade, a grenade, a boon, a
-perk, a weapon upgrade, or a contact for an extra reroll every floor. Prices
-rise with the run; the Street Smart unlock takes 20% off.
+elite floor, before the boss, the Fixer sells a short stock - a MaxDoc upgrade,
+a grenade, a boon, a perk, a weapon upgrade, or a contact (two free rerolls).
+Your balance is on top, and every card says what it costs (or how much you're
+short). Prices rise with the run; the Street Smart unlock takes 20% off.
 
 ### Health, grenades and movement
 
-V carries one MaxDoc. It never falls behind the run: at home its quality is
-raised automatically when the floor calls for it, and elites (25%, once per
-arena) and bosses (always) can drop a one-step upgrade. Grenades are rewards
+V carries one MaxDoc. It never falls behind the run: on every trip its quality
+is raised automatically when the floor calls for it, and one upgrade can drop
+per arena - always from a boss, from one elite in four. Grenades are rewards
 (Armory cards and the Workshop), one type at a time. Every run starts with
 Dash and Slippery, so dashing and sliding work from floor 1. The Quick Fuse,
 Stim Rig and Demolitionist boons speed up grenade and healing charges.
@@ -163,8 +187,8 @@ starting perk.
 ### No looting
 
 Bodies are emptied - there is nothing to search mid-fight. Ammo comes back as
-you clear waves, your MaxDoc is upgraded automatically at home as the run goes
-on, and grenades are Armory rewards. Anything you pick up in an arena anyway is
+you clear waves, your MaxDoc is upgraded automatically as the run goes on, and
+grenades are Armory rewards. Anything you pick up in an arena anyway is
 taken away again right after.
 
 ### Difficulty
@@ -251,17 +275,18 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Core/Config.reds` | Settings: run shape, difficulty curves, pacing, toggles |
 | `Core/Runtime.reds` | Logging, notifications, delay callbacks |
 | `Core/RogueliteService.reds` | Meta progression (outside saves), assist mode, hotkeys, session hooks |
-| `Core/RogueliteSystem.reds` | Per-save state machine: takeover, hub, run, floors, rewards, Fixer, death |
+| `Core/RogueliteSystem.reds` | Per-save state machine: takeover, hub, run, trips, floors, rewards, rerolls, Fixer, death |
 | `Core/RunState.reds` | In-memory run state |
 | `Core/Story.reds` | Keeps the story quiet: journal guard, blocked calls, hidden pop-ups |
 | `Hub/ApartmentHub.reds` | V's apartment hub, getting in, soft lock |
 | `Hub/HomeDevices.reds` | Sealed front door, desk computer as the terminal |
 | `Menu/MainMenuEntry.reds` | ROGUELITE menu item, skipped campaign/origin screens |
-| `Player/CharacterReset.reds` | Level-1 reset (keeps clothes and V's body items), body repair |
+| `Player/CharacterReset.reds` | Level-1 reset (keeps clothes and V's body items), no XP or points from the game, body repair |
 | `Player/Kits.reds` | The 8 starting kits, gear granting |
-| `Player/Perks.reds` | Direct perk grants, baseline Dash and Slippery |
+| `Player/Perks.reds` | Direct perk grants, baseline Dash and Slippery, perk attributes |
 | `Player/Consumables.reds` | Quality steps, MaxDoc ladder, grenades |
 | `Player/DeathGuard.reds` | Immortal god mode + health listener |
+| `Player/Death.reds` | The real death and coming to (death menu held back, Second Heart resurrection) |
 | `Data/TweakPools.reds` | Enemy and item pools built at runtime |
 | `Data/EnemyRoster.reds` | Open-world combat NPCs per faction (generated from the 2.5 TweakDB) |
 | `Run/Difficulty.reds` | Enemy level curve, damage-taken curve and hook |
@@ -283,6 +308,7 @@ the game closes; readable with any text viewer). Script compile errors are in
 | `Rewards/Boons.reds` | Run-only bonuses |
 | `Meta/MetaProgression.reds` | Unlocks, kits, Cred payout |
 | `UI/Card.reds` | The card used by every menu, icon helpers |
+| `UI/Transition.reds` | Fade to black with the destination (trips, death) |
 | `UI/*.reds` | HUD line, terminal, reward and Fixer popups |
 | `r6/tweaks/NightCityRoguelite/*.yaml` | Enemy variants and loot, boon buffs, computer prompt (TweakXL) |
 | `archive/pc/mod/NightCityRoguelite.archive` | Quest patch (skips the Phantom Liberty opening for roguelite starts) and English text |

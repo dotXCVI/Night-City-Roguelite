@@ -15,7 +15,7 @@ module NightCityRoguelite
 // --- Progression reset (runs inside PlayerDevelopmentData to reach its privates)
 
 @addMethod(PlayerDevelopmentData)
-public final func RL_ResetProgression(attributePoints: Int32, perkPoints: Int32) {
+public final func RL_ResetProgression() {
   // New perks (2.0 trees, Relic): sell every level and lock.
   this.ResetNewPerks();
 
@@ -41,17 +41,31 @@ public final func RL_ResetProgression(attributePoints: Int32, perkPoints: Int32)
   this.ResetAllProficienciesLevel();
   this.SetLevel(gamedataProficiencyType.Level, 1, telemetryLevelGainReason.Ignore);
 
-  // Development points: wipe, then grant the baseline.
-  this.ClearAllDevPoints();
-  this.SetDevelopmentsPoint(gamedataDevelopmentPointType.Attribute, attributePoints);
-  this.SetDevelopmentsPoint(gamedataDevelopmentPointType.Primary, perkPoints);
-
+  // No development points: kits set the attributes, rewards grant perks.
+  this.RL_ClearDevPoints();
   this.UpdateUIBB();
+}
+
+@addMethod(PlayerDevelopmentData)
+public final func RL_ClearDevPoints() {
+  this.ClearAllDevPoints();
+  this.SetDevelopmentsPoint(gamedataDevelopmentPointType.Attribute, 0);
+  this.SetDevelopmentsPoint(gamedataDevelopmentPointType.Primary, 0);
+  this.SetDevelopmentsPoint(gamedataDevelopmentPointType.Espionage, 0);
+}
+
+// Sets an attribute (Body is gamedataStatType.Strength), capped at 20.
+@addMethod(PlayerDevelopmentData)
+public final func RL_RaiseAttribute(type: gamedataStatType, amount: Int32) {
+  let value = MinF(20.0, this.GetAttributeValue(type) + Cast<Float>(amount));
+  this.SetAttribute(type, value);
 }
 
 // Roguelite characters only gain experience from the mod's rewards: kills,
 // skill use and anything else the game hands out are ignored while the
 // character is the mod's (RL_GrantLevels lifts the block for its own grants).
+// Levels bring no attribute or perk points, and the Character menu can't buy,
+// sell or reset anything: kits set the attributes, perk cards grant perks.
 @addField(PlayerDevelopmentData)
 public let rl_allowExperience: Bool;
 
@@ -61,6 +75,56 @@ public const final func AddExperience(amount: Int32, type: gamedataProficiencyTy
     return;
   }
   wrappedMethod(amount, type, telemetryGainReason, isDebug);
+}
+
+@wrapMethod(PlayerDevelopmentData)
+public const final func AddDevelopmentPoints(amount: Int32, type: gamedataDevelopmentPointType) {
+  if RLCharacterReset.BlocksExperience(this.m_owner) {
+    return;
+  }
+  wrappedMethod(amount, type);
+}
+
+@wrapMethod(PlayerDevelopmentData)
+public const final func BuyAttribute(type: gamedataStatType) -> Bool {
+  if RLCharacterReset.BlocksExperience(this.m_owner) {
+    return false;
+  }
+  return wrappedMethod(type);
+}
+
+@wrapMethod(PlayerDevelopmentData)
+public const final func SellAttribute(type: gamedataStatType) -> Bool {
+  if RLCharacterReset.BlocksExperience(this.m_owner) {
+    return false;
+  }
+  return wrappedMethod(type);
+}
+
+@wrapMethod(PlayerDevelopmentData)
+public const final func ResetAttribute(type: gamedataStatType) {
+  if RLCharacterReset.BlocksExperience(this.m_owner) {
+    return;
+  }
+  wrappedMethod(type);
+}
+
+// Perks are only bought by the mod (forced); selling one is blocked too.
+@wrapMethod(PlayerDevelopmentData)
+public final func BuyNewPerk(perkType: gamedataNewPerkType, opt forceBuy: Bool) -> Bool {
+  if !forceBuy && RLCharacterReset.BlocksExperience(this.m_owner) {
+    return false;
+  }
+  return wrappedMethod(perkType, forceBuy);
+}
+
+@wrapMethod(PlayerDevelopmentData)
+public final func SellNewPerk(perkType: gamedataNewPerkType, out perkLevelSold: Int32) -> Bool {
+  if RLCharacterReset.BlocksExperience(this.m_owner) {
+    perkLevelSold = 0;
+    return false;
+  }
+  return wrappedMethod(perkType, perkLevelSold);
 }
 
 @addMethod(PlayerDevelopmentData)
@@ -93,14 +157,23 @@ public abstract class RLCharacterReset {
     return IsDefined(system) && system.IsHomeTerminalActive();
   }
 
+  // Characters from older versions may still hold unspent points.
+  public static func ClearDevelopmentPoints(player: ref<PlayerPuppet>) {
+    let devData = IsDefined(player) ? PlayerDevelopmentSystem.GetData(player) : null;
+    if IsDefined(devData) {
+      devData.RL_ClearDevPoints();
+      devData.UpdateUIBB();
+    }
+  }
+
   // Phase 1. Returns immediately; call RemoveGear() ~0.5 s later.
-  public static func ResetProgressionAndUnequip(player: ref<PlayerPuppet>, attributePoints: Int32, perkPoints: Int32) {
+  public static func ResetProgressionAndUnequip(player: ref<PlayerPuppet>) {
     if !IsDefined(player) {
       return;
     }
     let devData = PlayerDevelopmentSystem.GetData(player);
     if IsDefined(devData) {
-      devData.RL_ResetProgression(attributePoints, perkPoints);
+      devData.RL_ResetProgression();
     }
 
     let game = player.GetGame();

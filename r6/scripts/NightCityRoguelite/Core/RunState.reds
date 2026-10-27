@@ -19,8 +19,11 @@ public class RLRunState {
   // One entry per stack.
   public let boons: array<CName>;
   public let appliedMods: array<ref<gameStatModifierData>>;
-  public let rerollsPerFloor: Int32;
-  public let rerollsLeft: Int32;
+  // Free reroll charges (refilled at the start of every act) and paid rerolls
+  // bought on the current screen (each one costs more).
+  public let rerolls: Int32;
+  public let rerollsPerAct: Int32;
+  public let paidRerolls: Int32;
   public let offerCount: Int32;
   // The fight in progress (or just cleared): its reward type and threat.
   public let door: ref<RLDoor>;
@@ -36,6 +39,10 @@ public class RLRunState {
 
   // Fixer stop after the elite floor, before the boss door.
   public let fixerPending: Bool;
+
+  // The floor was cleared and its reward is waiting: the run moves on to the
+  // next floor once it has been picked.
+  public let advancePending: Bool;
 
   public func Threat() -> Int32 = IsDefined(this.door) ? this.door.threat : 2
 
@@ -67,6 +74,7 @@ public class RLRunState {
     if this.floor > RLConfig.FloorsPerAct() {
       this.floor = 1;
       this.act += 1;
+      this.rerolls = Max(this.rerolls, this.rerollsPerAct);
     }
   }
 

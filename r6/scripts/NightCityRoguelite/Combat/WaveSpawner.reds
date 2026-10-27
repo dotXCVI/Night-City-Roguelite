@@ -410,7 +410,13 @@ public class RLWaveSpawner extends RLDelayTarget {
       enemy.lastThreat = this.m_time;
     }
 
+    // Not placed yet: right after spawning the position reads as the world
+    // origin, and moving an enemy that is still being set up leaves it half
+    // in the ground. Leave new enemies alone for a moment.
     let position = puppet.GetWorldPosition();
+    if this.m_time - enemy.spawnTime < 2.0 || (position.X == 0.0 && position.Y == 0.0 && position.Z == 0.0) {
+      return false;
+    }
     let distance = Vector4.Distance(position, player.GetWorldPosition());
 
     // Back inside if it wandered out of the arena.

@@ -84,15 +84,16 @@ public abstract class RLRewards {
     return "REWARD";
   }
 
+  // What a door's reward is, where the name alone doesn't say.
   public static func CategoryDescription(category: RLRewardCategory) -> String {
     switch category {
-      case RLRewardCategory.Armory: return "Pick a weapon or a grenade";
-      case RLRewardCategory.Chrome: return "Pick cyberware, installed on the spot";
-      case RLRewardCategory.Daemons: return "Pick a quickhack";
-      case RLRewardCategory.Boons: return "Pick a run-only bonus";
-      case RLRewardCategory.Training: return "Pick a perk";
-      case RLRewardCategory.Iconic: return "Pick an iconic weapon";
-      case RLRewardCategory.Workshop: return "Upgrade gear you already own";
+      case RLRewardCategory.Armory: return "Weapons and grenades";
+      case RLRewardCategory.Chrome: return "Cyberware";
+      case RLRewardCategory.Daemons: return "Quickhacks";
+      case RLRewardCategory.Boons: return "Run bonuses";
+      case RLRewardCategory.Training: return "Perks";
+      case RLRewardCategory.Iconic: return "Iconic weapons";
+      case RLRewardCategory.Workshop: return "Upgrade your gear";
     }
     return "";
   }
@@ -112,13 +113,6 @@ public abstract class RLRewards {
       return "LIGHT";
     }
     return threat >= 3 ? "HEAVY" : "STANDARD";
-  }
-
-  public static func ThreatDescription(threat: Int32) -> String {
-    if threat <= 1 {
-      return "Fewer, weaker enemies.";
-    }
-    return threat >= 3 ? "Bigger waves, tougher enemies, better rewards." : "A regular fight.";
   }
 
   // Iconics show up from floor 4 on, a little more often each floor.
@@ -269,19 +263,69 @@ public abstract class RLRewards {
     return offers;
   }
 
+  // A screen never shows the same item twice (in any quality), at most one
+  // grenade, and no weapon or grenade V already carries - the Workshop is
+  // where owned gear gets better.
   private static func ItemOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, threat: Int32, count: Int32, profile: ref<RLBuildProfile>, spike: Bool) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
+    let owned = RLRewards.OwnedNames(player);
     let guard = 0;
-    while ArraySize(offers) < count && guard < 30 {
+    while ArraySize(offers) < count && guard < 40 {
       guard += 1;
       let kind = RLRewards.KindFor(category, run);
+      if Equals(kind, RLOfferKind.Grenade) && RLRewards.HasKind(offers, RLOfferKind.Grenade) {
+        kind = RLOfferKind.Weapon;
+      }
       // The spike goes on the first card.
       let offer = RLRewards.BuildOffer(player, pools, run, kind, threat, profile, spike && ArraySize(offers) == 0);
-      if IsDefined(offer) && !RLRewards.IsDuplicate(offers, offer) {
+      if IsDefined(offer) && !RLRewards.IsDuplicate(offers, offer) && !RLRewards.IsOwned(owned, offer) {
         ArrayPush(offers, offer);
       }
     }
     return offers;
+  }
+
+  // Names of the weapons and grenades V carries.
+  private static func OwnedNames(player: ref<PlayerPuppet>) -> array<String> {
+    let names: array<String>;
+    let items: array<wref<gameItemData>>;
+    GameInstance.GetTransactionSystem(player.GetGame()).GetItemList(player, items);
+    for item in items {
+      if IsDefined(item) {
+        let category = RPGManager.GetItemCategory(item.GetID());
+        if Equals(category, gamedataItemCategory.Weapon) || Equals(RPGManager.GetItemType(item.GetID()), gamedataItemType.Gad_Grenade) {
+          ArrayPush(names, RLRewards.ItemName(ItemID.GetTDBID(item.GetID())));
+        }
+      }
+    }
+    return names;
+  }
+
+  private static func IsOwned(owned: array<String>, offer: ref<RLOffer>) -> Bool {
+    switch offer.kind {
+      case RLOfferKind.Weapon:
+      case RLOfferKind.Iconic:
+      case RLOfferKind.Grenade:
+        return ArrayContains(owned, offer.title);
+    }
+    return false;
+  }
+
+  private static func HasKind(offers: array<ref<RLOffer>>, kind: RLOfferKind) -> Bool {
+    for offer in offers {
+      if Equals(offer.kind, kind) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // The price of a reroll once the free ones are used: it grows with the run
+  // and by half again for every paid reroll on the same screen.
+  public static func RerollPrice(run: ref<RLRunState>) -> Int32 {
+    let base = Cast<Float>(60 + 20 * run.Depth());
+    let price = base * (1.0 + 0.5 * Cast<Float>(run.paidRerolls));
+    return RLFixer.Discounted(5 * RoundF(price / 5.0));
   }
 
   private static func PerkOffers(player: ref<PlayerPuppet>, run: ref<RLRunState>, profile: ref<RLBuildProfile>, count: Int32, spike: Bool) -> array<ref<RLOffer>> {
@@ -299,7 +343,7 @@ public abstract class RLRewards {
     offer.perk = def.perk;
     offer.tags = def.tags;
     offer.title = def.name;
-    offer.subtitle = (def.power >= 4 ? "SIGNATURE PERK - " : "PERK - ") + RLPerkCatalog.AttributeName(def.perk);
+    offer.subtitle = (def.power >= 4 ? "SIGNATURE PERK - " : "PERK - ") + RLPerkCatalog.AttributeName(def.perk) + " +1";
     offer.description = def.text;
     offer.excitement = def.power - RLPerkCatalog.ExpectedPower(run.Depth(), run.TotalFloors());
     return offer;
@@ -318,6 +362,7 @@ public abstract class RLRewards {
       }
     }
     let last = count - 1;
+    let owned = RLRewards.OwnedNames(player);
     let tries = 0;
     while tries < 8 {
       tries += 1;
@@ -334,7 +379,7 @@ public abstract class RLRewards {
       } else {
         replacement = RLRewards.BuildOffer(player, pools, run, RLRewards.KindFor(category, run), threat, null, false);
       }
-      if IsDefined(replacement) && !profile.HasAny(replacement.tags) && !RLRewards.IsDuplicate(offers, replacement) {
+      if IsDefined(replacement) && !profile.HasAny(replacement.tags) && !RLRewards.IsDuplicate(offers, replacement) && !RLRewards.IsOwned(owned, replacement) {
         offers[last] = replacement;
         return;
       }
@@ -344,7 +389,7 @@ public abstract class RLRewards {
   private static func IsDuplicate(offers: array<ref<RLOffer>>, candidate: ref<RLOffer>) -> Bool {
     for offer in offers {
       if Equals(offer.kind, candidate.kind) {
-        if TDBID.IsValid(candidate.record) && offer.record == candidate.record {
+        if TDBID.IsValid(candidate.record) && (offer.record == candidate.record || Equals(offer.title, candidate.title)) {
           return true;
         }
         if IsNameValid(candidate.boon) && Equals(offer.boon, candidate.boon) {
@@ -404,9 +449,9 @@ public abstract class RLRewards {
           offer.step = RLQuality.StepOfRecord(offer.record);
           let cost = RLGear.CapacityCost(player, offer.record);
           let available = RLGear.CapacityAvailable(player);
-          offer.subtitle = s"CYBERWARE - \(RLQuality.DisplayName(offer.step)) - capacity \(RoundF(cost))";
+          offer.subtitle = "CYBERWARE - " + RLQuality.DisplayName(offer.step);
           offer.disabled = cost > available;
-          offer.description = offer.disabled ? s"Not enough capacity (\(RoundF(available)) free)." : "Installed immediately.";
+          offer.description = offer.disabled ? s"Needs \(RoundF(cost)) capacity - \(RoundF(available)) free" : s"Capacity \(RoundF(cost))";
           offer.excitement = offer.step - expected;
         }
         break;
@@ -415,7 +460,9 @@ public abstract class RLRewards {
         if TDBID.IsValid(offer.record) {
           offer.step = RLQuality.StepOfRecord(offer.record);
           offer.subtitle = "QUICKHACK - " + RLQuality.DisplayName(offer.step);
-          offer.description = "Needs a cyberdeck to use.";
+          if !EquipmentSystem.IsCyberdeckEquipped(player) {
+            offer.description = "Needs a cyberdeck";
+          }
           offer.excitement = offer.step - expected;
           ArrayPush(offer.tags, n"netrunner");
         }
@@ -425,7 +472,9 @@ public abstract class RLRewards {
         if TDBID.IsValid(offer.record) {
           offer.step = RLQuality.StepOfRecord(offer.record);
           offer.subtitle = "GRENADE - " + RLQuality.DisplayName(offer.step);
-          offer.description = "Equipped on the spot. Replaces your current grenade.";
+          if TDBID.IsValid(RLConsumables.CurrentGrenade(player)) {
+            offer.description = "Replaces your grenade";
+          }
           offer.excitement = offer.step - expected;
           ArrayPush(offer.tags, n"explosive");
         }
@@ -448,7 +497,8 @@ public abstract class RLRewards {
       offer.tags = RLBuildProfile.RecordTags(offer.record);
     }
     offer.title = RLRewards.ItemName(offer.record);
-    if StrLen(offer.description) == 0 {
+    // Weapons say what they are (the name alone often doesn't).
+    if StrLen(offer.description) == 0 && (Equals(kind, RLOfferKind.Weapon) || Equals(kind, RLOfferKind.Iconic)) {
       offer.description = RLRewards.ItemTypeName(offer.record);
     }
     return offer;
@@ -546,8 +596,8 @@ public abstract class RLRewards {
           offer.record = ItemID.GetTDBID(item.GetID());
           offer.step = Min(RLQuality.MaxStep(), step + 2);
           offer.title = RLRewards.ItemName(offer.record);
-          offer.subtitle = "UPGRADE - " + RLQuality.DisplayName(step) + " > " + RLQuality.DisplayName(offer.step);
-          offer.description = "Two quality steps up. Keep the weapon you like and make it hit harder.";
+          offer.subtitle = RLQuality.DisplayName(step) + " > " + RLQuality.DisplayName(offer.step);
+          offer.description = RLRewards.ItemTypeName(offer.record);
           offer.excitement = 1;
           // Equipped weapons first.
           if IsDefined(equipment) && equipment.IsEquipped(item.GetID()) {
@@ -578,8 +628,7 @@ public abstract class RLRewards {
     offer.record = ladder[current + 1];
     offer.step = RLQuality.StepOfRecord(offer.record);
     offer.title = RLRewards.ItemName(offer.record);
-    offer.subtitle = "UPGRADE - " + RLQuality.DisplayName(RLQuality.StepOfRecord(ladder[current])) + " > " + RLQuality.DisplayName(offer.step);
-    offer.description = "A stronger health item: every charge heals more.";
+    offer.subtitle = RLQuality.DisplayName(RLQuality.StepOfRecord(ladder[current])) + " > " + RLQuality.DisplayName(offer.step);
     offer.excitement = 1;
     return offer;
   }
@@ -601,8 +650,7 @@ public abstract class RLRewards {
     offer.record = record;
     offer.step = RLQuality.StepOfRecord(record);
     offer.title = RLRewards.ItemName(record);
-    offer.subtitle = "UPGRADE - " + RLQuality.DisplayName(step) + " > " + RLQuality.DisplayName(offer.step);
-    offer.description = "Replaces your current grenade.";
+    offer.subtitle = RLQuality.DisplayName(step) + " > " + RLQuality.DisplayName(offer.step);
     offer.excitement = 1;
     ArrayPush(offer.tags, n"explosive");
     return offer;

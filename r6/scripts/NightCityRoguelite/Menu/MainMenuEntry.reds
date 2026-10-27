@@ -4,7 +4,7 @@
 // Adds a ROGUELITE item above New Game. Choosing it:
 //   1. marks a pending roguelite start in the meta service,
 //   2. runs the normal new-game flow,
-//   3. passes the campaign screen without showing it (Phantom Liberty
+//   3. passes the campaign screen without ever showing it (Phantom Liberty
 //      standalone start, no story prologue), skips the difficulty screen (the
 //      mod sets its own), the life path screen (Street Kid - it changes
 //      nothing here) and the attribute screen (the mod resets attributes), so
@@ -45,14 +45,19 @@ protected cb func OnEnterScenario(prevScenario: CName, userData: ref<IScriptable
   return wrappedMethod(prevScenario, userData);
 }
 
-// The campaign screen stays invisible; the standalone start, the life path and
-// zero creation points (the mod resets attributes anyway) are set once it has
-// initialized the character state.
+// The campaign screen is never shown: it is hidden as it initializes (its
+// intro animation would fade it back in, so visibility rather than opacity),
+// the intro is jumped to its end, and the standalone start, the life path and
+// zero creation points (the mod sets attributes itself) are chosen right
+// away. Its outro then plays hidden and hands over to the next screen.
 @wrapMethod(ExpansionNewGame)
 protected cb func OnInitialize() -> Bool {
   let result = wrappedMethod();
   if RogueliteService.Get().HasPendingStart() {
-    this.GetRootWidget().SetOpacity(0.0);
+    this.GetRootWidget().SetVisible(false);
+    if IsDefined(this.m_animationProxy) {
+      this.m_animationProxy.GotoEndAndStop(false);
+    }
   }
   return result;
 }
@@ -66,7 +71,7 @@ protected cb func OnIntroComplete(anim: ref<inkAnimProxy>) -> Bool {
     this.m_characterCustomizationState.SetAttributePointsAvailable(0u);
     this.NextMenu();
   } else {
-    this.GetRootWidget().SetOpacity(1.0);
+    this.GetRootWidget().SetVisible(true);
   }
   return result;
 }

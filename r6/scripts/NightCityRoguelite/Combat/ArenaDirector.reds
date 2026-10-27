@@ -113,7 +113,7 @@ public class RLArenaDirector extends RLDelayTarget {
     // Walking into the wall: a short reminder of why it's there.
     if distance >= this.m_arena.radius - 1.2 && this.m_contactCooldown <= 0.0 {
       this.m_contactCooldown = 8.0;
-      RLNotify(player.GetGame(), "Arena sealed. You go home when the fight is over.", 3.0);
+      RLNotify(player.GetGame(), "Arena sealed.", 2.0);
     }
 
     let inside = distance <= this.m_arena.radius + RLConfig.WallBackstopMargin()

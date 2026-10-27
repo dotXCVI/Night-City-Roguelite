@@ -8,7 +8,7 @@
 // gear when the run ends.
 //
 //   MaxDoc upgrade, a better grenade, a boon, a perk card, an upgrade for the
-//   equipped weapon, and a fixer contact (+1 reward reroll per floor).
+//   equipped weapon, and a fixer contact (two free rerolls).
 //
 // Prices scale with the floor; the Street Smart unlock takes 20% off.
 // -----------------------------------------------------------------------------
@@ -71,9 +71,8 @@ public abstract class RLFixer {
     }
     GameInstance.GetTransactionSystem(player.GetGame()).RemoveItem(player, RLFixer.MoneyID(), item.price);
     if item.contact {
-      run.rerollsPerFloor += 1;
-      run.rerollsLeft += 1;
-      RLLog("Fixer: contact bought (+1 reroll per floor).");
+      run.rerolls += 2;
+      RLLog("Fixer: contact bought (+2 rerolls).");
     } else {
       RLRewards.Grant(player, run, item.offer);
     }
@@ -90,7 +89,7 @@ public abstract class RLFixer {
   }
 
   public static func ItemDescription(item: ref<RLFixerItem>) -> String {
-    return item.contact ? "+1 reward reroll on every floor for the rest of this run." : item.offer.description;
+    return item.contact ? "Two free rerolls." : item.offer.description;
   }
 
   private static func AddItem(out stock: array<ref<RLFixerItem>>, offer: ref<RLOffer>, price: Int32) {
@@ -103,7 +102,7 @@ public abstract class RLFixer {
     ArrayPush(stock, item);
   }
 
-  private static func Discounted(price: Int32) -> Int32 {
+  public static func Discounted(price: Int32) -> Int32 {
     if RLMeta.PerkActive(RogueliteService.Get(), n"perk.StreetSmart") {
       return RoundF(Cast<Float>(price) * 0.8);
     }

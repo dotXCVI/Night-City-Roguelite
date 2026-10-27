@@ -59,9 +59,8 @@ public abstract class RLConfig {
 
   // --- Character baseline -------------------------------------------------------
 
+  // Attributes start here; kits add to two of them (Player/Kits.reds).
   public static func BaseAttributeValue() -> Float = 3.0
-  public static func StartingAttributePoints() -> Int32 = 7
-  public static func StartingPerkPoints() -> Int32 = 1
 
   // --- Arenas -------------------------------------------------------------------
 
@@ -78,14 +77,10 @@ public abstract class RLConfig {
   // Distance band (from arena center) where enemies spawn.
   public static func SpawnMinDistance() -> Float = 16.0
   public static func SpawnMaxDistance() -> Float = 30.0
-  // Countdown after arriving in an arena before the first wave (also lets the
-  // area stream in).
+  // Countdown after arriving in an arena before the first wave.
   public static func DeployCountdown() -> Int32 = 5
-  // Countdown after an arena is cleared before V is sent home (there is no
-  // looting: ammo and health charges come back when a wave is cleared).
-  public static func ClearedCountdown() -> Int32 = 8
-  // Countdown after a flatline before V is sent home.
-  public static func FlatlineCountdown() -> Int32 = 5
+  // Fade to / from black around every trip (UI/Transition.reds).
+  public static func FadeSeconds() -> Float = 0.8
 
   // --- Waves --------------------------------------------------------------------
 

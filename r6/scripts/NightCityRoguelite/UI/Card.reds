@@ -280,6 +280,49 @@ public class RLCard extends CustomButton {
     this.m_selectedFrame.SetVisible(selected);
   }
 
+  // The accent bar in the item's quality colour (Common grey .. Legendary
+  // orange), like the game's own item cards.
+  public func SetQuality(step: Int32) {
+    this.m_bar.UnbindProperty(n"tintColor");
+    this.m_bar.SetTintColor(RLCard.QualityColor(step));
+    this.m_bar.SetSize(Vector2(100.0, 7.0));
+  }
+
+  public static func QualityColor(step: Int32) -> HDRColor {
+    switch Clamp(step / 2, 0, 4) {
+      case 1: return HDRColor(0.30, 0.86, 0.48, 1.0);
+      case 2: return HDRColor(0.27, 0.62, 1.00, 1.0);
+      case 3: return HDRColor(0.76, 0.40, 1.00, 1.0);
+      case 4: return HDRColor(1.00, 0.62, 0.16, 1.0);
+    }
+    return HDRColor(0.62, 0.64, 0.66, 1.0);
+  }
+
+  // Cards slide up and fade in one after another when a screen opens.
+  public func PlayIntro(delay: Float) {
+    let target = this.m_isDisabled ? 0.35 : 1.0;
+    if IsDefined(this.m_disabledAnimProxy) {
+      this.m_disabledAnimProxy.Stop(true);
+    }
+    this.m_root.SetOpacity(0.0);
+    let fade = new inkAnimTransparency();
+    fade.SetStartTransparency(0.0);
+    fade.SetEndTransparency(target);
+    fade.SetDuration(0.22);
+    fade.SetStartDelay(delay);
+    let slide = new inkAnimTranslation();
+    slide.SetStartTranslation(Vector2(0.0, 40.0));
+    slide.SetEndTranslation(Vector2(0.0, 0.0));
+    slide.SetDuration(0.3);
+    slide.SetStartDelay(delay);
+    slide.SetMode(inkanimInterpolationMode.EasyOut);
+    slide.SetType(inkanimInterpolationType.Quadratic);
+    let intro = new inkAnimDef();
+    intro.AddInterpolator(fade);
+    intro.AddInterpolator(slide);
+    this.m_root.PlayAnimation(intro);
+  }
+
   // Icon from an atlas part (hub menu / common icons), tinted with the accent.
   public func SetAtlasIcon(atlas: ResRef, part: CName, size: Float) {
     this.m_icon.SetAtlasResource(atlas);

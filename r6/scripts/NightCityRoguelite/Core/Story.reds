@@ -91,8 +91,8 @@ public final func RL_EndActiveCall() -> Bool {
 //     after load, and anything that becomes active later is set inactive a
 //     moment after (RLJournalGuard), so nothing shows on the HUD, the map or
 //     the journal;
-//   - incoming calls never ring (PhoneSystem.OnTriggerCall), so their scenes
-//     never start;
+//   - incoming calls are declined before they ring (PhoneSystem.OnTriggerCall),
+//     so their scenes never start;
 //   - the "new message" and quest pop-ups aren't shown.
 // The base-game quest graph itself keeps running: gating it (v0.0.10) left new
 // characters on a frozen black screen.
@@ -249,14 +249,28 @@ public class RLJournalGuard extends RLDelayTarget {
   }
 }
 
-// Incoming calls don't ring for roguelite characters. The call never starts,
-// so its scene never plays (calls the quest starts directly are left alone:
-// hiding those would leave the scene running unseen).
+// Incoming calls don't ring for roguelite characters: once the character is
+// set up, a call is declined on the spot - the quest gets the same answer as
+// when the player declines (phone fact "Rejected"), so it moves on instead of
+// calling again. Before that (the opening) it is just not shown. Calls the
+// quest starts or ends directly are logged and left alone: hiding those would
+// leave their scene running unseen.
 @wrapMethod(PhoneSystem)
 private final func OnTriggerCall(request: ref<questTriggerCallRequest>) {
-  if Equals(request.callPhase, questPhoneCallPhase.IncomingCall) && RLQuiet.IsOn(this.GetGameInstance()) {
-    RLLog("Blocked an incoming call (" + NameToString(request.caller) + ").");
-    return;
+  let game = this.GetGameInstance();
+  if RLQuiet.IsOn(game) {
+    let caller = NameToString(request.caller);
+    if Equals(request.callPhase, questPhoneCallPhase.IncomingCall) {
+      let system = RogueliteSystem.Get(game);
+      if IsDefined(system) && system.IsHomeTerminalActive() && IsNameValid(request.caller) {
+        this.SetPhoneFact(false, request.caller, questPhoneTalkingState.Rejected);
+        RLLog(s"Declined an incoming call (\(caller), rejectable \(request.isRejectable)).");
+      } else {
+        RLLog(s"Blocked an incoming call (\(caller)).");
+      }
+      return;
+    }
+    RLLog(s"Call from the story: \(caller) -> \(NameToString(request.addressee)), phase \(EnumInt(request.callPhase)).");
   }
   wrappedMethod(request);
 }

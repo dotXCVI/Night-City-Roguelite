@@ -11,6 +11,7 @@
 //              style (Hades' Duo and Legendary boons work the same way).
 //   Weighting  perks near the floor's expected power are common, stronger ones
 //              rarer; the build profile raises matching perks (Director.reds).
+//   Growth     taking a perk also raises its attribute by 1 (up to 20).
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -78,7 +79,8 @@ public abstract class RLPerkCatalog {
     return true;
   }
 
-  // Grants the perk at its max level, plus any requirement outside the catalog.
+  // Grants the perk at its max level, plus any requirement outside the catalog,
+  // and +1 to its attribute: attributes grow with the perks V picks.
   public static func Grant(player: ref<PlayerPuppet>, def: ref<RLPerkDef>) {
     let data = PlayerDevelopmentSystem.GetData(player);
     if !IsDefined(data) {
@@ -92,6 +94,10 @@ public abstract class RLPerkCatalog {
       }
     }
     RLPerks.Grant(data, def.perk, 0);
+    let attribute = RLPerks.AttributeStat(def.perk);
+    if NotEquals(attribute, gamedataStatType.Invalid) {
+      data.RL_RaiseAttribute(attribute, 1);
+    }
     data.UpdateUIBB();
   }
 

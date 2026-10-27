@@ -1,9 +1,10 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - reward popup
 // -----------------------------------------------------------------------------
-// Shows the floor's offers as cards (UI/Card.reds) with the item's own icon,
-// the boon's buff icon, or a menu icon. ESC does not discard the reward:
-// "Later" (or ESC) just closes the popup, and the computer or F7 reopens it.
+// The cleared fight's offers as cards (UI/Card.reds), centred, with the item's
+// own icon (or the boon's buff icon, or the perk's tree icon) and a bar in the
+// item's quality colour. Below them a reroll: free while charges last, then
+// eddies. Closing (C / ESC) keeps the offers: F7 brings them back.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -13,23 +14,21 @@ public class RLRewardPopup extends InGamePopup {
   private let m_system: wref<RogueliteSystem>;
   private let m_offers: array<ref<RLOffer>>;
   private let m_title: String;
-  private let m_rerollsLeft: Int32;
   private let m_content: ref<InGamePopupContent>;
 
-  public static func Open(system: ref<RogueliteSystem>, offers: array<ref<RLOffer>>, const title: String, rerollsLeft: Int32) -> ref<RLRewardPopup> {
+  public static func Open(system: ref<RogueliteSystem>, offers: array<ref<RLOffer>>, const title: String) -> ref<RLRewardPopup> {
     let popup = new RLRewardPopup();
     popup.m_system = system;
     popup.m_offers = offers;
     popup.m_title = title;
-    popup.m_rerollsLeft = rerollsLeft;
     RLUI.Show(popup);
     return popup;
   }
 
   public func UseCursor() -> Bool = true
 
-  // No slow motion behind the menu: nothing is going on at home, and a menu
-  // that fails to show can never leave the game crawling.
+  // No slow motion behind the menu: a menu that fails to show can never
+  // leave the game crawling.
   protected func SetTimeDilation() {}
 
   protected func ResetTimeDilation() {}
@@ -40,15 +39,15 @@ public class RLRewardPopup extends InGamePopup {
 
   protected cb func OnCreate() {
     super.OnCreate();
-    this.m_container.SetSize(Vector2(2200.0, 1200.0));
+    this.m_container.SetSize(Vector2(2200.0, 1000.0));
 
     let header = InGamePopupHeader.Create();
     header.SetTitle(this.m_title);
-    header.SetFluffRight("NIGHT CITY ROGUELITE");
+    header.SetFluffRight("CHOOSE ONE");
     header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
-    footer.SetFluffText("PICK ONE - EVERY PICK ALSO GRANTS +1 LEVEL - F7 REOPENS THIS SCREEN");
+    footer.SetFluffText("EVERY PICK ALSO GRANTS +1 LEVEL");
     footer.Reparent(this);
 
     this.m_content = InGamePopupContent.Create();
@@ -56,63 +55,91 @@ public class RLRewardPopup extends InGamePopup {
 
     RLLog(s"Reward menu: building \(ArraySize(this.m_offers)) card(s).");
     this.Build();
-    RLLog("Reward menu: built.");
   }
 
   private func Build() {
-    let root = this.m_content.GetRootCompoundWidget();
-
-    let column = RLUI.VPanel(10.0);
+    let column = RLUI.VPanel(12.0);
     column.SetAnchor(inkEAnchor.Fill);
-    column.Reparent(root);
+    column.Reparent(this.m_content.GetRootCompoundWidget());
 
-    let cards = RLUI.HPanel(14.0);
+    let cards = RLUI.HPanel(18.0);
+    cards.SetHAlign(inkEHorizontalAlign.Center);
+    cards.SetMargin(inkMargin(0.0, 16.0, 0.0, 0.0));
     cards.Reparent(column);
 
     let count = ArraySize(this.m_offers);
-    let cardWidth = count > 0 ? MinF(560.0, 2040.0 / Cast<Float>(count) - 28.0) : 560.0;
+    let cardWidth = count > 3 ? 470.0 : 540.0;
     let i = 0;
     while i < count {
       this.BuildCard(cards, this.m_offers[i], i, cardWidth);
       i += 1;
     }
 
-    let actions = RLUI.HPanel(14.0);
-    actions.SetMargin(inkMargin(0.0, 24.0, 0.0, 0.0));
-    actions.Reparent(column);
-
-    if this.m_rerollsLeft > 0 {
-      this.AddAction(actions, n"reroll", "REROLL", s"\(this.m_rerollsLeft) left this floor", n"MainColors.Gold");
+    if IsDefined(this.m_system) {
+      let actions = RLUI.HPanel(18.0);
+      actions.SetHAlign(inkEHorizontalAlign.Center);
+      actions.SetMargin(inkMargin(0.0, 28.0, 0.0, 0.0));
+      actions.Reparent(column);
+      let reroll = RLRewardPopup.RerollCard(this.m_system);
+      reroll.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
+      reroll.Reparent(actions);
+      reroll.PlayIntro(0.08 * Cast<Float>(count));
     }
-    this.AddAction(actions, n"later", "LATER", "Keep the reward for now", n"MainColors.Blue");
   }
 
-  private func AddAction(parent: ref<inkCompoundWidget>, name: CName, const title: String, const kicker: String, accent: CName) {
-    let card = RLCard.Create(name, 520.0, 140.0, accent);
+  // The reroll button used by the reward screen and the door picker.
+  public static func RerollCard(system: ref<RogueliteSystem>) -> ref<RLCard> {
+    let charges = system.GetRerollCharges();
+    let price = system.GetRerollPrice();
+    let affordable = charges > 0 || system.GetEddies() >= price;
+    let card = RLCard.Create(n"reroll", 420.0, 120.0, charges > 0 ? n"MainColors.Blue" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
     card.SetCompact();
-    card.SetKicker(kicker);
-    card.SetTitle(title);
-    card.SetTitleSize(40);
-    card.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
-    card.Reparent(parent);
+    card.SetKicker(charges > 0 ? s"FREE - \(charges) LEFT" : s"\(price) EDDIES");
+    card.SetTitle("REROLL");
+    card.SetTitleSize(36);
+    card.SetDisabled(!affordable);
+    return card;
   }
 
   private func BuildCard(parent: ref<inkCompoundWidget>, offer: ref<RLOffer>, index: Int32, width: Float) {
-    let accent = RLRewardPopup.KindAccent(offer.kind);
-    let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 640.0, accent);
+    let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 560.0, RLRewardPopup.KindAccent(offer.kind));
     RLRewardPopup.SetOfferIcon(card, offer, width);
-    card.SetKicker(offer.subtitle);
+    if RLRewardPopup.HasQuality(offer.kind) {
+      card.SetQuality(offer.step);
+    }
+    card.SetKicker(RLRewardPopup.KindLabel(offer));
     card.SetTitle(offer.title);
     card.SetTitleSize(40);
-    card.AddLine(offer.description, n"MainColors.Grey", 26);
-    card.SetFooter(offer.disabled ? "Unavailable" : "Take");
+    if StrLen(offer.description) > 0 {
+      card.AddLine(offer.description, offer.disabled ? n"MainColors.Red" : n"MainColors.Grey", 26);
+    }
     card.SetDisabled(offer.disabled);
     card.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
     card.Reparent(parent);
+    card.PlayIntro(0.08 * Cast<Float>(index));
   }
 
-  // Item icons for gear (weapons are wide), the buff icon for boons, a menu
-  // icon for the rest.
+  private static func HasQuality(kind: RLOfferKind) -> Bool {
+    switch kind {
+      case RLOfferKind.Boon:
+      case RLOfferKind.Perk:
+        return false;
+    }
+    return true;
+  }
+
+  // The card's kicker: what it is, and its quality (or upgrade step).
+  private static func KindLabel(offer: ref<RLOffer>) -> String {
+    switch offer.kind {
+      case RLOfferKind.WeaponUpgrade:
+      case RLOfferKind.HealthUpgrade:
+        return "UPGRADE - " + offer.subtitle;
+    }
+    return offer.subtitle;
+  }
+
+  // Item icons for gear (weapons are wide), the buff icon for boons, the
+  // perk's tree icon for perks, a menu icon for the rest.
   private static func SetOfferIcon(card: ref<RLCard>, offer: ref<RLOffer>, width: Float) {
     switch offer.kind {
       case RLOfferKind.Weapon:
@@ -179,27 +206,19 @@ public class RLRewardPopup extends InGamePopup {
 
   protected cb func OnButtonClick(widget: wref<inkWidget>) -> Bool {
     let button = widget.GetController() as CustomButton;
-    if !IsDefined(button) || button.IsDisabled() {
+    if !IsDefined(button) || button.IsDisabled() || !IsDefined(this.m_system) {
       return false;
     }
     let name = NameToString(button.GetName());
-    if Equals(name, "later") {
-      this.Close();
-      return true;
-    }
     if Equals(name, "reroll") {
       this.Close();
-      if IsDefined(this.m_system) {
-        this.m_system.OnRewardReroll();
-      }
+      this.m_system.OnRewardReroll();
       return true;
     }
     if StrBeginsWith(name, "offer_") {
       let index = StringToInt(StrAfterFirst(name, "_"));
       this.Close();
-      if IsDefined(this.m_system) {
-        this.m_system.OnRewardChosen(index);
-      }
+      this.m_system.OnRewardChosen(index);
       return true;
     }
     return false;

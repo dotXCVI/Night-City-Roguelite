@@ -43,6 +43,10 @@ public class RLRunState {
   public let mainStep: Int32;
   public let sidearm: ItemID;
   public let sidearmStep: Int32;
+  // Arm chrome in the main slot (Rewards/ArmChrome.reds): its element (""
+  // for the plain one), and whether it has evolved.
+  public let mainElement: String;
+  public let mainEvolved: Bool;
 
   // Trade-offs taken at events and deals: extra damage V takes (0.15 =
   // +15%), and stat modifiers that are removed when the run ends.

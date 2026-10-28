@@ -24,6 +24,7 @@ roguelite character for this build.
 - **One main weapon.** Your kit's gun takes every weapon reward: Tune-Ups (a quality step, with DPS before and after), weapon effects (two slots, three on an iconic; they work on blades too) and the evolution.
 - **Sidearm:** your kit's backup steps up after every boss. So does the main.
 - **Trades:** a new gun arrives at your main slot's quality and keeps its weapon effects - swapping is about how it plays.
+- **Arm chrome is a main weapon:** the Brawler's Gorilla Arms and the Wireman's Monowire take the main slot (their gun becomes the sidearm). Tune-Ups follow the game's own upgrade path for arm chrome, the Armory offers a **REWIRE** instead of a trade - Thermal arms BURN, Electric arms SHOCK, Chemical arms make them BLEED - and the evolution goes to Legendary++ with a third weapon effect slot. Kit chrome brings its own capacity, so it's never refused at level 1.
 - **Weapon mods are gone** (weapon effects replace them), and so is the weapon-quality damage penalty.
 
 **Run shape**
@@ -45,7 +46,7 @@ roguelite character for this build.
 
 **Fixes from the first v0.0.18 run**
 
-- **Gorilla Arms and Monowire vanished:** the Brawler and Wireman kits (and any arm chrome from a Chrome door) were taken away on the first trip by the stray-weapon sweep, because the game files arm chrome as a weapon - leaving bare hands and a gun. Arm chrome and its holstered look are now always V's own.
+- **Gorilla Arms and Monowire vanished:** the Brawler and Wireman kits (and any arm chrome from a Chrome door) were taken away on the first trip by the stray-weapon sweep, because the game files arm chrome as a weapon - leaving bare hands and a gun. Arm chrome and its holstered look are now always V's own. Thanks to Jon for catching this one and for testing.
 - **Eddies:** NCPD bounties no longer pay out for roguelite characters. Most gang members carry one, which flooded runs with eddies - enough to buy out the Fixer by floor 5.
 - **Doors say what they pay:** "Pick 1 of 3 quickhacks", "Pick 1 of 3 Militech effects", "No fight - MISTY'S READING", and the objective spelled out.
 - **Cyberware, quickhack, grenade and OS cards show what the item does,** in the game's own tooltip words and numbers. MaxDoc and grenade upgrades say what they change.

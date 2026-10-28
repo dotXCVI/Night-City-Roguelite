@@ -64,6 +64,7 @@ public abstract class RLTelemetry {
       case RLOfferKind.Capacity: return "Capacity";
       case RLOfferKind.OperatingSystem: return "OperatingSystem";
       case RLOfferKind.Gig: return "Gig";
+      case RLOfferKind.Rewire: return "Rewire";
     }
     return IntToString(EnumInt(kind));
   }
@@ -127,7 +128,7 @@ public abstract class RLTelemetry {
       + RLTelemetry.Field("tags", RLBuildProfile.Read(player).Describe())
       + RLTelemetry.Field("styles", RLStyles.Telemetry(run))
       + RLTelemetry.Field("os", NameToString(run.os))
-      + RLTelemetry.Field("main", RLRewards.ItemName(RLWeapons.MainRecord(run)) + ":" + IntToString(run.mainStep))
+      + RLTelemetry.Field("main", RLRewards.ItemName(RLWeapons.MainRecord(run)) + ":" + IntToString(run.mainStep) + (StrLen(run.mainElement) > 0 ? ":" + run.mainElement : ""))
       + RLTelemetry.IntField("cover", run.cover)
       + RLTelemetry.IntField("overclock", run.overclock)
       + RLTelemetry.Field("gig", run.gigStyle >= 0 ? RLStyle.Name(run.gigStyle) + s" \(run.gigProgress)/\(run.gigTarget)" : "")

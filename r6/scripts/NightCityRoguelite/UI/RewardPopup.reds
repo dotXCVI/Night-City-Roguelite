@@ -302,6 +302,7 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.Iconic:
       case RLOfferKind.TuneUp:
       case RLOfferKind.Evolve:
+      case RLOfferKind.Rewire:
         let iconWidth = MinF(width - 56.0, 400.0);
         if card.SetRecordIcon(RLIcons.ItemIcon(offer.record), iconWidth, iconWidth / 2.0) {
           return;
@@ -351,6 +352,7 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.Capacity: return n"MainColors.Blue";
       case RLOfferKind.OperatingSystem: return n"MainColors.Blue";
       case RLOfferKind.Gig: return n"MainColors.Gold";
+      case RLOfferKind.Rewire: return n"MainColors.Blue";
     }
     return n"MainColors.ActiveWhite";
   }
@@ -370,6 +372,7 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.Capacity: return n"ico_cyberware";
       case RLOfferKind.OperatingSystem: return n"ico_cyberware";
       case RLOfferKind.Gig: return n"ico_journal";
+      case RLOfferKind.Rewire: return n"ico_cyberware";
     }
     return n"ico_map";
   }

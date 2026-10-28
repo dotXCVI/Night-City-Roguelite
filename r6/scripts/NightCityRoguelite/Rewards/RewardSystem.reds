@@ -45,6 +45,7 @@ public enum RLOfferKind {
   Capacity = 10,
   OperatingSystem = 11,
   Gig = 12,
+  Rewire = 13,
 }
 
 public enum RLRewardCategory {
@@ -624,8 +625,9 @@ public abstract class RLRewards {
     while room > 0 && RLRewards.DealOne(player, run, effects, taken, offers) {
       room -= 1;
     }
+    // Arm chrome is rewired, never traded away.
     if ArraySize(offers) < count {
-      let trade = RLRewards.TradeOffer(player, pools, run);
+      let trade = RLArms.IsMainArms(run) ? RLArms.RewireOffer(run) : RLRewards.TradeOffer(player, pools, run);
       if IsDefined(trade) {
         ArrayPush(offers, trade);
       }
@@ -642,12 +644,13 @@ public abstract class RLRewards {
   }
 
   // `steps` quality steps for the main weapon's slot, with its DPS before and
-  // after.
+  // after (arm chrome: the record it becomes).
   public static func TuneUpOffer(player: ref<PlayerPuppet>, run: ref<RLRunState>, steps: Int32) -> ref<RLOffer> {
     if !ItemID.IsValid(run.mainWeapon) || run.mainStep >= RLQuality.MaxStep() {
       return null;
     }
-    let record = RLWeapons.MainRecord(run);
+    let target = Min(RLQuality.MaxStep(), run.mainStep + steps);
+    let record = RLArms.IsMainArms(run) ? RLArms.MainRecordAt(run, target) : RLWeapons.MainRecord(run);
     let offer = new RLOffer();
     offer.kind = RLOfferKind.TuneUp;
     offer.itemID = run.mainWeapon;
@@ -703,6 +706,9 @@ public abstract class RLRewards {
   public static func EvolveOffer(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>) -> ref<RLOffer> {
     if !RLWeapons.CanEvolve(run) {
       return null;
+    }
+    if RLArms.IsMainArms(run) {
+      return RLArms.EvolveOffer(run);
     }
     let iconic = pools.PickIconicFor(RPGManager.GetItemType(run.mainWeapon));
     if !TDBID.IsValid(iconic) {
@@ -898,6 +904,10 @@ public abstract class RLRewards {
       case RLOfferKind.Cyberware:
         // Once Overdrive is unlocked the Operating System stays the one it came with.
         offer.record = RLRewards.PickWeighted(pools, profile, step, run.overdriveUnlocked);
+        // Arms in the main slot stay: no other arm chrome for them.
+        if RLArms.IsMainArms(run) && RLArms.IsArmsRecord(offer.record) {
+          return null;
+        }
         if TDBID.IsValid(offer.record) {
           offer.step = RLQuality.StepOfRecord(offer.record);
           // What it adds (less anything it replaces) against what's free.
@@ -1059,7 +1069,14 @@ public abstract class RLRewards {
         RLWeapons.ReplaceMain(player, run, offer.record);
         break;
       case RLOfferKind.Evolve:
-        RLWeapons.ReplaceMain(player, run, offer.record);
+        if RLArms.IsMainArms(run) {
+          RLArms.Evolve(player, run);
+        } else {
+          RLWeapons.ReplaceMain(player, run, offer.record);
+        }
+        break;
+      case RLOfferKind.Rewire:
+        RLArms.Rewire(player, run, offer);
         break;
       case RLOfferKind.Iconic:
         RLGear.GiveWeapon(player, offer.record, offer.tier, false);

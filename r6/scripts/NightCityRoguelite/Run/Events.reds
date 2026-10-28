@@ -136,8 +136,15 @@ public abstract class RLEvents {
       case n"Stranger":
         event.flavor = "Says it fell off an Arasaka truck.";
         let deal = RLEvents.Choice(n"Iconic", "", "ICONIC", "", 0, n"MainColors.Gold");
-        deal.offer = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Iconic, null, true);
-        if IsDefined(deal.offer) {
+        // Arm chrome in the main slot isn't for trading.
+        if !RLArms.IsMainArms(run) {
+          deal.offer = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Iconic, null, true);
+        }
+        if RLArms.IsMainArms(run) {
+          deal.title = "Wrong Market";
+          deal.text = "He deals in guns. Your arms aren't for sale.";
+          deal.disabled = true;
+        } else if IsDefined(deal.offer) {
           deal.title = deal.offer.title;
           deal.text = "Your main weapon, effects kept. But someone wants it back: take 15% more damage for the rest of the run.";
         } else {

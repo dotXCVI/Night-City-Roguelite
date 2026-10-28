@@ -67,9 +67,13 @@ public abstract class RLGear {
     return true;
   }
 
-  public static func InstallCyberware(player: ref<PlayerPuppet>, recordID: TweakDBID) -> Bool {
+  public static func InstallCyberware(player: ref<PlayerPuppet>, recordID: TweakDBID) -> Bool = ItemID.IsValid(RLGear.InstallCyberwareItem(player, recordID))
+
+  // Installs chrome and returns the installed copy's item ID (the request
+  // is queued; the ID is the handle on it).
+  public static func InstallCyberwareItem(player: ref<PlayerPuppet>, recordID: TweakDBID) -> ItemID {
     if !TDBID.IsValid(recordID) {
-      return false;
+      return ItemID.None();
     }
     let itemID = ItemID.FromTDBID(recordID);
     let area = EquipmentSystem.GetEquipAreaType(itemID);
@@ -79,7 +83,7 @@ public abstract class RLGear {
     request.addToInventory = !GameInstance.GetTransactionSystem(player.GetGame()).HasItem(player, itemID);
     request.slotIndex = RLGear.FindFreeSlot(player, area);
     EquipmentSystem.GetInstance(player).QueueRequest(request);
-    return true;
+    return itemID;
   }
 
   // What installing into the area would replace: the item in slot 0 when
@@ -241,7 +245,7 @@ public abstract class RLKits {
         perk = gamedataNewPerkType.Reflexes_Right_Milestone_2;
         break;
       case n"Netrunner":
-        RLGear.InstallCyberware(player, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
+        RLKits.Chrome(player, run, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
         let first = pools.PickQuickhack(0, noIDs);
         let second = pools.PickQuickhack(0, [first]);
         RLGear.GiveQuickhacks(player, [first, second]);
@@ -254,7 +258,8 @@ public abstract class RLKits {
         perk = gamedataNewPerkType.Cool_Left_Milestone_2;
         break;
       case n"Brawler":
-        RLGear.InstallCyberware(player, pools.PickCyberware(0, false, gamedataItemType.Cyb_StrongArms, noIDs));
+        // The arms are the main weapon; the shotgun backs them up.
+        RLKits.Arms(player, pools, run, gamedataItemType.Cyb_StrongArms, weapons);
         RLKits.Weapon(player, pools, [gamedataItemType.Wea_Shotgun, gamedataItemType.Wea_ShotgunDual], basic, weapons);
         perk = gamedataNewPerkType.Body_Left_Milestone_2;
         break;
@@ -270,8 +275,8 @@ public abstract class RLKits {
         break;
       case n"Wireman":
         // Monowire with a deck behind it: Siphon turns every lash into RAM.
-        RLGear.InstallCyberware(player, pools.PickCyberware(0, false, gamedataItemType.Cyb_NanoWires, noIDs));
-        RLGear.InstallCyberware(player, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
+        RLKits.Arms(player, pools, run, gamedataItemType.Cyb_NanoWires, weapons);
+        RLKits.Chrome(player, run, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
         RLGear.GiveQuickhacks(player, [pools.PickQuickhack(0, noIDs)]);
         RLKits.Weapon(player, pools, pistols, basic, weapons);
         perk = gamedataNewPerkType.Intelligence_Inbetween_Left_2;
@@ -301,6 +306,32 @@ public abstract class RLKits {
       RLConsumables.SetGrenade(player, RLConsumables.PickGrenadeOfFamily("Frag", 0));
     }
     RLLog("Kit applied: " + NameToString(kit) + ".");
+  }
+
+  // Kit chrome brings its own capacity: a level-1 V never has it refused.
+  private static func Chrome(player: ref<PlayerPuppet>, run: ref<RLRunState>, record: TweakDBID) {
+    let cost = RLGear.NetCapacityCost(player, record);
+    if cost > 0.0 {
+      RLEvents.AddRunMod(player, run, gamedataStatType.Humanity, gameStatModifierType.Additive, cost);
+    }
+    if !RLGear.InstallCyberware(player, record) {
+      RLLog("Kit chrome missing: no record to install.");
+    }
+  }
+
+  // The kit's arm chrome, plain and Uncommon, as its main weapon.
+  private static func Arms(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, itemType: gamedataItemType, out weapons: array<ItemID>) {
+    let noIDs: array<TweakDBID>;
+    let record = RLArms.Record(RLArms.Family(itemType), "", RLArms.MinStep());
+    if !TDBID.IsValid(record) {
+      record = pools.PickCyberware(0, false, itemType, noIDs);
+    }
+    let given = RLArms.Install(player, run, record, ItemID.None());
+    if ItemID.IsValid(given) {
+      ArrayPush(weapons, given);
+    } else {
+      RLLog("Kit arms missing: no record to install.");
+    }
   }
 
   private static func Weapon(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, types: array<gamedataItemType>, evolutions: array<gamedataWeaponEvolution>, out weapons: array<ItemID>) -> Bool {

@@ -227,7 +227,7 @@ public abstract class RLStyles {
       }
     }
     // Weapon effects count for the main weapon's style.
-    let mainStyle = RLWeapons.FamilyStyle(RLWeapons.FamilyOfRecord(RLWeapons.MainRecord(run)));
+    let mainStyle = RLWeapons.MainStyle(run);
     if mainStyle >= 0 {
       points[mainStyle] += RLBoons.WeaponEffectCount(run);
     }

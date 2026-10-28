@@ -219,6 +219,16 @@ You play one gun, so the run builds one gun:
   a third effect slot. The stranger's iconic (Act 2 on) is the only other
   way to one.
 - **Act step.** Beating a boss steps both weapons up one quality.
+- **Arm chrome as the main weapon.** The Brawler's Gorilla Arms and the
+  Wireman's Monowire are their main weapons (the gun is the sidearm), and
+  weapon effects work on them like on any gun. Their rewards follow the
+  game's own upgrade path: a Tune-Up swaps in the next quality of the same
+  arms (arm chrome starts at Uncommon), the Armory offers a **REWIRE**
+  instead of a trade - the same arms in another element, where Thermal hits
+  BURN, Electric hits SHOCK and Chemical hits make them BLEED - and the
+  evolution takes them to Legendary++ with a third weapon effect slot. The
+  arms bring their own capacity, Chrome doors don't offer other arms while
+  they're in the slot, and the stranger doesn't deal in them.
 
 ### Styles
 

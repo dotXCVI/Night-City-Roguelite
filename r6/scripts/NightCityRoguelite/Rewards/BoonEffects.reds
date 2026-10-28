@@ -334,6 +334,10 @@ public abstract class RLBoonEffects {
       RLKeywords.Burn(fx, target);
       RLKeywords.Bleed(fx, target, 1);
     }
+    // Elemental arm chrome in the main slot speaks its keyword.
+    if main && StrLen(fx.run.mainElement) > 0 {
+      RLArms.OnMainHit(fx, target);
+    }
     // Nomad Run: from 10 stacks, hits knock enemies down.
     if !explosion && fx.Has(n"NomadRun") && fx.combat.momentum >= 10 && !RLHitFlag.Has(flags, RLHitFlag.Tick()) && RLKeywords.Knockdown(fx, target) {
       RLBoonEffects.Note(fx, n"NomadRun", 0.0);

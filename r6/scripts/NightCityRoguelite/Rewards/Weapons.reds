@@ -36,13 +36,27 @@ public abstract class RLWeaponFamily {
 public abstract class RLWeapons {
   // --- The slots ------------------------------------------------------------------------------
 
+  // A hit's weapon is the main one. Drawn arm chrome is matched by record
+  // too, in case the game hands the hit a copy of the installed item.
   public static func IsMain(run: ref<RLRunState>, itemID: ItemID) -> Bool {
-    return ItemID.IsValid(run.mainWeapon) && run.mainWeapon == itemID;
+    if !ItemID.IsValid(run.mainWeapon) || !ItemID.IsValid(itemID) {
+      return false;
+    }
+    return run.mainWeapon == itemID || RLArms.IsArms(itemID) && ItemID.GetTDBID(itemID) == ItemID.GetTDBID(run.mainWeapon);
   }
 
-  // Weapon effects the main weapon can hold: two, three on an iconic.
+  // Weapon effects the main weapon can hold: two, three once it's evolved.
   public static func EffectSlots(run: ref<RLRunState>) -> Int32 {
-    return ItemID.IsValid(run.mainWeapon) && RLWeapons.IsIconic(run.mainWeapon) ? 3 : 2;
+    return ItemID.IsValid(run.mainWeapon) && (RLWeapons.IsIconic(run.mainWeapon) || run.mainEvolved) ? 3 : 2;
+  }
+
+  // The style the main weapon's weapon effects count for.
+  public static func MainStyle(run: ref<RLRunState>) -> Int32 {
+    if !ItemID.IsValid(run.mainWeapon) {
+      return -1;
+    }
+    let styles = RLStyles.ItemStyles(run.mainWeapon);
+    return ArraySize(styles) > 0 ? styles[0] : -1;
   }
 
   public static func MainItem(player: ref<PlayerPuppet>, run: ref<RLRunState>) -> wref<gameItemData> {
@@ -60,14 +74,20 @@ public abstract class RLWeapons {
   public static func AssignSlots(run: ref<RLRunState>, weapons: array<ItemID>) {
     run.mainWeapon = ArraySize(weapons) > 0 ? weapons[0] : ItemID.None();
     run.sidearm = ArraySize(weapons) > 1 ? weapons[1] : ItemID.None();
-    run.mainStep = 0;
+    run.mainStep = RLArms.IsArms(run.mainWeapon) ? RLArms.MinStep() : 0;
     run.sidearmStep = 0;
+    run.mainElement = "";
+    run.mainEvolved = false;
   }
 
-  // Puts both slots' guns at their steps.
+  // Puts both slots' weapons at their steps (arm chrome by swapping records,
+  // Rewards/ArmChrome.reds).
   public static func ApplySteps(player: ref<PlayerPuppet>, run: ref<RLRunState>) {
     let transactions = GameInstance.GetTransactionSystem(player.GetGame());
-    if ItemID.IsValid(run.mainWeapon) {
+    if RLArms.IsMainArms(run) {
+      run.mainStep = Max(run.mainStep, RLArms.MinStep());
+      RLArms.ReplaceMain(player, run, RLArms.MainRecordAt(run, run.mainStep));
+    } else if ItemID.IsValid(run.mainWeapon) {
       let main = transactions.GetItemData(player, run.mainWeapon);
       if IsDefined(main) {
         RPGManager.ForceItemTier(player, main, RLQuality.TierName(run.mainStep));
@@ -119,14 +139,14 @@ public abstract class RLWeapons {
   // The main weapon can evolve now: Legendary, two weapon effects, not
   // already an iconic.
   public static func CanEvolve(run: ref<RLRunState>) -> Bool {
-    return ItemID.IsValid(run.mainWeapon) && !RLWeapons.IsIconic(run.mainWeapon)
+    return ItemID.IsValid(run.mainWeapon) && !RLWeapons.IsIconic(run.mainWeapon) && !run.mainEvolved
       && run.mainStep >= 8 && RLBoons.WeaponEffectCount(run) >= 2;
   }
 
   // What evolving still needs, for the Armory's cards ("" once it can, or
   // when it never will).
   public static func EvolveRecipe(run: ref<RLRunState>) -> String {
-    if !ItemID.IsValid(run.mainWeapon) || RLWeapons.IsIconic(run.mainWeapon) || RLWeapons.CanEvolve(run) {
+    if !ItemID.IsValid(run.mainWeapon) || RLWeapons.IsIconic(run.mainWeapon) || run.mainEvolved || RLWeapons.CanEvolve(run) {
       return "";
     }
     return s"Evolves at Legendary with 2 weapon effects (now \(RLQuality.DisplayName(run.mainStep)), \(RLBoons.WeaponEffectCount(run))/2).";

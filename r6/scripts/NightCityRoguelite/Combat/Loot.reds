@@ -123,21 +123,38 @@ public abstract class RLLoot {
 
   // --- Pickups ---------------------------------------------------------------------------
 
+  // V's own hands, whatever they are: the fists, the default handgun slot,
+  // and arm chrome (Gorilla Arms, Mantis Blades, Monowire, the Projectile
+  // Launcher). Arm chrome counts as a weapon in the game's books, and the
+  // game hands out the holstered arms itself whenever V draws them - the
+  // filters below must never take either away.
+  public static func IsOwnHands(itemID: ItemID) -> Bool {
+    let area = EquipmentSystem.GetEquipAreaType(itemID);
+    let record = ItemID.GetTDBID(itemID);
+    let holstered = RLLoot.HolsteredArmChrome();
+    return Equals(area, gamedataEquipmentArea.BaseFists) || Equals(area, gamedataEquipmentArea.VDefaultHandgun)
+      || Equals(area, gamedataEquipmentArea.ArmsCW) || RLCharacterReset.IsBodyItem(record)
+      || ArrayContains(holstered, record);
+  }
+
+  // How arm chrome looks put away (each arm record's HolsteredItem). Only the
+  // loot filters spare these; a reset between runs clears them with the chrome.
+  public static func HolsteredArmChrome() -> array<TweakDBID> {
+    return [t"Items.StrongHolsteredFists", t"Items.MantisBladeHolsteredFists", t"Items.NanoWireHolsteredFists", t"Items.ProjectileLauncherHolsteredFists"];
+  }
+
   // Safety net behind the pickup filter (run on every trip): weapons the run
   // didn't hand out - one an enemy dropped that slipped past the filter - are
-  // taken away. V's fists and default handgun slot are never touched.
+  // taken away. V's own hands (IsOwnHands) are never touched.
   public static func RemoveStrayWeapons(player: ref<PlayerPuppet>, granted: array<TweakDBID>) {
     let transactionSystem = GameInstance.GetTransactionSystem(player.GetGame());
     let items: array<wref<gameItemData>>;
     transactionSystem.GetItemList(player, items);
     let stray: array<ItemID>;
     for item in items {
-      if IsDefined(item) && Equals(RPGManager.GetItemCategory(item.GetID()), gamedataItemCategory.Weapon) {
-        let area = EquipmentSystem.GetEquipAreaType(item.GetID());
-        if NotEquals(area, gamedataEquipmentArea.BaseFists) && NotEquals(area, gamedataEquipmentArea.VDefaultHandgun)
-          && !ArrayContains(granted, ItemID.GetTDBID(item.GetID())) && !RLCharacterReset.IsBodyItem(ItemID.GetTDBID(item.GetID())) {
-          ArrayPush(stray, item.GetID());
-        }
+      if IsDefined(item) && Equals(RPGManager.GetItemCategory(item.GetID()), gamedataItemCategory.Weapon)
+        && !RLLoot.IsOwnHands(item.GetID()) && !ArrayContains(granted, ItemID.GetTDBID(item.GetID())) {
+        ArrayPush(stray, item.GetID());
       }
     }
     for itemID in stray {
@@ -154,7 +171,7 @@ public abstract class RLLoot {
       return false;
     }
     let tdbid = ItemID.GetTDBID(itemID);
-    if RLCharacterReset.IsBodyItem(tdbid) {
+    if RLLoot.IsOwnHands(itemID) {
       return false;
     }
     let record = TweakDBInterface.GetItemRecord(tdbid);

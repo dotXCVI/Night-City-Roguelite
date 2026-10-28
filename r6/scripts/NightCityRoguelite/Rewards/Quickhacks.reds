@@ -432,6 +432,8 @@ public abstract class RLHacks {
     if !IsDefined(family) {
       return;
     }
+    // Credited to the hack ("HackOverheat", "HackContagion").
+    RLBoonEffects.As(fx, StringToName("Hack" + NameToString(family.id)));
     switch family.keyword {
       case n"MARK":
         RLKeywords.Mark(fx, target, 10.0);
@@ -460,6 +462,7 @@ public abstract class RLHacks {
     if fx.combat.IsBleeding(foe, fx.now) {
       foe.bleedUntil = MaxF(foe.bleedUntil, fx.now + 2.0);
     } else {
+      RLBoonEffects.As(fx, n"HackContagion");
       RLKeywords.Bleed(fx, target, 1);
     }
   }

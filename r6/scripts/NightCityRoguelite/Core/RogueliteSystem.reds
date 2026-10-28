@@ -835,10 +835,19 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     if IsDefined(this.m_run) {
       RLLog(s"\(this.m_run.FloorLabel()), arena \(IsDefined(arena) ? arena.name : "-"), wave \(this.m_wave)/\(this.m_waveCount), alive \(this.m_alive), offers \(ArraySize(this.m_offers)), doors \(ArraySize(this.m_doors)), event \(IsDefined(this.m_event)), objective \(IsDefined(this.m_objective) ? this.m_objective.Status() : "-").");
+      let markers = IsDefined(this.m_objective) ? this.m_objective.Markers() : "";
+      if StrLen(markers) > 0 {
+        RLLog("Objective markers: " + markers + ".");
+      }
       for line in this.m_spawner.Describe(player) {
         RLLog(line);
       }
-      RLTelemetry.Record(this.m_run, "MARK", RLTelemetry.IntField("n", this.m_bugMarks) + RLTelemetry.IntField("depth", this.m_run.Depth()) + RLTelemetry.Field("state", state));
+      // The text log only keeps its last lines, so the record carries where
+      // it happened too.
+      RLTelemetry.Record(this.m_run, "MARK", RLTelemetry.IntField("n", this.m_bugMarks) + RLTelemetry.IntField("depth", this.m_run.Depth()) + RLTelemetry.Field("state", state)
+        + RLTelemetry.Field("arena", IsDefined(arena) ? NameToString(arena.id) : "") + RLTelemetry.Field("at", IsDefined(player) ? RLObjectives.Where(player.GetWorldPosition()) : "")
+        + RLTelemetry.IntField("wave", this.m_wave) + RLTelemetry.IntField("alive", this.m_alive)
+        + RLTelemetry.Field("obj", IsDefined(this.m_objective) ? this.m_objective.Status() : "") + RLTelemetry.Field("markers", markers));
     }
     RLNotify(game, s"Bug marked (#\(this.m_bugMarks)). Quit through the menu so the log saves.", 4.0);
   }
@@ -1645,6 +1654,7 @@ public class RogueliteSystem extends ScriptableSystem {
       return 1.0;
     }
     let player = GetPlayer(this.GetGameInstance());
+    this.m_combat.CreditHit(this.m_combat.Foe(target.GetEntityID()), target, hitEvent);
     return IsDefined(player) ? RLBoonEffects.OnOutgoingHit(this.Fx(player), target, hitEvent) : 1.0;
   }
 
@@ -1854,7 +1864,8 @@ public class RogueliteSystem extends ScriptableSystem {
       fields += RLTelemetry.Field("door", RLRewards.CategoryName(door.category)) + RLTelemetry.Field("patron", NameToString(door.patron))
         + RLTelemetry.Field("obj", RLObjectives.Name(door.objective)) + RLTelemetry.IntField("hot", door.hot ? 1 : 0);
     }
-    fields += RLTelemetry.IntField("cover", this.m_run.cover) + RLTelemetry.IntField("dmg", RoundF(this.m_combat.damageDealt)) + RLTelemetry.Field("fx", this.m_combat.Ledger());
+    fields += RLTelemetry.IntField("cover", this.m_run.cover) + RLTelemetry.IntField("dealt", RoundF(this.m_combat.damageDealt))
+      + RLTelemetry.IntField("hits", this.m_combat.mainHitCount) + RLTelemetry.Field("fx", this.m_combat.Ledger());
     if IsDefined(arena) {
       fields += RLTelemetry.Field("arena", NameToString(arena.id));
     }

@@ -178,7 +178,7 @@ public class RLObjective {
         // The charges go off (not the one V is standing at).
         for point in this.m_points {
           if Vector4.Distance(point, position) > 10.0 {
-            RLExplosions.Blast(player, point, t"Attacks.CyberwareExplosion", 8.0);
+            RLExplosions.Blast(player, point, t"Attacks.CyberwareExplosion", 8.0, null, n"Sabotage");
           }
         }
       }
@@ -232,6 +232,18 @@ public class RLObjective {
     this.m_closest[i] = 0.0;
     this.m_stuck[i] = 0.0;
     GameInstance.GetMappinSystem(game).SetMappinPosition(this.m_mappins[i], point);
+  }
+
+  // Each marker and its seconds of progress, for a bug mark:
+  // "(x, y, z) 2s, ...".
+  public func Markers() -> String {
+    let text = "";
+    let i = 0;
+    while i < ArraySize(this.m_points) {
+      text += (i > 0 ? ", " : "") + RLObjectives.Where(this.m_points[i]) + " " + IntToString(RoundF(this.m_pointProgress[i])) + "s";
+      i += 1;
+    }
+    return text;
   }
 
   // The HUD line.

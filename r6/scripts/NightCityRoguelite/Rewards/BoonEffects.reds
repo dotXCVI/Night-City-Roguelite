@@ -310,20 +310,20 @@ public abstract class RLBoonEffects {
       }
     }
     if explosion && fx.Has(n"EMPPayload") {
+      RLBoonEffects.Note(fx, n"EMPPayload", 0.0);
       RLKeywords.Shock(fx, target);
       RLKeywords.Glitch(fx, target);
-      RLBoonEffects.Note(fx, n"EMPPayload", 0.0);
     }
     if explosion && fx.Has(n"Napalm") {
-      RLKeywords.Burn(fx, target);
       RLBoonEffects.Note(fx, n"Napalm", 0.0);
+      RLKeywords.Burn(fx, target);
     }
     if explosion && fx.Has(n"Shrapnel") {
+      RLBoonEffects.Note(fx, n"Shrapnel", 0.0);
       RLKeywords.Bleed(fx, target, 1);
       if fx.Overclocked(n"Shrapnel") {
         RLKeywords.Mark(fx, target, 6.0);
       }
-      RLBoonEffects.Note(fx, n"Shrapnel", 0.0);
     }
     // SHOCK
     if hit && fx.Has(n"ThunderRounds") && (RLHitFlag.Has(flags, RLHitFlag.Headshot()) || Equals(ctx.hitEvent.attackData.GetAttackType(), gamedataAttackType.StrongMelee)) {
@@ -352,14 +352,16 @@ public abstract class RLBoonEffects {
     if hit && fx.Has(n"HotBarrel") {
       RLBoonEffects.HeatUp(fx, crit, melee);
       if combat.hotUntil > fx.now {
+        RLBoonEffects.As(fx, n"HotBarrel");
         RLKeywords.Burn(fx, target);
       }
     }
     if (crit || melee) && fx.Has(n"Bloodletter") {
-      RLKeywords.Bleed(fx, target, 1);
       RLBoonEffects.Note(fx, n"Bloodletter", 0.0);
+      RLKeywords.Bleed(fx, target, 1);
     }
     if fx.Has(n"Cyberpsychosis") && RLBoonEffects.PlayerHealth(fx) < 50.0 {
+      RLBoonEffects.As(fx, n"Cyberpsychosis");
       RLKeywords.Burn(fx, target);
       RLKeywords.Bleed(fx, target, 1);
     }
@@ -373,6 +375,7 @@ public abstract class RLBoonEffects {
     }
     if main {
       combat.lastMainHitAt = fx.now;
+      combat.mainHitCount += 1;
       RLArmModEffects.OnMainHit(fx, ctx, dealt);
       RLSignatures.OnMainHit(fx, ctx, dealt);
     }
@@ -427,8 +430,8 @@ public abstract class RLBoonEffects {
       RLBoonEffects.Note(fx, n"GhostProtocol", 0.0);
     }
     if fx.Has(n"GhostShot") && marked {
-      RLKeywords.Shock(fx, target);
       RLBoonEffects.Note(fx, n"GhostShot", 0.0);
+      RLKeywords.Shock(fx, target);
     }
     if fx.Overclocked(n"KiroshiUplink") {
       for other in RLKeywords.EnemiesNear(fx, target.GetWorldPosition(), 5.0) {
@@ -469,6 +472,7 @@ public abstract class RLBoonEffects {
       if fx.Overclocked(n"ArcFlash") && RLLuck.Roll(fx, critChance) {
         arc *= 2.0;
       }
+      RLBoonEffects.As(fx, n"ArcFlash");
       RLKeywords.Damage(fx, next, arc);
       RLKeywords.Shock(fx, next);
       dealt += arc;
@@ -501,8 +505,8 @@ public abstract class RLBoonEffects {
         let next = RLBoonEffects.NearestExcept(fx, target.GetWorldPosition(), 15.0, taken);
         if IsDefined(next) && !fx.combat.IsBoss(next.GetEntityID()) {
           ArrayPush(taken, next.GetEntityID());
-          RLKeywords.DamagePercent(fx, next, 1.0);
           RLBoonEffects.Note(fx, n"DeadMansHand", 0.0);
+          RLKeywords.DamagePercent(fx, next, 1.0);
           RLKeywords.Tag(fx, "HEADS", n"MainColors.Purple");
         }
         i += 1;
@@ -607,8 +611,8 @@ public abstract class RLBoonEffects {
         let next = RLBoonEffects.NearestExceptMarked(fx, position, 25.0, aimed, fx.Has(n"SmartLink"));
         if IsDefined(next) {
           ArrayPush(aimed, next.GetEntityID());
-          RLEffectStep.ScheduleOn(fx, n"missile", next, 0.35 + 0.15 * Cast<Float>(i));
           RLBoonEffects.Note(fx, n"KillSwitch", 0.0);
+          RLEffectStep.ScheduleOn(fx, n"missile", next, 0.35 + 0.15 * Cast<Float>(i));
         }
         i += 1;
       }
@@ -638,6 +642,7 @@ public abstract class RLBoonEffects {
       }
     }
     if shocked && fx.Overclocked(n"FeedbackLoop") {
+      RLBoonEffects.As(fx, n"FeedbackLoop");
       for other in RLKeywords.EnemiesNear(fx, position, 5.0) {
         RLKeywords.Shock(fx, other);
       }
@@ -675,6 +680,7 @@ public abstract class RLBoonEffects {
       }
     }
     if (burning || bleeding) && fx.Has(n"BloodMoney") && RLLuck.Roll(fx, 0.25) {
+      RLBoonEffects.As(fx, n"BloodMoney");
       let times = RLLuck.Times(fx);
       let passed: array<EntityID>;
       ArrayPush(passed, bodyID);
@@ -734,8 +740,8 @@ public abstract class RLBoonEffects {
     if combat.shield && fx.Has(n"RiotPlating") {
       for enemy in RLKeywords.EnemiesNear(fx, position, 3.5) {
         RLKeywords.Knockdown(fx, enemy);
-        RLKeywords.DamagePercent(fx, enemy, 0.1);
         RLBoonEffects.Note(fx, n"RiotPlating", 0.0);
+        RLKeywords.DamagePercent(fx, enemy, 0.1);
         if fx.Overclocked(n"RiotPlating") {
           RLKeywords.Blast(fx, enemy.GetWorldPosition(), 2.5, null, 0);
         }
@@ -748,13 +754,13 @@ public abstract class RLBoonEffects {
     }
     if fx.Has(n"Convoy") && fx.now - combat.convoyAt >= 2.0 {
       combat.convoyAt = fx.now;
-      RLEffectStep.Schedule(fx, n"charge", position, 4.0, 0, 1.0);
       RLBoonEffects.Note(fx, n"Convoy", 0.0);
+      RLEffectStep.Schedule(fx, n"charge", position, 4.0, 0, 1.0);
     }
     if fx.Has(n"Burnout") {
       for enemy in RLKeywords.EnemiesNear(fx, position, 4.0) {
-        RLKeywords.Burn(fx, enemy);
         RLBoonEffects.Note(fx, n"Burnout", 0.0);
+        RLKeywords.Burn(fx, enemy);
       }
     }
     if fullBefore && fx.Has(n"Getaway") && fx.now - combat.getawayAt >= 1.0 && RLLuck.Roll(fx, 0.34) {
@@ -850,6 +856,7 @@ public abstract class RLBoonEffects {
       let puppet = RLBoonEffects.Puppet(fx, foe);
       if IsDefined(puppet) {
         RLHacks.PoisonBleeds(fx, puppet, foe);
+        RLBoonEffects.ForgetSources(fx, foe, puppet);
       }
     }
     // With a deck: seconds spent under a quarter of the RAM (telemetry).
@@ -886,8 +893,8 @@ public abstract class RLBoonEffects {
       for foe in combat.Foes() {
         let puppet = RLBoonEffects.Puppet(fx, foe);
         if IsDefined(puppet) && RLKeywords.IsBurning(puppet) {
-          RLKeywords.Shock(fx, puppet);
           RLBoonEffects.Note(fx, n"ShortCircuit", 0.0);
+          RLKeywords.Shock(fx, puppet);
         }
       }
     }
@@ -910,6 +917,7 @@ public abstract class RLBoonEffects {
         } else {
           let puppet = RLBoonEffects.Puppet(fx, foe);
           if IsDefined(puppet) {
+            RLBoonEffects.As(fx, n"Hemorrhage");
             RLKeywords.Bleed(fx, puppet, 1);
           }
         }
@@ -924,7 +932,7 @@ public abstract class RLBoonEffects {
         let puppet = RLBoonEffects.Puppet(fx, foe);
         if IsDefined(puppet) {
           let share = (foe.isBoss ? 0.004 : 0.015) * Cast<Float>(foe.bleedStacks);
-          RLKeywords.DamagePercent(fx, puppet, share);
+          RLKeywords.DamagePercentFor(fx, puppet, share, foe.bleedSource);
         }
       } else if foe.bleedStacks > 0 {
         foe.bleedStacks = 0;
@@ -938,9 +946,9 @@ public abstract class RLBoonEffects {
       if IsDefined(puppet) && RLKeywords.IsShocked(fx, foe, puppet) {
         let other = RLKeywords.Nearest(fx, puppet.GetWorldPosition(), 8.0, foe.id, false);
         if IsDefined(other) {
+          RLBoonEffects.Note(fx, n"Favour_VoodooBoys", 0.0);
           RLKeywords.Shock(fx, other);
           RLKeywords.DamagePercent(fx, other, 0.05);
-          RLBoonEffects.Note(fx, n"Favour_VoodooBoys", 0.0);
         }
       }
     }
@@ -1112,6 +1120,26 @@ public abstract class RLBoonEffects {
     fx.combat.Fired(id, damage);
   }
 
+  // A status that wore off forgets which effect put it there, so one the
+  // game applies later (a grenade, an elemental weapon) isn't credited to it.
+  private static func ForgetSources(fx: ref<RLFx>, foe: ref<RLFoe>, puppet: ref<ScriptedPuppet>) {
+    if !RLKeywords.IsBurning(puppet) {
+      foe.burnSource = n"";
+    }
+    if !fx.combat.IsBleeding(foe, fx.now) && !StatusEffectSystem.ObjectHasStatusEffectOfType(puppet, gamedataStatusEffectType.Bleeding) {
+      foe.bleedSource = n"";
+    }
+    if !RLKeywords.IsShocked(fx, foe, puppet) {
+      foe.shockSource = n"";
+    }
+  }
+
+  // What follows is `id`'s doing (credited to it in the ledger) without
+  // counting as a fire.
+  public static func As(fx: ref<RLFx>, id: CName) {
+    fx.combat.source = id;
+  }
+
   public static func GiveRam(fx: ref<RLFx>, amount: Float) {
     GameInstance.GetStatPoolsSystem(fx.game).RequestChangingStatPoolValue(Cast<StatsObjectID>(fx.player.GetEntityID()), gamedataStatPoolType.Memory, amount, null, false, false);
   }
@@ -1221,6 +1249,7 @@ public abstract class RLDrone {
       return;
     }
     let made = RLBoons.Makes(fx.run);
+    RLBoonEffects.As(fx, n"DroneEscort");
     if ArrayContains(made, n"MARK") { RLKeywords.Mark(fx, target, 6.0); }
     if ArrayContains(made, n"SHOCK") { RLKeywords.Shock(fx, target); }
     if ArrayContains(made, n"BURN") { RLKeywords.Burn(fx, target); }

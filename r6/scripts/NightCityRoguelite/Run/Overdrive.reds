@@ -108,7 +108,7 @@ public abstract class RLOverdrive {
         time.SetTimeDilation(n"NCRogueliteZeroHour", 0.06, 7.0, n"Linear", n"Linear");
         break;
       case n"Berserk":
-        RLExplosions.Blast(player, player.GetWorldPosition(), t"Attacks.CyberwareExplosion", 8.0);
+        RLExplosions.Blast(player, player.GetWorldPosition(), t"Attacks.CyberwareExplosion", 8.0, null, n"Rampage");
         combat.rampageUntil = now + 8.0;
         break;
       case n"Cyberdeck":
@@ -132,7 +132,9 @@ public abstract class RLOverdrive {
     }
     let system = RogueliteSystem.Get(game);
     if RLTerminal.Has(n"Meltdown", 2) && IsDefined(system) && system.IsFighting() {
-      RLKeywords.Blast(system.Fx(player), player.GetWorldPosition(), 6.0, null, 0);
+      let fx = system.Fx(player);
+      RLBoonEffects.As(fx, n"Meltdown");
+      RLKeywords.Blast(fx, player.GetWorldPosition(), 6.0, null, 0);
     }
   }
 

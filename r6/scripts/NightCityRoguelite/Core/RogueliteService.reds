@@ -65,23 +65,48 @@ public class RogueliteService extends ScriptableService {
   // --- Access -------------------------------------------------------------------
 
   public func AppendLog(const line: String) {
-    while ArraySize(this.m_log) >= 600 {
-      ArrayErase(this.m_log, 0);
-    }
     // CName because Codeware can't persist strings; it stores the text as-is.
     this.m_logSeq += 1;
-    ArrayPush(this.m_log, StringToName(s"[\(this.m_logSeq)] " + line));
+    let pieces = RogueliteService.Pieces(line);
+    let i = 0;
+    while i < ArraySize(pieces) {
+      ArrayPush(this.m_log, StringToName(s"[\(this.m_logSeq)]" + (i > 0 ? "+ " : " ") + pieces[i]));
+      i += 1;
+    }
+    // Enough to keep a bug mark's snapshot through the rest of the run.
+    while ArraySize(this.m_log) > 2000 {
+      ArrayErase(this.m_log, 0);
+    }
   }
 
   // About 50 runs' worth of telemetry. Numbered for the same reason as the log
   // (two rerolls on one floor are identical records); the number follows the
   // version tag: T1|<seq>|<run id>|...
   public func AppendTelemetry(const version: String, const record: String) {
-    while ArraySize(this.m_telemetry) >= 1500 {
+    this.m_telemetrySeq += 1;
+    let pieces = RogueliteService.Pieces(record);
+    let i = 0;
+    while i < ArraySize(pieces) {
+      ArrayPush(this.m_telemetry, StringToName(version + (i > 0 ? "+|" : "|") + IntToString(this.m_telemetrySeq) + "|" + pieces[i]));
+      i += 1;
+    }
+    while ArraySize(this.m_telemetry) > 4000 {
       ArrayErase(this.m_telemetry, 0);
     }
-    this.m_telemetrySeq += 1;
-    ArrayPush(this.m_telemetry, StringToName(version + "|" + IntToString(this.m_telemetrySeq) + "|" + record));
+  }
+
+  // A saved name holds 255 bytes, so a longer line is saved in pieces: every
+  // piece after the first carries the same number with a "+" (T1+|<seq>|,
+  // [<seq>]+), and tools/runreport.py joins them.
+  private static func Pieces(const text: String) -> array<String> {
+    let pieces: array<String>;
+    let rest = text;
+    while StrLen(rest) > 200 {
+      ArrayPush(pieces, StrLeft(rest, 200));
+      rest = StrRight(rest, StrLen(rest) - 200);
+    }
+    ArrayPush(pieces, rest);
+    return pieces;
   }
 
   public static func Get() -> ref<RogueliteService> {

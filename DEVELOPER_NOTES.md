@@ -304,10 +304,17 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   .dat, `T1|<seq>|<run id>|<KIND>|k=v;...` - RUN, FLOOR (door, objective,
   arena, faction, waves, seconds, damage, lowest health, heals, kills), OFFER
   (every card), PICK, BUILD (level, attributes, build tags, boons), DEATH (the
-  last attacker, with role and affixes), END, MARK. Last 1500 records.
-  Records are numbered because the store keeps identical names once.
+  last attacker, with role and affixes), END, MARK (arena, V's position,
+  wave, objective markers). Records are numbered because the store keeps
+  identical names once, and saved as names, which hold 255 bytes: longer
+  records and log lines go in pieces (`RogueliteService.Pieces`) that the
+  reader joins. FLOOR's effect ledger credits an effect with its multipliers'
+  extra damage and with what its blasts, strikes and statuses deal as they
+  land (`RLCombatState.source`, `TrackBlast`, `CreditHit`); `hits` counts the
+  main weapon's hits, the yardstick for a weapon effect's fires.
   `tools/runreport.py <game folder>` prints a floor table per run; `--csv`
-  writes runs/floors/picks CSVs; `--marks` prints every bug mark. When adding
+  writes runs/floors/picks CSVs; `--marks` prints every bug mark; `--effects`
+  (optionally `--kit Brawler`) totals each effect's fires and damage. When adding
   a decision point (a new screen, door type or event), record its OFFER/PICK.
 - **Test runs** are behind `RLConfig.DevTools()` (off in releases): it adds
   the FLOOR and TEST RUN cards to the terminal.

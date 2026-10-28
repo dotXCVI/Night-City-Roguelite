@@ -134,6 +134,7 @@ public abstract class RLWeaponActions {
       RLBoonEffects.Note(fx, n"TracerRounds", 0.0);
     }
     if fx.combat.shellHot && RLWeaponActions.InShell(fx) {
+      RLBoonEffects.As(fx, n"HotBarrel");
       RLKeywords.Burn(fx, target);
     }
   }
@@ -183,6 +184,7 @@ public abstract class RLWeaponActions {
         }
       }
       if combat.hotUntil > fx.now {
+        RLBoonEffects.As(fx, n"HotBarrel");
         RLKeywords.Burn(fx, target);
       }
     }
@@ -216,6 +218,7 @@ public abstract class RLWeaponActions {
     if !IsDefined(next) {
       return;
     }
+    RLBoonEffects.As(fx, n"LuckyRound");
     if foe.markUntil > fx.now { RLKeywords.Mark(fx, next, 6.0); }
     if RLKeywords.IsShocked(fx, foe, source) { RLKeywords.Shock(fx, next); }
     if foe.glitchUntil > fx.now { RLKeywords.Glitch(fx, next); }

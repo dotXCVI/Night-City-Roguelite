@@ -137,7 +137,11 @@ Tell me how these feel:
   they have their own mods now.
 - **Weapon effects read your weapon:** on a launcher they count shells, on a
   deck they count quickhacks. Do Payload, Hot Barrel, Lucky Round and the
-  rest fire about as often as their cards say?
+  rest fire about as often as their cards say? On Gorilla Arms especially:
+  in the last log Hot Barrel never went off in five floors.
+- **Arenas with rooms:** locked, sealed and keypad doors inside an arena
+  should be open when you arrive. Any objective marker or enemy you still
+  can't reach? Press F8 right there.
 - **Evolution:** chrome that evolves (Legendary with two weapon effects)
   learns a trick - SHOCKWAVE, BLOOD RUSH, LIVE WIRE, BELT FEED, CASCADE.
   Can you see it happen? The stranger (a ? door from Act 2) sells it early.

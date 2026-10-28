@@ -9,6 +9,8 @@ floor-by-floor report of recent runs, or writes CSV files for charts.
     python3 tools/runreport.py <...> --csv out/        # runs.csv, floors.csv, picks.csv
     python3 tools/runreport.py <...> --log 80          # last 80 log lines
     python3 tools/runreport.py <...> --marks           # every bug mark with its snapshot
+    python3 tools/runreport.py <...> --effects         # damage and fires per effect, all runs
+    python3 tools/runreport.py <...> --effects --kit Brawler
 
 The data lives in
     <game>/red4ext/plugins/Codeware/Persistent/ScriptableServiceContainer.dat
@@ -29,21 +31,33 @@ def load(path):
     if os.path.isdir(path):
         path = os.path.join(path, DAT)
     data = open(path, 'rb').read()
-    strings = [m.group().decode('ascii', 'replace') for m in re.finditer(rb'[\x20-\x7e]{4,}', data)]
-    # Stored names may carry a printable length byte in front, so search
-    # rather than anchor. Both kinds are numbered: sort by the number.
-    telemetry = []
-    log = []
-    for s in strings:
-        m = re.search(r'T1\|(\d+)\|(.*)$', s)
+    # Saved names end with a NUL; one may carry a stray length byte in front,
+    # so search rather than anchor. Both kinds are numbered: sort by the
+    # number. A long line is saved in pieces (T1+|<seq>| and [<seq>]+ carry
+    # on <seq>), joined as bytes so a character cut between two pieces
+    # comes back whole.
+    telemetry = {}
+    log = {}
+    for chunk in data.split(b'\x00'):
+        m = re.search(rb'T1(\+?)\|(\d+)\|(.*)$', chunk, re.S)
         if m:
-            telemetry.append((int(m.group(1)), m.group(2)))
+            seq = int(m.group(2))
+            if m.group(1):
+                if seq in telemetry:
+                    telemetry[seq] += m.group(3)
+            else:
+                telemetry[seq] = m.group(3)
             continue
-        m = re.search(r'\[(\d+)\] (.*)$', s)
+        m = re.search(rb'\[(\d+)\](\+?) (.*)$', chunk, re.S)
         if m:
-            log.append((int(m.group(1)), m.group(2)))
-    telemetry.sort()
-    log.sort()
+            seq = int(m.group(1))
+            if m.group(2):
+                if seq in log:
+                    log[seq] += m.group(3)
+            else:
+                log[seq] = m.group(3)
+    telemetry = [(seq, text.decode('utf-8', 'replace')) for seq, text in sorted(telemetry.items())]
+    log = [(seq, text.decode('utf-8', 'replace')) for seq, text in sorted(log.items())]
     return [line for _, line in telemetry], [line for _, line in log]
 
 
@@ -56,6 +70,9 @@ def parse(line):
     for item in rest.split(';'):
         if '=' in item:
             key, value = item.split('=', 1)
+            if key == 'dmg' and key in fields and 'dealt' not in fields:
+                # Builds before "dealt" wrote damage dealt as a first "dmg".
+                fields['dealt'] = fields[key]
             fields[key] = value
     return run_id, kind, fields
 
@@ -117,10 +134,63 @@ def print_run(run_id, records):
                     if p.get('screen') in ('reward', 'levelup', 'os', 'fixer') and p.get('took') not in ('reroll', 'skip'))
     if kinds:
         print('Picks by kind: ' + ', '.join(f'{k} {n}' for k, n in kinds.most_common()))
+    ledger = effect_totals([f for f in floors])
+    if ledger:
+        top = sorted(ledger.items(), key=lambda kv: -kv[1][1])
+        print('Effects (fires, damage): ' + ', '.join(f"{name} {fires}/{dmg}" for name, (fires, dmg, _) in top))
+    dealt = [int(f['dealt']) for f in floors if f.get('dealt', '').isdigit()]
+    if dealt:
+        print(f"Damage dealt {sum(dealt)} ({sum(dealt) // len(dealt)} a floor)")
+    hits = [int(f['hits']) for f in floors if f.get('hits', '').isdigit()]
+    if hits:
+        print(f"Main weapon hits {sum(hits)} ({sum(hits) // len(hits)} a floor)")
+    for k, f in records:
+        if k == 'MARK':
+            where = ', '.join(f"{key} {f[key]}" for key in ('arena', 'at', 'wave', 'obj', 'markers') if f.get(key))
+            print(f"Bug mark #{f.get('n')} on floor {f.get('depth')} ({f.get('state') or '?'}){': ' + where if where else ''}")
     ults = [f for k, f in records if k == 'ULT']
     if ults:
         print(f"Overdrive fired {len(ults)} times: " + ', '.join(f"floor {u.get('depth')} ({u.get('os')})" for u in ults))
     print()
+
+
+def effect_totals(floors):
+    """{effect: [fires, damage, floors present]} over FLOOR records."""
+    totals = {}
+    for f in floors:
+        for entry in filter(None, f.get('fx', '').split(',')):
+            parts = entry.split(':')
+            if len(parts) != 3 or not parts[1].isdigit() or not parts[2].isdigit():
+                continue
+            t = totals.setdefault(parts[0], [0, 0, 0])
+            t[0] += int(parts[1])
+            t[1] += int(parts[2])
+            t[2] += 1
+    return totals
+
+
+def print_effects(runs, kit=None):
+    floors = []
+    held_in = Counter()
+    count = 0
+    for run_id, records in runs.items():
+        start = next((f for k, f in records if k == 'RUN'), {})
+        if start.get('test') == '1' or (kit and start.get('kit', '').lower() != kit.lower()):
+            continue
+        count += 1
+        run_floors = [f for k, f in records if k == 'FLOOR']
+        floors += run_floors
+        for name in effect_totals(run_floors):
+            held_in[name] += 1
+    totals = effect_totals(floors)
+    if not totals:
+        print('No effect ledger in these runs (it starts with v0.0.19).')
+        return
+    print(f"{count} run(s){' with ' + kit if kit else ''}, {len(floors)} floors. Damage is what the effect added: its own blasts,")
+    print('strikes and statuses, and the extra from its multipliers.')
+    print(f"{'effect':<22} {'runs':>4} {'floors':>6} {'fires':>6} {'damage':>8} {'dmg/floor':>9}")
+    for name, (fires, dmg, present) in sorted(totals.items(), key=lambda kv: -kv[1][1]):
+        print(f"{name:<22} {held_in[name]:>4} {present:>6} {fires:>6} {dmg:>8} {dmg // max(present, 1):>9}")
 
 
 def write_csv(runs, out):
@@ -133,7 +203,7 @@ def write_csv(runs, out):
             end = end or {}
             w.writerow([run_id, start.get('kit'), start.get('test'), start.get('from'), end.get('result', 'unfinished'), end.get('floors'), end.get('kills'), end.get('mins')])
     with open(os.path.join(out, 'floors.csv'), 'w', newline='') as fh:
-        keys = ['depth', 'outcome', 'door', 'patron', 'obj', 'threat', 'arena', 'faction', 'waves', 'secs', 'dmg', 'low', 'heals', 'kills']
+        keys = ['depth', 'outcome', 'door', 'patron', 'obj', 'threat', 'arena', 'faction', 'waves', 'secs', 'dealt', 'hits', 'dmg', 'low', 'heals', 'kills', 'fx']
         w = csv.writer(fh)
         w.writerow(['run'] + keys)
         for run_id, records in runs.items():
@@ -172,6 +242,8 @@ def main():
     parser.add_argument('--csv', help='write CSV files to this folder')
     parser.add_argument('--log', type=int, default=0, help='print the last N log lines')
     parser.add_argument('--marks', action='store_true', help='print every bug mark')
+    parser.add_argument('--effects', action='store_true', help='damage and fires per effect over all runs')
+    parser.add_argument('--kit', help='with --effects: only runs with this kit')
     args = parser.parse_args()
 
     telemetry, log = load(args.path)
@@ -184,6 +256,8 @@ def main():
         print('\n'.join(log[-args.log:]))
     elif args.marks:
         print_marks(log)
+    elif args.effects:
+        print_effects(runs, args.kit)
     else:
         if not runs:
             print('No telemetry yet (it starts with the build that added it). The log has '

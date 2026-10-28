@@ -164,7 +164,7 @@ public abstract class RLExplosions {
   // way the game's cyberware explosion does it): damage in the radius, the
   // shockwave sound, and a shove that throws bodies around. A body at the
   // centre loses limbs.
-  public static func Blast(instigator: ref<GameObject>, position: Vector4, attackID: TweakDBID, radius: Float, opt body: ref<GameObject>) {
+  public static func Blast(instigator: ref<GameObject>, position: Vector4, attackID: TweakDBID, radius: Float, opt body: ref<GameObject>, opt source: CName) {
     let record = TweakDBInterface.GetAttackRecord(attackID);
     if !IsDefined(record) || !IsDefined(instigator) {
       return;
@@ -189,7 +189,9 @@ public abstract class RLExplosions {
     EffectData.SetVariant(shared, defs.attackStatModList, ToVariant(statMods));
     let combat = RLExplosions.Combat();
     if instigator.IsPlayer() && IsDefined(combat) {
-      combat.selfBlastUntil = RLBoonEffects.Now(instigator.GetGame()) + 0.5;
+      let now = RLBoonEffects.Now(instigator.GetGame());
+      combat.selfBlastUntil = now + 0.5;
+      combat.TrackBlast(attack, now, source);
     }
     attack.StartAttack();
     GameInstance.GetAudioSystem(instigator.GetGame()).PlayShockwave(n"explosion", position);

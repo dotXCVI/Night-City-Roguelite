@@ -11,9 +11,11 @@
 // (seq counts every record ever written, so order survives the store.)
 //
 //   RUN      the run started: kit, test run, starting floor, assist
-//   FLOOR    a fight ended: door (hot or not), arena, enemies, time, damage,
-//            outcome, and the effect ledger: how often each effect fired and
-//            the damage it added (fx=ArcFlash:12:340,...)
+//   FLOOR    a fight ended: door (hot or not), arena, enemies, time, damage
+//            dealt and taken, main weapon hits, outcome, and the effect
+//            ledger: how often each effect fired and the damage it added -
+//            its multipliers, and its blasts and statuses as they landed
+//            (fx=ArcFlash:12:340,...)
 //   OFFER    a reward screen was rolled: every card (kind:title:quality step)
 //   PICK     what was taken (or rerolled, bought, chosen at an event)
 //   BUILD    after each pick: level, attributes, build tags, styles, OS,
@@ -22,7 +24,11 @@
 //   ULT      Overdrive fired: the OS and the wave
 //   DEATH    what landed the last hit before V went down
 //   END      the run ended: result, floors, kills, minutes
-//   MARK     the player pressed MARK BUG (see RogueliteSystem.MarkBug)
+//   MARK     the player pressed MARK BUG: where V was, the arena, the wave
+//            and the objective's markers (see RogueliteSystem.MarkBug)
+//
+// A record longer than a saved name holds goes in pieces (T1+|<seq>|...,
+// RogueliteService.Pieces); tools/runreport.py joins them.
 //
 // Values never contain '|' or ';' (Clean strips them).
 // -----------------------------------------------------------------------------

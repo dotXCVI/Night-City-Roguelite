@@ -45,6 +45,11 @@ public class RLFx {
     fx.player = player;
     fx.game = player.GetGame();
     fx.now = RLBoonEffects.Now(fx.game);
+    // A new moment: nothing is firing yet (the ledger's credit, see
+    // RLCombatState.source).
+    if IsDefined(combat) {
+      combat.source = n"";
+    }
     return fx;
   }
 
@@ -109,10 +114,13 @@ public abstract class RLKeywords {
       return;
     }
     RLKeywords.Tag(fx, "MARK", n"MainColors.ActiveYellow");
+    let owner = fx.combat.source;
     if fx.Has(n"Hemorrhage") {
+      RLBoonEffects.As(fx, n"Hemorrhage");
       RLKeywords.Bleed(fx, target, 1);
     }
     RLKeywords.CheckCocktail(fx, foe, target);
+    fx.combat.source = owner;
   }
 
   public static func IsMarked(fx: ref<RLFx>, foe: ref<RLFoe>) -> Bool {
@@ -144,8 +152,12 @@ public abstract class RLKeywords {
       return;
     }
     foe.shockedAt = fx.now;
+    RLKeywords.Claim(fx, foe.shockSource);
     StatusEffectHelper.ApplyStatusEffect(target, t"BaseStatusEffect.Electrocuted", fx.player.GetEntityID());
     RLKeywords.Tag(fx, "SHOCK", n"MainColors.Blue");
+    // What this sets off is credited to its own effects; whoever shocked
+    // goes on firing.
+    let owner = fx.combat.source;
     if fx.Has(n"GhostProtocol") {
       RLKeywords.Glitch(fx, target);
     }
@@ -153,9 +165,11 @@ public abstract class RLKeywords {
       RLKeywords.Mark(fx, target, 6.0);
     }
     if fx.Has(n"BlackwallGate") && !fx.combat.arcing {
+      RLBoonEffects.As(fx, n"BlackwallGate");
       RLKeywords.StartChain(fx, foe, target);
     }
     RLKeywords.CheckCocktail(fx, foe, target);
+    fx.combat.source = owner;
   }
 
   public static func IsShocked(fx: ref<RLFx>, foe: ref<RLFoe>, target: ref<ScriptedPuppet>) -> Bool {
@@ -178,7 +192,9 @@ public abstract class RLKeywords {
     StatusEffectHelper.ApplyStatusEffect(target, t"BaseStatusEffect.DisableCyberware", fx.player.GetEntityID());
     StatusEffectHelper.ApplyStatusEffect(target, t"BaseStatusEffect.ElectrocutedParticleStatus", fx.player.GetEntityID());
     RLKeywords.Tag(fx, "GLITCH", n"MainColors.Green");
+    let owner = fx.combat.source;
     RLKeywords.CheckCocktail(fx, foe, target);
+    fx.combat.source = owner;
   }
 
   // Blackwall Gate: a SHOCK that lands sends an arc on to a new enemy a
@@ -203,15 +219,19 @@ public abstract class RLKeywords {
       return;
     }
     let fresh = !RLKeywords.IsBurning(target);
+    RLKeywords.Claim(fx, foe.burnSource);
     StatusEffectHelper.ApplyStatusEffect(target, t"BaseStatusEffect.Burning", fx.player.GetEntityID());
     if !fresh {
       return;
     }
     RLKeywords.Tag(fx, "BURN", n"MainColors.Red");
+    let owner = fx.combat.source;
     if fx.Has(n"ShortCircuit") {
+      RLBoonEffects.Note(fx, n"ShortCircuit", 0.0);
       RLKeywords.Shock(fx, target);
     }
     RLKeywords.CheckCocktail(fx, foe, target);
+    fx.combat.source = owner;
   }
 
   public static func IsBurning(target: ref<ScriptedPuppet>) -> Bool {
@@ -231,12 +251,15 @@ public abstract class RLKeywords {
     }
     foe.bleedStacks = Min(Max(RLKeywords.MaxBleed(fx), 1), foe.bleedStacks + stacks);
     foe.bleedUntil = fx.now + 6.0;
+    RLKeywords.Claim(fx, foe.bleedSource);
     StatusEffectHelper.ApplyStatusEffect(target, t"BaseStatusEffect.Bleeding", fx.player.GetEntityID());
     if !fresh {
       return;
     }
     RLKeywords.Tag(fx, "BLEED", n"MainColors.Red");
+    let owner = fx.combat.source;
     RLKeywords.CheckCocktail(fx, foe, target);
+    fx.combat.source = owner;
   }
 
   // --- FOCUS and knockdowns ------------------------------------------------------------------
@@ -293,6 +316,7 @@ public abstract class RLKeywords {
     RLExplosions.Blast(fx.player, position, t"Attacks.CyberwareExplosion", reach, body);
     fx.combat.blasts += 1;
     RLKeywords.Tag(fx, "BLAST", n"MainColors.Yellow");
+    let owner = fx.combat.source;
     if fx.Has(n"FireMission") && fx.combat.blasts % 20 == 0 {
       RLBoonEffects.FireMission(fx);
     }
@@ -305,6 +329,7 @@ public abstract class RLKeywords {
         i += 1;
       }
     }
+    fx.combat.source = owner;
   }
 
   // --- Cocktail ------------------------------------------------------------------------------
@@ -370,12 +395,30 @@ public abstract class RLKeywords {
     GameInstance.GetStatPoolsSystem(fx.game).RequestChangingStatPoolValue(Cast<StatsObjectID>(target.GetEntityID()), gamedataStatPoolType.Health, -points, fx.player, false, false);
   }
 
-  // A share of an enemy's health (0.15 = 15%), dealt by V.
+  // A share of an enemy's health (0.15 = 15%), dealt by V and credited to
+  // the effect firing now.
   public static func DamagePercent(fx: ref<RLFx>, target: ref<ScriptedPuppet>, percent: Float) {
+    RLKeywords.DamagePercentFor(fx, target, percent, fx.combat.source);
+  }
+
+  // The same, credited to `source` (none when empty).
+  public static func DamagePercentFor(fx: ref<RLFx>, target: ref<ScriptedPuppet>, percent: Float, source: CName) {
     if !IsDefined(target) || target.IsDead() || percent <= 0.0 {
       return;
     }
-    GameInstance.GetStatPoolsSystem(fx.game).RequestChangingStatPoolValue(Cast<StatsObjectID>(target.GetEntityID()), gamedataStatPoolType.Health, -100.0 * percent, fx.player, false, true);
+    let pools = GameInstance.GetStatPoolsSystem(fx.game);
+    let id = Cast<StatsObjectID>(target.GetEntityID());
+    let left = pools.GetStatPoolValue(id, gamedataStatPoolType.Health, false);
+    fx.combat.Credit(source, MinF(left, percent * pools.GetStatPoolMaxPointValue(id, gamedataStatPoolType.Health)));
+    pools.RequestChangingStatPoolValue(id, gamedataStatPoolType.Health, -100.0 * percent, fx.player, false, true);
+  }
+
+  // A status an effect starts is credited to it (one with no effect behind
+  // it keeps whoever started it before).
+  private static func Claim(fx: ref<RLFx>, out owner: CName) {
+    if IsNameValid(fx.combat.source) {
+      owner = fx.combat.source;
+    }
   }
 
   public static func EnemiesNear(fx: ref<RLFx>, position: Vector4, radius: Float) -> array<ref<ScriptedPuppet>> {
@@ -433,7 +476,8 @@ public abstract class RLLuck {
     if !RLLuck.Roll(fx, chance) {
       return 1;
     }
-    fx.combat.Fired(n"Jackpot", 0.0);
+    // Counted, but whatever goes off three times stays the effect's own.
+    fx.combat.Tally(n"Jackpot");
     RLKeywords.Tag(fx, "JACKPOT", n"MainColors.Purple");
     return 3;
   }
@@ -449,6 +493,8 @@ public class RLEffectStep extends RLDelayTarget {
   private let m_target: wref<ScriptedPuppet>;
   // Chains: the enemies this one has already reached.
   private let m_reached: array<EntityID>;
+  // The effect that scheduled it, credited with what it deals.
+  private let m_source: CName;
 
   public static func Schedule(fx: ref<RLFx>, kind: CName, position: Vector4, radius: Float, depth: Int32, delay: Float) {
     let step = new RLEffectStep();
@@ -456,6 +502,7 @@ public class RLEffectStep extends RLDelayTarget {
     step.m_position = position;
     step.m_radius = radius;
     step.m_depth = depth;
+    step.m_source = fx.combat.source;
     fx.combat.Keep(step);
     RLDelay(fx.game, step, kind, delay);
   }
@@ -467,6 +514,7 @@ public class RLEffectStep extends RLDelayTarget {
     step.m_position = position;
     step.m_reached = reached;
     step.m_depth = depth;
+    step.m_source = fx.combat.source;
     fx.combat.Keep(step);
     RLDelay(fx.game, step, kind, delay);
   }
@@ -476,6 +524,7 @@ public class RLEffectStep extends RLDelayTarget {
     step.m_kind = kind;
     step.m_target = target;
     step.m_position = target.GetWorldPosition();
+    step.m_source = fx.combat.source;
     fx.combat.Keep(step);
     RLDelay(fx.game, step, kind, delay);
   }
@@ -484,6 +533,7 @@ public class RLEffectStep extends RLDelayTarget {
     let fx = RLFx.Current(GetGameInstance());
     if IsDefined(fx) {
       fx.combat.Release(this);
+      fx.combat.source = this.m_source;
       RLBoonEffects.OnStep(fx, this.m_kind, this.m_position, this.m_radius, this.m_depth, this.m_target, this.m_reached);
     }
   }

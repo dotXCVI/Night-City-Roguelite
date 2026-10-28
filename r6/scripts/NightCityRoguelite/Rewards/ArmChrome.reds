@@ -166,6 +166,8 @@ public abstract class RLArms {
 
   // A main weapon hit with elemental arms: the element's keyword.
   public static func OnMainHit(fx: ref<RLFx>, target: ref<ScriptedPuppet>) {
+    // Credited as "ArmsThermal" and so on.
+    RLBoonEffects.As(fx, StringToName("Arms" + fx.run.mainElement));
     switch fx.run.mainElement {
       case "Thermal":
         RLKeywords.Burn(fx, target);
@@ -440,8 +442,8 @@ public abstract class RLSignatures {
     if RLSignatures.Has(fx.run, "NanoWires") && fx.now - combat.signatureAt >= 1.0 && RLKeywords.StatusCount(fx, ctx.foe, target) > 0 {
       combat.signatureAt = fx.now;
       RLKeywords.Tag(fx, "LIVE WIRE", n"MainColors.Blue");
-      RLKeywords.SpreadStatuses(fx, target, 4.0);
       RLBoonEffects.Note(fx, n"LiveWire", 0.0);
+      RLKeywords.SpreadStatuses(fx, target, 4.0);
     }
   }
 

@@ -453,8 +453,8 @@ public abstract class RLArmModEffects {
       RLKeywords.Blast(fx, target.GetWorldPosition(), RLArmModEffects.Overclocked(fx, n"Detonator") ? 5.0 : 2.5, null, 0);
     }
     if RLArmModEffects.Has(fx, n"Rending") {
-      RLKeywords.Bleed(fx, target, RLArmModEffects.Overclocked(fx, n"Rending") ? 2 : 1);
       RLBoonEffects.Note(fx, n"Rending", 0.0);
+      RLKeywords.Bleed(fx, target, RLArmModEffects.Overclocked(fx, n"Rending") ? 2 : 1);
     }
     if RLArmModEffects.Has(fx, n"Combo") {
       combat.comboHits = fx.now - combat.comboAt > 1.5 ? 1 : combat.comboHits + 1;
@@ -472,10 +472,11 @@ public abstract class RLArmModEffects {
     }
     // Mantis Blades
     if RLArmModEffects.Has(fx, n"ThermalEdge") && (strong || RLArmModEffects.Overclocked(fx, n"ThermalEdge")) {
-      RLKeywords.Burn(fx, target);
       RLBoonEffects.Note(fx, n"ThermalEdge", 0.0);
+      RLKeywords.Burn(fx, target);
     }
     if RLArmModEffects.Has(fx, n"SerratedEdge") {
+      RLBoonEffects.As(fx, n"SerratedEdge");
       RLKeywords.Bleed(fx, target, 1);
     }
     if RLArmModEffects.Overclocked(fx, n"MonoEdge") && RLHitFlag.Has(ctx.flags, RLHitFlag.Crit()) && RLKeywords.IsMarked(fx, ctx.foe) {
@@ -494,6 +495,7 @@ public abstract class RLArmModEffects {
       }
     }
     if RLArmModEffects.Has(fx, n"ShockActuator") && (strong || RLArmModEffects.Overclocked(fx, n"ShockActuator")) {
+      RLBoonEffects.As(fx, n"ShockActuator");
       RLKeywords.Shock(fx, target);
       if strong {
         let other = RLKeywords.Nearest(fx, target.GetWorldPosition(), 8.0, target.GetEntityID(), false);
@@ -508,6 +510,7 @@ public abstract class RLArmModEffects {
       RLArmModEffects.ArcCable(fx, target, dealt);
     }
     if RLArmModEffects.Has(fx, n"Barbed") {
+      RLBoonEffects.As(fx, n"Barbed");
       RLKeywords.Bleed(fx, target, 1);
     }
     if RLArmModEffects.Has(fx, n"Uplink") && (strong || RLArmModEffects.Overclocked(fx, n"Uplink")) {
@@ -536,10 +539,10 @@ public abstract class RLArmModEffects {
     fx.combat.armHits = 0;
     RLKeywords.Tag(fx, "DISCHARGE", n"MainColors.Blue");
     GameInstance.GetAudioSystem(fx.game).PlayShockwave(n"explosion", fx.player.GetWorldPosition());
+    RLBoonEffects.Note(fx, id, 0.0);
     for enemy in RLKeywords.EnemiesNear(fx, fx.player.GetWorldPosition(), radius) {
       RLKeywords.Shock(fx, enemy);
     }
-    RLBoonEffects.Note(fx, id, 0.0);
   }
 
   // Arc Cable: the lash carries on to the nearest others.
@@ -625,11 +628,11 @@ public abstract class RLArmModEffects {
       RLBoonEffects.Note(fx, n"Breach", 0.0);
     }
     if RLArmModEffects.Has(fx, n"Overvolt") {
+      RLBoonEffects.Note(fx, n"Overvolt", 0.0);
       RLKeywords.Shock(fx, target);
       if RLArmModEffects.Overclocked(fx, n"Overvolt") {
         RLKeywords.Glitch(fx, target);
       }
-      RLBoonEffects.Note(fx, n"Overvolt", 0.0);
     }
     if RLArmModEffects.Has(fx, n"Cache") {
       fx.combat.hackCount += 1;

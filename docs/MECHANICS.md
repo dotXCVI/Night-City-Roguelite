@@ -637,8 +637,8 @@ toggle, enemy/item blocklists, and verbose logging.
 
 ## Logs
 
-The game doesn't write script log lines to disk, so the mod keeps its last 600
-log lines in Codeware's persistent store,
+The game doesn't write script log lines to disk, so the mod keeps its last
+2,000 log lines in Codeware's persistent store,
 `red4ext/plugins/Codeware/Persistent/ScriptableServiceContainer.dat` (saved when
 the game closes; readable with any text viewer). Script compile errors are in
 `r6/logs/redscript_rCURRENT.log`; framework logs are in `red4ext/logs`.
@@ -651,6 +651,7 @@ with
     python3 tools/runreport.py "<game folder>" --csv out  # CSV for charts
     python3 tools/runreport.py "<game folder>" --marks    # every F8 bug mark
     python3 tools/runreport.py "<game folder>" --log 100  # the last log lines
+    python3 tools/runreport.py "<game folder>" --effects  # each effect's fires and damage
 
 The record format is documented in `Core/Telemetry.reds`. With a deck, every
 fight also logs `uploads` (quickhacks that landed) and `ramlow` (seconds spent

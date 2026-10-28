@@ -422,7 +422,7 @@ public abstract class RLStyles {
       GameInstance.GetTimeSystem(game).SetTimeDilation(n"NCRogueliteBlades", 0.3, 1.0, n"Linear", n"Linear");
     }
     if RLStyles.HasSignature(run, styles, RLStyle.Brawler()) && IsDefined(body) {
-      RLExplosions.Blast(player, position, t"Attacks.CyberwareExplosion", 5.0, body);
+      RLExplosions.Blast(player, position, t"Attacks.CyberwareExplosion", 5.0, body, n"StyleBrawler");
     }
     if RLStyles.HasSignature(run, styles, RLStyle.Monowire()) {
       pools.RequestChangingStatPoolValue(playerID, gamedataStatPoolType.Memory, 2.0, null, false, false);
@@ -431,7 +431,7 @@ public abstract class RLStyles {
       combat.gunslingerShots = 3;
     }
     if RLStyles.HasSignature(run, styles, RLStyle.Heavy()) && IsDefined(body) && RandF() < 0.35 {
-      RLExplosions.Blast(player, position, t"Attacks.CyberwareExplosion", 4.0, body);
+      RLExplosions.Blast(player, position, t"Attacks.CyberwareExplosion", 4.0, body, n"StyleHeavy");
     }
     if RLStyles.HasSignature(run, styles, RLStyle.Netrunner()) {
       pools.RequestChangingStatPoolValue(playerID, gamedataStatPoolType.Memory, 3.0, null, false, false);

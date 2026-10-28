@@ -10,6 +10,8 @@ release on GitHub with its ZIP attached.
 - **Objective markers you can't reach:** a sabotage charge spot could land somewhere V can't get to, like a shop behind a locked door in the Grand Imperial Mall. Markers now need a full walking path to V on V's floor, and one you get stuck near (close, not getting closer) moves to you after a few seconds. Thanks to Jon for the report.
 - **Locked rooms in arenas open up:** locked, sealed and keypad doors inside an arena are opened when you arrive, so you never need a campaign code or a skill check to reach an enemy or a marker. Thanks to Jon.
 - **The legendary hammer (and any weapon knocked out of an enemy's hands)** no longer lands on the floor - disarms, finishers and bosses losing their weapon used to leave one lying in the arena.
+- **Logs that keep what matters:** long telemetry records were cut off at 255 characters (build records lost the OS, weapon and effects); they're saved whole now. The log keeps 2,000 lines instead of 600, and an F8 bug mark records the arena, V's position, the wave and the objective's markers in the run telemetry, which outlives the log.
+- **The effect ledger counts everything an effect does:** blasts, strikes, missiles and the burns, bleeds and shocks an effect starts are credited to it as they land (Kill Switch, Payload and Napalm used to read 0 damage). Fights also log the main weapon's hits, so a weapon effect's fires can be read against them. `tools/runreport.py --effects` totals it all.
 
 ## v0.0.19 - Runs that hit different (2026-10-28)
 

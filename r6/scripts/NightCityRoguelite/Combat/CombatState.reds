@@ -93,6 +93,11 @@ public class RLFoe {
   public let hitFlags: Int32;
   public let hitWeapon: ItemID;
   public let hitTime: Float;
+  // The effects that last set it burning, bleeding or shocked: the game's
+  // damage over time is credited to them in the ledger.
+  public let burnSource: CName;
+  public let bleedSource: CName;
+  public let shockSource: CName;
   // Keywords the game doesn't track.
   public let markUntil: Float;
   public let markBonus: Float;
@@ -160,6 +165,9 @@ public class RLCombatState {
   public let heat: Int32;
   public let hotUntil: Float;
   public let lastMainHitAt: Float;
+  // Hits the main weapon landed this fight (the ledger's yardstick: a weapon
+  // effect's fires against it).
+  public let mainHitCount: Int32;
   // Hit counters on the main weapon (Payload, Lucky Round).
   public let payloadHits: Int32;
   public let luckyHits: Int32;
@@ -210,6 +218,14 @@ public class RLCombatState {
   private let m_fxIDs: array<CName>;
   private let m_fxFires: array<Int32>;
   private let m_fxDamage: array<Float>;
+  // The effect firing right now (the last one noted): blasts and statuses it
+  // starts are credited to it when their damage lands.
+  public let source: CName;
+  private let m_blasts: array<ref<IAttack>>;
+  private let m_blastSources: array<CName>;
+  private let m_blastUntil: array<Float>;
+  // The attacks burning, bleeding and electrocuted deal their ticks with.
+  private let m_dots: array<TweakDBID>;
 
   private let m_foes: array<ref<RLFoe>>;
   private let m_rampTarget: EntityID;
@@ -240,6 +256,7 @@ public class RLCombatState {
     this.heat = 0;
     this.hotUntil = 0.0;
     this.lastMainHitAt = 0.0;
+    this.mainHitCount = 0;
     this.payloadHits = 0;
     this.luckyHits = 0;
     this.blasts = 0;
@@ -275,6 +292,10 @@ public class RLCombatState {
     ArrayClear(this.m_fxIDs);
     ArrayClear(this.m_fxFires);
     ArrayClear(this.m_fxDamage);
+    ArrayClear(this.m_blasts);
+    ArrayClear(this.m_blastSources);
+    ArrayClear(this.m_blastUntil);
+    this.source = n"";
     ArrayClear(this.m_foes);
     this.m_rampTarget = EntityID();
     this.m_rampCount = 0;
@@ -394,15 +415,94 @@ public class RLCombatState {
   // --- The ledger --------------------------------------------------------------------------
 
   public func Fired(id: CName, damage: Float) {
+    this.source = id;
+    let i = this.LedgerIndex(id);
+    this.m_fxFires[i] += 1;
+    this.m_fxDamage[i] += MaxF(0.0, damage);
+  }
+
+  // A fire that leaves the credit where it is (Jackpot tripling another
+  // effect's roll).
+  public func Tally(id: CName) {
+    this.m_fxFires[this.LedgerIndex(id)] += 1;
+  }
+
+  // Damage an effect dealt after the fact (its blast landing, a burn tick).
+  public func Credit(id: CName, damage: Float) {
+    if IsNameValid(id) && damage > 0.0 {
+      this.m_fxDamage[this.LedgerIndex(id)] += damage;
+    }
+  }
+
+  private func LedgerIndex(id: CName) -> Int32 {
     let i = ArrayFindFirst(this.m_fxIDs, id);
     if i < 0 {
       ArrayPush(this.m_fxIDs, id);
-      ArrayPush(this.m_fxFires, 1);
-      ArrayPush(this.m_fxDamage, MaxF(0.0, damage));
+      ArrayPush(this.m_fxFires, 0);
+      ArrayPush(this.m_fxDamage, 0.0);
+      i = ArraySize(this.m_fxIDs) - 1;
+    }
+    return i;
+  }
+
+  // A blast set off by `source` (default: the effect firing now): what it
+  // hits is credited to it.
+  public func TrackBlast(attack: ref<IAttack>, now: Float, opt source: CName) {
+    if !IsNameValid(source) {
+      source = this.source;
+    }
+    if !IsNameValid(source) {
       return;
     }
-    this.m_fxFires[i] += 1;
-    this.m_fxDamage[i] += MaxF(0.0, damage);
+    // Drop the ones that have long landed.
+    while ArraySize(this.m_blasts) > 0 && this.m_blastUntil[0] < now {
+      ArrayErase(this.m_blasts, 0);
+      ArrayErase(this.m_blastSources, 0);
+      ArrayErase(this.m_blastUntil, 0);
+    }
+    ArrayPush(this.m_blasts, attack);
+    ArrayPush(this.m_blastSources, source);
+    ArrayPush(this.m_blastUntil, now + 2.0);
+  }
+
+  // A hit landing on an arena enemy: if an effect's blast or a status an
+  // effect started dealt it, the damage goes to that effect.
+  public func CreditHit(foe: ref<RLFoe>, target: ref<ScriptedPuppet>, hitEvent: ref<gameHitEvent>) {
+    let attack = hitEvent.attackData.GetAttackDefinition();
+    // Hits on a body count for nothing.
+    if !IsDefined(attack) || !IsDefined(foe) || foe.dead || target.IsDead() {
+      return;
+    }
+    let damage = hitEvent.attackComputed.GetTotalAttackValue(gamedataStatPoolType.Health);
+    let i = 0;
+    while i < ArraySize(this.m_blasts) {
+      if this.m_blasts[i] == attack {
+        this.Credit(this.m_blastSources[i], damage);
+        return;
+      }
+      i += 1;
+    }
+    if !hitEvent.attackData.HasFlag(hitFlag.DamageOverTime) || !IsDefined(attack.GetRecord()) {
+      return;
+    }
+    if ArraySize(this.m_dots) == 0 {
+      this.m_dots = [RLCombatState.DotAttack(t"BaseStatusEffect.Burning"), RLCombatState.DotAttack(t"BaseStatusEffect.Bleeding"), RLCombatState.DotAttack(t"BaseStatusEffect.Electrocuted")];
+    }
+    switch ArrayFindFirst(this.m_dots, attack.GetRecord().GetID()) {
+      case 0: this.Credit(foe.burnSource, damage); break;
+      case 1: this.Credit(foe.bleedSource, damage); break;
+      case 2: this.Credit(foe.shockSource, damage); break;
+    }
+  }
+
+  // The attack a status effect deals its damage over time with.
+  public static func DotAttack(status: TweakDBID) -> TweakDBID {
+    let record = TweakDBInterface.GetStatusEffectRecord(status);
+    let attack: ref<Attack_Record>;
+    if IsDefined(record) && StatusEffectHelper.HasStatusEffectAttack(record, attack) && IsDefined(attack) {
+      return attack.GetID();
+    }
+    return TDBID.None();
   }
 
   // "ArcFlash:12:340,Pyre:3:510" - fires and damage per effect.

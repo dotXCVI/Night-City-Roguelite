@@ -69,6 +69,7 @@ public class RLTerminalPopup extends InGamePopup {
   protected cb func OnCreate() {
     super.OnCreate();
     let header = InGamePopupHeader.Create();
+    header.SetFluffLeft("");
     switch this.m_view {
       case RLTerminalView.DoorPicker:
         this.m_container.SetSize(Vector2(2200.0, 1200.0));

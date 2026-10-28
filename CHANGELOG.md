@@ -15,6 +15,12 @@ Fixes from the first v0.0.18 run.
 - **Music doubling after the Act 1 boss:** Royce's boss loop is now ended with its own outro.
 - **The Junkyard's locked garage:** enemies no longer spawn in it, and an enemy that can't be moved out of somewhere is removed (and counts as killed) right away instead of after two minutes.
 - **Logs:** reward kinds and the run state are named properly in the telemetry and bug marks.
+- **Weapon cards are always upgrades:** a new gun (or iconic) must beat your best equipped weapon's DPS by 10%; it comes at a higher quality if it needs to, or isn't offered.
+- **Music left playing after a run** is stopped when V gets home, along with every score and the pocket radio.
+- **Stuck in the floor on arrival:** V is placed again once the arena's ground has loaded, before the fade-in.
+- **Enemies that wouldn't move** are now moved with the AI's own teleport as well.
+- **Air Dash** has a 1.5 s cooldown.
+- **Card text:** item effects are rendered to plain text (no more raw markup or {__empty__}); Operating System cards show their Overdrive instead of the game's long tooltip. The stray code in popup headers is gone.
 
 ## v0.0.18 - Runs that build, the armory (2026-10-27)
 

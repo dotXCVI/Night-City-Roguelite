@@ -37,6 +37,7 @@ public class RLArmoryPopup extends InGamePopup {
     this.m_container.SetSize(Vector2(2200.0, 1320.0));
 
     this.m_header = InGamePopupHeader.Create();
+    this.m_header.SetFluffLeft("");
     this.m_header.SetTitle("ARMORY");
     this.m_header.Reparent(this);
 

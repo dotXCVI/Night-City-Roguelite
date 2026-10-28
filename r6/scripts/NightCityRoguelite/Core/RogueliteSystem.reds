@@ -1227,12 +1227,21 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(arena) || !Equals(this.m_state, RLState.Traveling) {
       return;
     }
-    let found = GameInstance.GetNavigationSystem(this.GetGameInstance())
+    let game = this.GetGameInstance();
+    let found = GameInstance.GetNavigationSystem(game)
       .FindPointInSphereOnlyHumanNavmesh(arena.position, 4.0, NavGenAgentSize.Human, false);
-    if !Equals(found.status, worldNavigationRequestStatus.OK) && this.m_waits < 12 {
+    let ready = Equals(found.status, worldNavigationRequestStatus.OK) && RLArenaDirector.HasFloor(game, arena.position);
+    if !ready && this.m_waits < 16 {
       this.m_waits += 1;
       this.After(n"travelSettle", 0.5);
       return;
+    }
+    // The first teleport can land before the ground's collision has
+    // streamed in, leaving V inside the floor: now that it's there, put V
+    // on it again (the screen is still black).
+    let player = GetPlayer(game);
+    if IsDefined(player) {
+      RLArenaDirector.TeleportToPoint(player, arena.position, arena.yaw);
     }
     this.m_arenas.StartWalls();
     this.StopGlitch();
@@ -2135,6 +2144,7 @@ public class RogueliteSystem extends ScriptableSystem {
 
   private func ArriveHome() {
     let player = GetPlayer(this.GetGameInstance());
+    this.m_music.StopEverything(player);
     this.m_spawner.Abort();
     this.m_spawner.DeleteAll();
     this.m_arenas.StopWalls();

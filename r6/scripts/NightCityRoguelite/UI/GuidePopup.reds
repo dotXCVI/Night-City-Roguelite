@@ -31,6 +31,7 @@ public class RLGuidePopup extends InGamePopup {
     this.m_container.SetSize(Vector2(2200.0, 1660.0));
 
     let header = InGamePopupHeader.Create();
+    header.SetFluffLeft("");
     header.SetTitle("NIGHT CITY ROGUELITE");
     header.SetFluffRight("HOW IT WORKS");
     header.Reparent(this);

@@ -33,6 +33,7 @@ public class RLEventPopup extends InGamePopup {
     this.m_container.SetSize(Vector2(2200.0, Equals(this.m_event.id, n"Tarot") ? 1280.0 : 1140.0));
 
     let header = InGamePopupHeader.Create();
+    header.SetFluffLeft("");
     header.SetTitle(this.m_event.title);
     header.SetFluffRight("NO FIGHT");
     header.Reparent(this);

@@ -202,6 +202,29 @@ public class RLMusic extends IScriptable {
     }
   }
 
+  // Every stop event the mod could have started, and the pocket radio off:
+  // used whenever a run ends or V gets home, so nothing left over by a death
+  // (or a set this session never saw) keeps playing into the next run.
+  public func StopEverything(player: ref<PlayerPuppet>) {
+    this.Stop();
+    if IsDefined(player) {
+      RLRadio.Stop(player);
+    }
+    let factions = [gamedataAffiliation.Animals, gamedataAffiliation.Maelstrom, gamedataAffiliation.Scavengers, gamedataAffiliation.SixthStreet,
+      gamedataAffiliation.TygerClaws, gamedataAffiliation.Valentinos, gamedataAffiliation.VoodooBoys, gamedataAffiliation.Wraiths,
+      gamedataAffiliation.Militech, gamedataAffiliation.KangTao, gamedataAffiliation.Arasaka, gamedataAffiliation.Unaffiliated];
+    for faction in factions {
+      this.Play(RLMusic.FactionSet(faction).stop);
+    }
+    this.Play(n"mus_q005_the_heist_STOP_silent");
+    this.Play(n"mus_q104_kang_tao_STOP_silent");
+    let act = 1;
+    while act <= 3 {
+      this.Play(RLMusic.BossSet(act).stop);
+      act += 1;
+    }
+  }
+
   public func Stop() {
     if this.m_radioOn {
       this.m_radioOn = false;

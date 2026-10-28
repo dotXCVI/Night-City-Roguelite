@@ -590,17 +590,31 @@ public abstract class RLRewards {
     let noIDs: array<TweakDBID>;
     switch kind {
       case RLOfferKind.Weapon:
-        // Never worse than the best weapon V has equipped, never far above the floor.
+        // A real upgrade over the best weapon V has equipped (see
+        // UpgradeStep), never far above the floor.
         offer.step = Min(RLQuality.MaxStep(), Max(step, RLWeapons.BestEquippedStep(player)));
-        offer.record = RLRewards.PickWeighted(pools, profile, kind, offer.step, RLRewards.AllowedEvolutions(depth));
+        let tries = 0;
+        while tries < 4 && !TDBID.IsValid(offer.record) {
+          let candidate = RLRewards.PickWeighted(pools, profile, kind, offer.step, RLRewards.AllowedEvolutions(depth));
+          let upgradeStep = RLRewards.UpgradeStep(player, candidate, offer.step, expected + 3);
+          if upgradeStep >= 0 {
+            offer.record = candidate;
+            offer.step = upgradeStep;
+          }
+          tries += 1;
+        }
         offer.tier = RLQuality.TierName(offer.step);
         offer.subtitle = RLQuality.DisplayName(offer.step);
         offer.excitement = offer.step - expected;
         break;
       case RLOfferKind.Iconic:
-        // Iconics are never below Rare.
-        offer.record = pools.PickIconic();
-        offer.step = Clamp(step + 2, 4, RLQuality.MaxStep());
+        // Iconics are never below Rare, and never a step down either.
+        let iconic = pools.PickIconic();
+        let iconicStep = RLRewards.UpgradeStep(player, iconic, Clamp(step + 2, 4, RLQuality.MaxStep()), RLQuality.MaxStep());
+        if iconicStep >= 0 {
+          offer.record = iconic;
+          offer.step = iconicStep;
+        }
         offer.tier = RLQuality.TierName(offer.step);
         offer.subtitle = "ICONIC - " + RLQuality.DisplayName(offer.step);
         offer.excitement = offer.step - expected;
@@ -664,6 +678,33 @@ public abstract class RLRewards {
       offer.dpsLine = RLWeapons.CompareLine(player, RLWeapons.PreviewDPS(player, offer.record, offer.step));
     }
     return offer;
+  }
+
+  // How much better a new weapon must be than V's best equipped one.
+  public static func MinUpgrade() -> Float = 1.1
+
+  // The lowest quality step from `step` up to `cap` at which the weapon beats
+  // V's best equipped weapon by MinUpgrade; -1 when it can't. Always `step`
+  // when V has nothing to compare with.
+  public static func UpgradeStep(player: ref<PlayerPuppet>, record: TweakDBID, step: Int32, cap: Int32) -> Int32 {
+    if !TDBID.IsValid(record) {
+      return -1;
+    }
+    let name: String;
+    let current = RLWeapons.BestEquippedDPS(player, name);
+    if current <= 0.0 {
+      return step;
+    }
+    let s = step;
+    while s <= Min(cap, RLQuality.MaxStep()) {
+      let dps = RLWeapons.PreviewDPS(player, record, s);
+      // No number to compare (some melee): the card shows no DPS line.
+      if dps <= 0.0 || dps >= current * RLRewards.MinUpgrade() {
+        return s;
+      }
+      s += 1;
+    }
+    return -1;
   }
 
   // A few candidates from the pool, picked by build weight.

@@ -53,6 +53,7 @@ public class RLRewardPopup extends InGamePopup {
     this.m_container.SetSize(Vector2(2200.0, 1150.0));
 
     let header = InGamePopupHeader.Create();
+    header.SetFluffLeft("");
     header.SetTitle(this.m_title);
     header.SetFluffRight(StrLen(this.m_fluff) > 0 ? this.m_fluff : "CHOOSE ONE");
     header.Reparent(this);

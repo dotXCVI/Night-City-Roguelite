@@ -52,6 +52,18 @@ public class RLArenaDirector extends RLDelayTarget {
     RLLog(s"Arena start: \(arena.name) at (\(arena.position.X), \(arena.position.Y), \(arena.position.Z)).");
   }
 
+  // True once there is solid ground under a point (its collision has
+  // streamed in).
+  public static func HasFloor(game: GameInstance, position: Vector4) -> Bool {
+    let start = Vector4(position.X, position.Y, position.Z + 1.5, 1.0);
+    let end = Vector4(position.X, position.Y, position.Z - 2.0, 1.0);
+    let filter: QueryFilter;
+    QueryFilter.AddGroup(filter, n"Static");
+    QueryFilter.AddGroup(filter, n"Terrain");
+    let result: TraceResult;
+    return GameInstance.GetSpatialQueriesSystem(game).SyncRaycastByQueryFilter(start, end, filter, result) && TraceResult.IsValid(result);
+  }
+
   public static func TeleportToPoint(player: ref<PlayerPuppet>, position: Vector4, yaw: Float) {
     let rotation: EulerAngles;
     rotation.Yaw = yaw;

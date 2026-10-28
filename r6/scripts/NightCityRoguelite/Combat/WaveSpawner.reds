@@ -599,7 +599,7 @@ public class RLWaveSpawner extends RLDelayTarget {
         enemy.outsideTime = 0.0;
         let point: Vector4;
         if this.FindSpawnPoint(player, point) {
-          GameInstance.GetTeleportationFacility(puppet.GetGame()).Teleport(puppet, point, Vector4.ToRotation(player.GetWorldPosition() - point));
+          RLWaveSpawner.MoveEnemy(puppet, point, player.GetWorldPosition());
           RLDebug("Put an enemy back inside the arena.");
         }
       }
@@ -740,12 +740,24 @@ public class RLWaveSpawner extends RLDelayTarget {
     if !this.FindSpawnPoint(player, point) {
       return;
     }
-    GameInstance.GetTeleportationFacility(puppet.GetGame()).Teleport(puppet, point, Vector4.ToRotation(player.GetWorldPosition() - point));
+    RLWaveSpawner.MoveEnemy(puppet, point, player.GetWorldPosition());
     enemy.bestDistance = Vector4.Distance(point, player.GetWorldPosition());
     enemy.recallFrom = from;
     enemy.recallCheckAt = this.m_time + 3.0;
     RLLog(s"Brought an enemy back (\(reason)): (\(from.X), \(from.Y), \(from.Z)) -> (\(point.X), \(point.Y), \(point.Z)).");
     RLWaveSpawner.ChargeAt(puppet, player);
+  }
+
+  // Moves an enemy, facing V: the teleport facility, and the AI's own
+  // teleport command (the facility alone doesn't always take on an NPC that
+  // is fighting).
+  public static func MoveEnemy(puppet: ref<ScriptedPuppet>, point: Vector4, facing: Vector4) {
+    GameInstance.GetTeleportationFacility(puppet.GetGame()).Teleport(puppet, point, Vector4.ToRotation(facing - point));
+    let command = new AITeleportCommand();
+    command.position = point;
+    command.rotation = Vector4.Heading(facing - point);
+    command.doNavTest = false;
+    AIComponent.SendCommand(puppet, command);
   }
 
   // First-sighting setup: no god modes, the planned level, full health, hostile.

@@ -35,6 +35,7 @@ public class RLFixerPopup extends InGamePopup {
     this.m_container.SetSize(Vector2(2200.0, 1240.0));
 
     let header = InGamePopupHeader.Create();
+    header.SetFluffLeft("");
     header.SetTitle("THE FIXER");
     header.SetFluffRight("BOSS NEXT");
     header.Reparent(this);

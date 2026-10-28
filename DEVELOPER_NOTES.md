@@ -303,7 +303,9 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   `tools/runreport.py <game folder>` prints a floor table per run; `--csv`
   writes runs/floors/picks CSVs; `--marks` prints every bug mark. When adding
   a decision point (a new screen, door type or event), record its OFFER/PICK.
-- **Bug marks:** F8 (`RLConfig.BugKey()`) or the MARK BUG card logs
+- **Test runs** are behind `RLConfig.DevTools()` (off in releases): it adds
+  the FLOOR and TEST RUN cards to the terminal.
+- **Bug marks:** F8 (`RLConfig.BugKey()`) logs
   `===== BUG MARK #n =====` with the state machine, popup/countdown flags,
   arena, run and the spawner's view of every enemy (`RLWaveSpawner.Describe`).
 - Useful log lines: `Pacing: floor N threat T cleared in Xs, damage taken

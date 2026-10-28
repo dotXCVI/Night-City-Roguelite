@@ -83,9 +83,8 @@ last build.
      and who's waiting. **HOT** doors are harder and pay double.
    - **F7** reopens any screen you closed.
 7. Before each boss, the **Fixer** sells upgrades for the eddies you've earned.
-   - Want to try a boss or a later act without playing up to it? Use the
-     **FLOOR** card on the terminal to pick where to start and press
-     **TEST RUN**. Test runs pay no Cred and don't count in your stats.
+   - Not sure what a word on a card means? The terminal's **DATABASE** lists
+     every keyword, effect, mod and quickhack.
 8. When you die, you wake up back home. You keep the **Cred** you earned and
    spend it on kits (armory) and upgrades (terminal).
 
@@ -96,7 +95,7 @@ new roguelite characters on the same PC.
 
 1. Always quit through the main menu (Esc -> Exit to Main Menu, or Quit Game).
    Don't use Alt+F4. The mod's log is only saved when you quit properly.
-2. Hit a bug mid-run? Press **F8** right away (or MARK BUG on the F7 screen in a fight).
+2. Hit a bug mid-run? Press **F8** right away.
    It saves a snapshot of the fight to the log, so I know exactly when and
    where it happened. Mark as many as you like.
 3. Send me:
@@ -178,5 +177,7 @@ roguelite character for this build. Tell me how these feel:
 **The basics**
 - Does dying play out properly: V goes down, the screen fades, and you come to
   at home?
-- Do the fades between arenas hide all the loading pop-in?
+- Do trips between arenas glitch out and back in, and does the black hide
+  all the loading pop-in?
+- Open the terminal's **DATABASE**: can you find what any card's words mean?
 - Did any story phone call (for example from Judy) get through during a run?

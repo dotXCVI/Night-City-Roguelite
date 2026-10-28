@@ -26,6 +26,8 @@ module NightCityRoguelite
 
 public class RLHackFamily {
   public let id: CName;
+  // The game's name for it (English; cards use the item's own localized one).
+  public let name: String;
   // Record names: Items.<item><tier>Program, QuickHack.<action><tier>Hack.
   public let item: String;
   public let action: String;
@@ -45,26 +47,27 @@ public abstract class RLHacks {
     let list: array<ref<RLHackFamily>>;
     let damage = RLHacks.Damage();
     let control = RLHacks.Control();
-    RLHacks.Add(list, n"Overheat", "Overheat", "Overheat", damage, n"BURN", "Cooks them from the inside.");
-    RLHacks.Add(list, n"ShortCircuit", "EMPOverload", "Overload", damage, n"SHOCK", "Fries their chrome. Androids hate it.");
-    RLHacks.Add(list, n"Contagion", "Contagion", "Contagion", damage, n"BLEED", "Poison that jumps. It counts as BLEED.");
-    RLHacks.Add(list, n"SynapseBurnout", "BrainMelt", "BrainMelt", damage, n"", "Burns out their brain. Worse the lower they are.");
-    RLHacks.Add(list, n"DetonateGrenade", "GrenadeExplode", "Grenade", damage, n"BLAST", "Sets off the grenade on their belt.");
-    RLHacks.Add(list, n"Ping", "Ping", "Ping", control, n"MARK", "Lights up them and their whole crew.");
-    RLHacks.Add(list, n"WeaponGlitch", "WeaponMalfunction", "WeaponMalfunction", control, n"GLITCH", "Jams their gun.");
-    RLHacks.Add(list, n"CyberwareMalfunction", "DisableCyberware", "CyberwareMalfunction", control, n"GLITCH", "Shuts their chrome down.");
-    RLHacks.Add(list, n"CrippleMovement", "LocomotionMalfunction", "LocomotionMalfunction", control, n"", "Locks their legs.");
-    RLHacks.Add(list, n"RebootOptics", "Blind", "Blind", control, n"", "Blinds them.");
-    RLHacks.Add(list, n"MemoryWipe", "MemoryWipe", "MemoryWipe", control, n"", "They forget you were ever there.");
-    RLHacks.Add(list, n"Cyberpsychosis", "Madness", "Madness", control, n"", "Turns them on their own crew.");
-    RLHacks.Add(list, n"Suicide", "Suicide", "Suicide", RLHacks.Ultimate(), n"", "They pull the trigger on themselves.");
-    RLHacks.Add(list, n"SystemCollapse", "SystemCollapse", "SystemCollapse", RLHacks.Ultimate(), n"", "Drops them where they stand.");
+    RLHacks.Add(list, n"Overheat", "Overheat", "Overheat", "Overheat", damage, n"BURN", "Cooks them from the inside.");
+    RLHacks.Add(list, n"ShortCircuit", "Short Circuit", "EMPOverload", "Overload", damage, n"SHOCK", "Fries their chrome. Androids hate it.");
+    RLHacks.Add(list, n"Contagion", "Contagion", "Contagion", "Contagion", damage, n"BLEED", "Poison that jumps. It counts as BLEED.");
+    RLHacks.Add(list, n"SynapseBurnout", "Synapse Burnout", "BrainMelt", "BrainMelt", damage, n"", "Burns out their brain. Worse the lower they are.");
+    RLHacks.Add(list, n"DetonateGrenade", "Detonate Grenade", "GrenadeExplode", "Grenade", damage, n"BLAST", "Sets off the grenade on their belt.");
+    RLHacks.Add(list, n"Ping", "Ping", "Ping", "Ping", control, n"MARK", "Lights up them and their whole crew.");
+    RLHacks.Add(list, n"WeaponGlitch", "Weapon Glitch", "WeaponMalfunction", "WeaponMalfunction", control, n"GLITCH", "Jams their gun.");
+    RLHacks.Add(list, n"CyberwareMalfunction", "Cyberware Malfunction", "DisableCyberware", "CyberwareMalfunction", control, n"GLITCH", "Shuts their chrome down.");
+    RLHacks.Add(list, n"CrippleMovement", "Cripple Movement", "LocomotionMalfunction", "LocomotionMalfunction", control, n"", "Locks their legs.");
+    RLHacks.Add(list, n"RebootOptics", "Reboot Optics", "Blind", "Blind", control, n"", "Blinds them.");
+    RLHacks.Add(list, n"MemoryWipe", "Memory Wipe", "MemoryWipe", "MemoryWipe", control, n"", "They forget you were ever there.");
+    RLHacks.Add(list, n"Cyberpsychosis", "Cyberpsychosis", "Madness", "Madness", control, n"", "Turns them on their own crew.");
+    RLHacks.Add(list, n"Suicide", "Suicide", "Suicide", "Suicide", RLHacks.Ultimate(), n"", "They pull the trigger on themselves.");
+    RLHacks.Add(list, n"SystemCollapse", "System Collapse", "SystemCollapse", "SystemCollapse", RLHacks.Ultimate(), n"", "Drops them where they stand.");
     return list;
   }
 
-  private static func Add(out list: array<ref<RLHackFamily>>, id: CName, const item: String, const action: String, role: Int32, keyword: CName, const line: String) {
+  private static func Add(out list: array<ref<RLHackFamily>>, id: CName, const name: String, const item: String, const action: String, role: Int32, keyword: CName, const line: String) {
     let family = new RLHackFamily();
     family.id = id;
+    family.name = name;
     family.item = item;
     family.action = action;
     family.role = role;

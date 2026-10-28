@@ -47,6 +47,9 @@ roguelite character for this build.
 
 **Favors and the terminal**
 
+- **DATABASE:** a new terminal screen (at home, on the door picker and mid-fight) with every keyword in its colours, the run's terms, each patron's effects with their overclocks, the duos, every chrome's evolution and mods, and the quickhacks - styled like the cards, read from the same data.
+- **A cleaner terminal:** test runs and MARK BUG are gone from it (F8 still marks a bug); assist, the database, the guide and upgrades share the column beside START RUN.
+
 - **Favors:** kits are called in with favors now, not Cred. A fixer owes you one for every boss you put down, one for winning, and one the first time you reach Act 2, Act 3 and the end. Kits cost 2 to 8 (30 for all seven). Kits you own stay yours.
 - **The terminal, rebuilt:** UPGRADES is ten rows - Cover, Choice, Rerolls, Head Start, Eddies, Body, Overdrive, Heat, Style, Fortune - each with two takes on the idea (Hades' Mirror). Buy a row's ranks once, switch takes for free. Every rank has its own name and line. Your old unlocks carried over as the nearest ranks; Edge III (and Street Map, if you also had Wide Net) is refunded.
 
@@ -79,6 +82,7 @@ roguelite character for this build.
 - **Logs:** reward kinds and the run state are named properly in the telemetry and bug marks; every fight logs how much damage each effect did, and with a deck how many quickhacks you uploaded and how long you sat short of RAM.
 - **Music left playing after a run** is stopped when V gets home, along with every score and the pocket radio.
 - **Stuck in the floor on arrival:** V is placed again once the arena's ground has loaded, before the fade-in.
+- **Glitch transitions actually show:** the game's glitch played under the black, where nobody could see it. Trips now glitch the world first, then the black comes down with the destination's name tearing in red and blue, and the arena glitches back in as it lifts.
 - **Enemies that wouldn't move** are now moved with the AI's own teleport as well.
 - **Air Dash** has a 1.5 s cooldown.
 - **Card text:** item effects are rendered to plain text (no more raw markup or {__empty__}); Operating System cards show their Overdrive instead of the game's long tooltip. The stray code in popup headers is gone.

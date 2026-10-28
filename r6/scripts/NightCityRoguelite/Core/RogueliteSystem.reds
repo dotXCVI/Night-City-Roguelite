@@ -107,6 +107,8 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_travelArena: ref<RLArenaDef>;
   private let m_waits: Int32;
   private let m_endTitle: String;
+  // The world glitch over a trip runs until then (a later trip extends it).
+  private let m_glitchUntil: Float;
   private let m_endSubtitle: String;
   private let m_lastSummary: String;
 
@@ -512,6 +514,9 @@ public class RogueliteSystem extends ScriptableSystem {
       case n"nextStep":
         this.OpenNextStepWhenReady();
         break;
+      case n"travelFade":
+        this.FadeToArena();
+        break;
       case n"travelBlack":
         this.ArriveInArena();
         break;
@@ -536,6 +541,10 @@ public class RogueliteSystem extends ScriptableSystem {
       case n"deathCheck":
         this.DeathTick();
         break;
+      case n"homeFade":
+        this.m_transition.FadeOut(this.m_endTitle, this.m_endSubtitle, RLConfig.FadeSeconds());
+        this.After(n"homeBlack", RLConfig.FadeSeconds() + 0.1);
+        break;
       case n"homeBlack":
         this.ArriveHome();
         break;
@@ -547,7 +556,7 @@ public class RogueliteSystem extends ScriptableSystem {
         break;
       case n"glitchOff":
         let player = GetPlayer(this.GetGameInstance());
-        if IsDefined(player) {
+        if IsDefined(player) && RLBoonEffects.Now(this.GetGameInstance()) >= this.m_glitchUntil - 0.05 {
           GameObjectEffectHelper.StopEffectEvent(player, n"transition_glitch_loop");
         }
         break;
@@ -1220,7 +1229,8 @@ public class RogueliteSystem extends ScriptableSystem {
     return IsDefined(this.m_run) && (Equals(this.m_state, RLState.RunHome) || Equals(this.m_state, RLState.Cleared));
   }
 
-  // Fade out with the destination on screen, then teleport (ArriveInArena).
+  // The world glitches, then fades out with the destination on screen, then
+  // V is teleported (ArriveInArena).
   private func TravelToArena(arena: ref<RLArenaDef>) {
     let player = GetPlayer(this.GetGameInstance());
     if !IsDefined(player) {
@@ -1233,9 +1243,17 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(this.m_faction) {
       this.m_faction = RogueliteService.Get().GetPools().PickFactionPreferred(arena.factions, this.m_run.act >= 3);
     }
-    let subtitle = this.m_run.FloorLabel() + " - " + this.FightLabel();
-    this.StartGlitch(player);
-    this.m_transition.FadeOut(arena.name, subtitle, RLConfig.FadeSeconds());
+    this.StartGlitch(player, RLConfig.GlitchLead() + RLConfig.FadeSeconds() + 0.3);
+    this.After(n"travelFade", RLConfig.GlitchLead());
+  }
+
+  // The glitch has had its moment on screen: the black comes down over it.
+  private func FadeToArena() {
+    let arena = this.m_travelArena;
+    if !IsDefined(arena) || !IsDefined(this.m_run) || !Equals(this.m_state, RLState.Traveling) {
+      return;
+    }
+    this.m_transition.FadeOut(arena.name, this.m_run.FloorLabel() + " - " + this.FightLabel(), RLConfig.FadeSeconds());
     this.After(n"travelBlack", RLConfig.FadeSeconds() + 0.1);
   }
 
@@ -1296,7 +1314,10 @@ public class RogueliteSystem extends ScriptableSystem {
       RLArenaDirector.TeleportToPoint(player, arena.position, arena.yaw);
     }
     this.m_arenas.StartWalls();
-    this.StopGlitch();
+    // The arena glitches in as the black lifts.
+    if IsDefined(player) {
+      this.StartGlitch(player, RLConfig.FadeSeconds() + 0.6);
+    }
     this.m_transition.FadeIn(RLConfig.FadeSeconds());
     this.BeginDeploy(arena);
   }
@@ -1318,14 +1339,15 @@ public class RogueliteSystem extends ScriptableSystem {
     this.After(n"weatherCheck", 3.0);
   }
 
-  // The game's own glitch effect (the one scene skips use) over a fade.
-  private func StartGlitch(player: ref<PlayerPuppet>) {
+  // The game's own glitch (the one a scene skip plays) on the world, for
+  // `seconds`. It renders under the HUD, so a trip shows it before the black
+  // comes down and again as the black lifts - under full black it can't be
+  // seen.
+  private func StartGlitch(player: ref<PlayerPuppet>, seconds: Float) {
+    GameObjectEffectHelper.StopEffectEvent(player, n"transition_glitch_loop");
     GameObjectEffectHelper.StartEffectEvent(player, n"transition_glitch_loop", false);
-    this.After(n"glitchOff", 2.5);
-  }
-
-  private func StopGlitch() {
-    this.OnDelayed(n"glitchOff");
+    this.m_glitchUntil = RLBoonEffects.Now(this.GetGameInstance()) + seconds;
+    this.After(n"glitchOff", seconds);
   }
 
   private func SpawnEncounter() {
@@ -2183,8 +2205,7 @@ public class RogueliteSystem extends ScriptableSystem {
       RLKeywords.Knockdown(fx, enemy);
     }
     GameInstance.GetAudioSystem(game).PlayShockwave(n"explosion", player.GetWorldPosition());
-    GameObjectEffectHelper.StartEffectEvent(player, n"transition_glitch_loop", false);
-    this.After(n"glitchOff", 1.2);
+    this.StartGlitch(player, 1.2);
     RLNotify(game, this.m_run.cover > 0 ? s"TRAUMA TEAM. COVER SPENT - \(this.m_run.cover) LEFT." : "TRAUMA TEAM. COVER SPENT - NONE LEFT.", 4.0);
     RLTelemetry.Record(this.m_run, "COVER", RLTelemetry.IntField("depth", this.m_run.Depth()) + RLTelemetry.IntField("wave", this.m_wave)
       + RLTelemetry.IntField("left", this.m_run.cover) + RLTelemetry.Field("by", this.m_combat.lastAttacker));
@@ -2324,10 +2345,9 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     if IsDefined(player) {
-      this.StartGlitch(player);
+      this.StartGlitch(player, RLConfig.GlitchLead() + RLConfig.FadeSeconds() + 0.3);
     }
-    this.m_transition.FadeOut(this.m_endTitle, this.m_endSubtitle, RLConfig.FadeSeconds());
-    this.After(n"homeBlack", RLConfig.FadeSeconds() + 0.1);
+    this.After(n"homeFade", RLConfig.GlitchLead());
   }
 
   private func ArriveHome() {
@@ -2373,7 +2393,10 @@ public class RogueliteSystem extends ScriptableSystem {
       this.After(n"homeSettle", 0.5);
       return;
     }
-    this.StopGlitch();
+    let player = GetPlayer(this.GetGameInstance());
+    if IsDefined(player) {
+      this.StartGlitch(player, 1.8);
+    }
     this.m_transition.FadeIn(1.2);
     RLNotify(this.GetGameInstance(), this.m_lastSummary, 10.0);
   }

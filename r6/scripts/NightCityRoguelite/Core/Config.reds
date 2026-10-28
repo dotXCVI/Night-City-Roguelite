@@ -83,6 +83,8 @@ public abstract class RLConfig {
   public static func DeployCountdown() -> Int32 = 5
   // Fade to / from black around every trip (UI/Transition.reds).
   public static func FadeSeconds() -> Float = 0.8
+  // How long a trip's glitch plays on screen before the black comes down.
+  public static func GlitchLead() -> Float = 0.45
 
   // --- Waves --------------------------------------------------------------------
 
@@ -126,6 +128,9 @@ public abstract class RLConfig {
   public static func CoverHealth() -> Float = 50.0
   // Drone Escort is a prototype: its card is only dealt when this is on.
   public static func DroneEscort() -> Bool = false
+
+  // Developer tools on the terminal: test runs that start on any floor.
+  public static func DevTools() -> Bool = false
 
   // --- Bosses and elites (Combat/Bosses.reds, Combat/Affixes.reds) --------------
 

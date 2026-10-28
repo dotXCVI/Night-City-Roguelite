@@ -23,9 +23,9 @@ short version; [TESTING.md](../TESTING.md) is the tester guide.
 4. The terminal shows the run's **line-up** before it starts: the four patrons
    working the city this time (see Patrons). A run opens with a choice of
    three **gigs** (see Gigs), and the first door is always a patron door, so
-   the first pick starts a build. Every trip fades to
-   black with the destination on screen and fades back in once the area has
-   loaded; the first wave comes after a 5-second countdown. The arena is
+   the first pick starts a build. Every trip glitches out - the game's own
+   signal glitch on the world, then black with the destination on screen,
+   its title tearing - and glitches back in once the area has loaded; the first wave comes after a 5-second countdown. The arena is
    ringed by a solid wall that lights up as red NCPD holo-tape as you walk up
    to it.
 5. Clearing a wave refills part of your ammo and one health charge. Clear the
@@ -66,15 +66,16 @@ skill use give no experience, and levels bring no attribute or perk points
 
 | F7 in the armory | Computer or F7 elsewhere at home | F7 during a fight | F7 between fights |
 | --- | --- | --- | --- |
-| Kit picker | Terminal (run start, upgrades) | Run status, abandon | Reward, Fixer or next fight |
+| Kit picker | Terminal (run start, upgrades, database) | Run status, database, abandon | Reward, Fixer or next fight |
 
-**Test runs:** the terminal's FLOOR card picks a floor (1, 5, 6, 7, 11, 12, 13,
-17 or 18) and TEST RUN starts there, with the level, eddies, weapon
-quality and three patron effects a run would have by then. Every door screen offers an event and (from Act
-2) a bounty, and fights roll objectives more often. Test runs pay no Cred and
-don't count in the stats - they're for trying bosses and new content quickly.
+**Test runs** (developers: `RLConfig.DevTools()`): the terminal grows a FLOOR
+card that picks a floor (1, 5, 6, 7, 11, 12, 13, 17 or 18) and TEST RUN starts
+there, with the level, eddies, weapon quality and three patron effects a run
+would have by then. Every door screen offers an event and (from Act 2) a
+bounty, and fights roll objectives more often. Test runs pay no Cred and
+don't count in the stats.
 
-**Found a bug?** Press **F8** (or MARK BUG on the F7 screen in a fight) the moment it
+**Found a bug?** Press **F8** the moment it
 happens. The log gets a snapshot of the fight - state, wave, every enemy's
 position and health - so the report can say exactly where to look.
 
@@ -586,6 +587,13 @@ gig cards the fixer, kit cards the kit's weapon; events open with whoever
 you're dealing with (Misty deals real tarot cards). Hovering lifts a card and
 lights its frame - the text never sits on a colour fill.
 
+The terminal's **DATABASE** (at home, on the door picker and in a fight) is
+everything a run talks about, dressed the way the cards are: the keywords in
+their colours, the run's terms, every patron's effects with their overclocks
+and keyword chips (weapon effects with all three readings), the duos, each
+chrome's evolution and mods, and the quickhacks. It reads the same
+catalogues the cards are dealt from, so it never disagrees with them.
+
 ### Arenas
 
 Arenas are cleared for the fight: no pedestrians or traffic, and anyone else
@@ -703,7 +711,8 @@ netrunner back.
 | `UI/Art.reds` | Codex pictures for arenas, patrons, kits, fixers, events |
 | `UI/ArmoryPopup.reds` | The kit picker |
 | `UI/GuidePopup.reds` | The six-page how-it-works guide |
-| `UI/Transition.reds` | Fade to black with the destination (trips, death) |
+| `UI/Transition.reds` | Glitch to black with the destination (trips, death) |
+| `UI/Database.reds` | The terminal's DATABASE: keywords, terms, effects, mods, quickhacks |
 | `UI/*.reds` | HUD line and boss bar, terminal, reward, event and Fixer popups |
 | `r6/tweaks/NightCityRoguelite/*.yaml` | Enemy variants and loot, the escort drone, computer and armory prompts (TweakXL) |
 | `archive/pc/mod/NightCityRoguelite.archive` | Quest patch (skips the Phantom Liberty opening for roguelite starts) and English text |

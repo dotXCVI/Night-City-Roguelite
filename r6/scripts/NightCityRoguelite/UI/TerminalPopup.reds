@@ -1,10 +1,11 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - terminal
 // -----------------------------------------------------------------------------
-// One popup, four views:
+// One popup, five views:
 //   Hub         (home, no run): stats, START RUN, the kit (picked in the
-//               armory, UI/ArmoryPopup.reds), assist, test runs, the guide,
-//               the way into the upgrades.
+//               armory, UI/ArmoryPopup.reds), assist, the database, the
+//               guide, the way into the upgrades. Test runs show up only
+//               with RLConfig.DevTools.
 //   Upgrades    (home): the ten rows of Meta/Terminal.reds, one strip each -
 //               the row and its rank, its two takes (the one on is lit; the
 //               other switches on for free), and the next rank's price. A
@@ -13,7 +14,10 @@
 //               by what it pays (the reward leads, the arena is a strip at
 //               the bottom); HOT doors are marked and pulse. Reroll the
 //               doors, or abandon.
-//   InArena     (during a fight): run status, abandon.
+//   InArena     (during a fight): run status, the database, abandon.
+//   Database    (from the hub, the door picker or a fight): every keyword,
+//               term, effect, mod and quickhack (UI/Database.reds), a tab
+//               column on the left; BACK returns to the view it came from.
 // Everything clickable is an RLCard (UI/Card.reds).
 // -----------------------------------------------------------------------------
 
@@ -25,6 +29,7 @@ public enum RLTerminalView {
   DoorPicker = 1,
   InArena = 2,
   Upgrades = 3,
+  Database = 4,
 }
 
 public class RLTerminalPopup extends InGamePopup {
@@ -36,6 +41,9 @@ public class RLTerminalPopup extends InGamePopup {
   private let m_content: ref<InGamePopupContent>;
   private let m_header: ref<InGamePopupHeader>;
   private let m_confirmAbandon: Bool;
+  // The database: the open tab, and the view BACK returns to.
+  private let m_dbTab: CName;
+  private let m_dbReturn: RLTerminalView;
 
   public static func OpenHub(system: ref<RogueliteSystem>) -> ref<RLTerminalPopup> {
     let none: array<ref<RLDoor>>;
@@ -84,6 +92,8 @@ public class RLTerminalPopup extends InGamePopup {
     let footer = InGamePopupFooter.Create();
     if Equals(this.m_view, RLTerminalView.DoorPicker) {
       footer.SetFluffText("EVERY WIN ALSO PAYS EDDIES");
+    } else if Equals(this.m_view, RLTerminalView.InArena) {
+      footer.SetFluffText("F8 MARKS A BUG FOR THE LOG");
     }
     footer.Reparent(this);
 
@@ -112,6 +122,12 @@ public class RLTerminalPopup extends InGamePopup {
         this.m_container.SetSize(Vector2(2200.0, 1860.0));
         this.m_header.SetTitle("UPGRADES");
         this.m_header.SetFluffRight(s"\(RogueliteService.Get().GetCred()) CRED");
+        break;
+      case RLTerminalView.Database:
+        this.m_container.SetSize(Vector2(2200.0, 1700.0));
+        this.m_header.SetTitle("DATABASE");
+        let tab = RLDatabase.GetTab(this.m_dbTab);
+        this.m_header.SetFluffRight(IsDefined(tab) ? tab.label : "");
         break;
       default:
         this.m_container.SetSize(Vector2(2200.0, 1120.0));
@@ -145,6 +161,9 @@ public class RLTerminalPopup extends InGamePopup {
         break;
       case RLTerminalView.Upgrades:
         this.BuildUpgrades(body);
+        break;
+      case RLTerminalView.Database:
+        this.BuildDatabase(body);
         break;
       default:
         this.BuildHub(body);
@@ -195,7 +214,7 @@ public class RLTerminalPopup extends InGamePopup {
     actions.SetMargin(inkMargin(0.0, 40.0, 0.0, 0.0));
     actions.Reparent(body);
     this.AddActionCard(actions, n"resume", "RESUME", "", n"MainColors.Blue");
-    this.AddActionCard(actions, n"markbug", "MARK BUG", "F8 WORKS TOO", n"MainColors.Grey");
+    this.AddActionCard(actions, n"database", "DATABASE", "WHAT EVERYTHING DOES", n"MainColors.ActiveWhite");
     this.AddAbandonCard(actions);
   }
 
@@ -224,7 +243,8 @@ public class RLTerminalPopup extends InGamePopup {
       this.Hook(reroll, actions);
       this.Intro(reroll, count);
     }
-    this.Intro(this.AddAbandonCard(actions), count + 1);
+    this.Intro(this.AddActionCard(actions, n"database", "DATABASE", "WHAT EVERYTHING DOES", n"MainColors.ActiveWhite"), count + 1);
+    this.Intro(this.AddAbandonCard(actions), count + 2);
   }
 
   // The reward leads: its picture and badge, what it pays in plain words.
@@ -324,8 +344,8 @@ public class RLTerminalPopup extends InGamePopup {
   }
 
   // A wide, short card used for plain actions.
-  private func AddActionCard(parent: ref<inkCompoundWidget>, name: CName, const title: String, const kicker: String, accent: CName) -> ref<RLCard> {
-    let card = RLCard.Create(name, 420.0, 120.0, accent);
+  private func AddActionCard(parent: ref<inkCompoundWidget>, name: CName, const title: String, const kicker: String, accent: CName, opt height: Float) -> ref<RLCard> {
+    let card = RLCard.Create(name, 420.0, height > 0.0 ? height : 120.0, accent);
     card.SetCompact();
     card.SetKicker(kicker);
     card.SetTitle(title);
@@ -388,7 +408,13 @@ public class RLTerminalPopup extends InGamePopup {
     this.Hook(kitCard, main);
     this.Intro(kitCard, 1);
 
-    let side = RLUI.VPanel(5.0);
+    // The column beside them fills the same height: four cards, six with
+    // the developer's test runs.
+    let dev = RLConfig.DevTools();
+    let gap = 12.0;
+    let cards = dev ? 6.0 : 4.0;
+    let height = (740.0 - gap * (cards - 1.0)) / cards;
+    let side = RLUI.VPanel(gap);
     side.Reparent(main);
     // Assist mode (Hades' God Mode): less damage taken, a little more with
     // every run lost while it is on.
@@ -396,15 +422,106 @@ public class RLTerminalPopup extends InGamePopup {
     let assist = this.AddActionCard(side, n"assist",
       service.IsAssistOn() ? "ASSIST: ON" : "ASSIST: OFF",
       s"TAKE \(reduction)% LESS DAMAGE",
-      service.IsAssistOn() ? n"MainColors.Green" : n"MainColors.Grey");
+      service.IsAssistOn() ? n"MainColors.Green" : n"MainColors.Grey", height);
     assist.SetSelected(service.IsAssistOn());
-    // Test runs: start on any floor to try a boss, an act or the new door
-    // types without playing up to it. No Cred, no stats.
-    this.AddActionCard(side, n"test_floor", s"FLOOR \(service.GetTestFloor())", "TEST RUN STARTS ON", n"MainColors.Grey");
-    this.AddActionCard(side, n"test_start", "TEST RUN", "NO CRED, NO STATS", n"MainColors.Grey");
-    this.AddActionCard(side, n"guide", "HOW IT WORKS", "THE BASICS", n"MainColors.Blue");
+    this.Intro(assist, 2);
+    this.Intro(this.AddActionCard(side, n"database", "DATABASE", "WHAT EVERYTHING DOES", n"MainColors.ActiveWhite", height), 3);
+    this.Intro(this.AddActionCard(side, n"guide", "HOW IT WORKS", "THE BASICS", n"MainColors.Blue", height), 4);
     RLTerminal.Migrate(service);
-    this.AddActionCard(side, n"upgrades", "UPGRADES", s"\(service.GetCred()) CRED TO SPEND", n"MainColors.Gold");
+    this.Intro(this.AddActionCard(side, n"upgrades", "UPGRADES", s"\(service.GetCred()) CRED TO SPEND", n"MainColors.Gold", height), 5);
+    // Test runs (developers): start on any floor to try a boss, an act or
+    // the new door types without playing up to it. No Cred, no stats.
+    if dev {
+      this.AddActionCard(side, n"test_floor", s"FLOOR \(service.GetTestFloor())", "TEST RUN STARTS ON", n"MainColors.Grey", height);
+      this.AddActionCard(side, n"test_start", "TEST RUN", "NO CRED, NO STATS", n"MainColors.Grey", height);
+    }
+  }
+
+  // --- Database view ---------------------------------------------------------------------------
+
+  // Opens the database from the current view; BACK comes back to it.
+  private func OpenDatabase() {
+    this.m_dbReturn = this.m_view;
+    if !IsNameValid(this.m_dbTab) {
+      this.m_dbTab = n"keywords";
+    }
+    this.SwitchView(RLTerminalView.Database);
+  }
+
+  // The tab column on the left, the open tab's entries as cards on the right.
+  private func BuildDatabase(body: ref<inkCompoundWidget>) {
+    let split = RLUI.HPanel(24.0);
+    split.Reparent(body);
+
+    let column = RLUI.VPanel(6.0);
+    column.Reparent(split);
+    let back = this.AddActionCard(column, n"back", "BACK", "", n"MainColors.Blue", 80.0);
+    back.HideKicker();
+    let group = "";
+    let i = 1;
+    for tab in RLDatabase.Tabs() {
+      if NotEquals(tab.group, group) {
+        group = tab.group;
+        let label = RLUI.Text(group, 22, n"MainColors.Grey", true);
+        label.SetLetterCase(textLetterCase.UpperCase);
+        label.SetMargin(inkMargin(4.0, 10.0, 0.0, 0.0));
+        label.Reparent(column);
+      }
+      let on = Equals(tab.id, this.m_dbTab);
+      let card = RLCard.Create(StringToName("db_" + NameToString(tab.id)), 300.0, 70.0, on ? tab.accent : n"MainColors.Grey");
+      card.SetCompact();
+      card.HideKicker();
+      card.SetTitle(tab.label);
+      card.SetTitleSize(24);
+      card.SetSelected(on);
+      this.Hook(card, column);
+      this.Intro(card, i);
+      i += 1;
+    }
+
+    let tab = RLDatabase.GetTab(this.m_dbTab);
+    if !IsDefined(tab) {
+      return;
+    }
+    let entries = RLDatabase.Entries(tab.id);
+    let columns = Max(1, tab.columns);
+    let rows = (ArraySize(entries) + columns - 1) / columns;
+    let gap = 12.0;
+    let width = (1720.0 - gap * Cast<Float>(columns - 1)) / Cast<Float>(columns);
+    let height = MinF(330.0, (1400.0 - gap * Cast<Float>(Max(rows - 1, 0))) / Cast<Float>(Max(rows, 1)));
+    let grid = RLUI.VPanel(gap);
+    grid.Reparent(split);
+    let row: ref<inkHorizontalPanel>;
+    let n = 0;
+    for entry in entries {
+      if n % columns == 0 {
+        row = RLUI.HPanel(gap);
+        row.Reparent(grid);
+      }
+      let card = RLTerminalPopup.EntryCard(entry, n, width, height);
+      card.Reparent(row);
+      this.Intro(card, n);
+      n += 1;
+    }
+  }
+
+  // One database entry, dressed the way its cards are in a run.
+  private static func EntryCard(entry: ref<RLDbEntry>, index: Int32, width: Float, height: Float) -> ref<RLCard> {
+    let card = RLCard.Create(StringToName("entry_" + IntToString(index)), width, height, entry.accent);
+    card.SetCompact();
+    card.SetKicker(entry.kicker);
+    card.SetTitle(entry.title);
+    card.SetTitleSize(32);
+    let i = 0;
+    while i < ArraySize(entry.lines) {
+      card.AddLine(entry.lines[i], entry.lineColors[i], 22);
+      i += 1;
+    }
+    if ArraySize(entry.chips) > 0 {
+      card.AddChips(entry.chips, entry.chipColors);
+    }
+    card.SetStatic();
+    return card;
   }
 
   // --- Upgrades view ---------------------------------------------------------------------------
@@ -508,9 +625,6 @@ public class RLTerminalPopup extends InGamePopup {
 
     if Equals(name, "resume") {
       this.Close();
-    } else if Equals(name, "markbug") {
-      this.Close();
-      this.m_system.MarkBug();
     } else if Equals(name, "abandon") {
       if this.m_confirmAbandon {
         this.Close();
@@ -545,8 +659,17 @@ public class RLTerminalPopup extends InGamePopup {
       this.m_system.OpenGuideLater();
     } else if Equals(name, "upgrades") {
       this.SwitchView(RLTerminalView.Upgrades);
+    } else if Equals(name, "database") {
+      this.OpenDatabase();
+    } else if StrBeginsWith(name, "db_") {
+      let tab = StringToName(StrAfterFirst(name, "_"));
+      if NotEquals(tab, this.m_dbTab) {
+        this.m_dbTab = tab;
+        this.PlaySound(n"Button", n"OnPress");
+        this.SwitchView(RLTerminalView.Database);
+      }
     } else if Equals(name, "back") {
-      this.SwitchView(RLTerminalView.Hub);
+      this.SwitchView(Equals(this.m_view, RLTerminalView.Database) ? this.m_dbReturn : RLTerminalView.Hub);
     } else if StrBeginsWith(name, "rank_") {
       if RLTerminal.TryBuy(service, StringToName(StrAfterFirst(name, "_"))) {
         this.PlaySound(n"Item", n"OnBuy");

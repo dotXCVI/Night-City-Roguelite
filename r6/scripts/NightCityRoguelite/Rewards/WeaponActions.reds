@@ -59,7 +59,7 @@ public abstract class RLWeaponActions {
     return overclock ? def.overclock : def.text;
   }
 
-  private static func ShellText(id: CName, overclock: Bool) -> String {
+  public static func ShellText(id: CName, overclock: Bool) -> String {
     switch id {
       case n"TracerRounds": return overclock ? "The MARKS last twice as long." : "Your shells MARK everything they catch.";
       case n"Payload": return overclock ? "Every 2nd shell." : "Every 3rd shell is a heavy one: a second, bigger BLAST where it lands.";
@@ -71,7 +71,7 @@ public abstract class RLWeaponActions {
     return "";
   }
 
-  private static func UploadText(id: CName, overclock: Bool) -> String {
+  public static func UploadText(id: CName, overclock: Bool) -> String {
     switch id {
       case n"TracerRounds": return overclock ? "Quickhacks on MARKED enemies give back 2 RAM." : "Every quickhack MARKS its target.";
       case n"Payload": return overclock ? "Every 2nd quickhack." : "Every 3rd quickhack BLASTS on its target.";

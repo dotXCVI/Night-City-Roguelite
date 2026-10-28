@@ -1,4 +1,4 @@
-# Night City Roguelite - developer handoff (v0.0.18)
+# Night City Roguelite - developer handoff (v0.0.19)
 
 You are picking up an in-progress Cyberpunk 2077 mod from another AI. Read this
 whole file before changing anything. The mod's source is the attached ZIP; the
@@ -18,7 +18,7 @@ built only from the game's own assets and systems (no new art, no new models).
   start a run.
 - **A run:** 3 acts x 6 floors = 18 arenas. Floor 5 of each act is an elite
   floor, floor 6 a boss. V travels arena -> arena (fade to black between them).
-  After each clear, right in the arena: pick 1 of 3 rewards (+1 level each),
+  After each clear, right in the arena: pick 1 of 3 rewards,
   the Fixer shop before each boss, then pick the next fight from 3 "doors"
   (Hades-style: the door shows the reward type, threat, arena, enemy gang).
 - **Death:** V really dies (game's own death animation), then comes to at home.
@@ -35,7 +35,7 @@ built only from the game's own assets and systems (no new art, no new models).
 - Code must read like it was written by a very talented human engineer:
   clean, consistent, industry-standard, well-commented (comments explain *why*).
 - Versioning: alpha builds are **v0.0.X**. Bump X for every build you hand over
-  (next is v0.0.18). The README is a product page: no version or status line
+  (next is v0.0.20). The README is a product page: no version or status line
   in it - versions live in CHANGELOG.md.
 - Deliver: a ZIP of the full mod folder (README.md, r6/, archive/, source/),
   plus a plain summary of what changed and what is least certain. Every
@@ -315,6 +315,21 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 
 ## 10. Status and what's next
 
+- **v0.0.19 (released, untested in game)** is the effects overhaul below plus
+  every kit fighting with its main weapon: chrome and decks in the main slot
+  (records, REWIRE, signatures, 30 mods on Tune-Up doors), weapon effects
+  read per action (`Rewards/WeaponActions.reds`), the quickhack loadout
+  (`Rewards/Quickhacks.reds`), favors for kits, the ten-row terminal, the
+  DATABASE and glitch transitions. Least certain - check first:
+  1. The upload hook (`QuickHackUploadListener.OnStatPoolMaxValueReached`
+     in `Combat/DamageHooks.reds`): FLOOR records with a deck should show
+     `uploads=`; Ping should MARK.
+  2. Deck swaps keeping their quickhacks (`RLArms.StripPrograms` +
+     `RLHacks.Retier`), and the slot picker on a full deck.
+  3. CASCADE (`QuickHackSpreadNumber` +2): the ledger's `Cascade` count.
+  4. The world glitch (`transition_glitch_loop`) visible before the black
+     and as it lifts.
+  5. Kit chrome installing at level 1 ("Chrome refused" lines).
 - **v0.0.18 (released, untested in game)** is the content patch below plus a
   home and menu polish: kits picked at the armory stash (the weapon room's
   door is opened by the mod), a first-run guide, codex art on cards, hover as
@@ -327,7 +342,7 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
      and nothing overflows its card.
   3. The owner wants to drop F7 for in-world interactions over time: home
      already works by devices; between fights is still F7 / auto-open.
-- **The effects overhaul (dev, untested in game):** patrons rebuilt as
+- **The effects overhaul (in v0.0.19):** patrons rebuilt as
   keyword effects (26 effects, 6 weapon effects, 15 duos, 7 legendaries, 6
   favours; four patrons a run), main weapon + sidearm (no weapon mods), hot
   doors, Trauma Team cover with full health every fight, levels per act (no

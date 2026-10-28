@@ -3,7 +3,7 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
-## Unreleased (dev branch)
+## v0.0.19 - Runs that hit different (2026-10-28)
 
 Runs that hit different: the patrons are rebuilt around effects that combine,
 the run builds one gun, and health stops being a resource. Start a new

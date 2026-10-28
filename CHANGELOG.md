@@ -3,6 +3,12 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## Unreleased
+
+**Fixes**
+
+- **Objective markers you can't reach:** a sabotage charge spot could land somewhere V can't get to, like a shop behind a locked door in the Grand Imperial Mall. Markers now need a full walking path to V on V's floor, and one you get stuck near (close, not getting closer) moves to you after a few seconds. Thanks to Jon for the report.
+
 ## v0.0.19 - Runs that hit different (2026-10-28)
 
 Runs that hit different: the patrons are rebuilt around effects that combine,

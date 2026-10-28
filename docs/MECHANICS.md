@@ -562,6 +562,10 @@ last one standing. A finished objective pays bonus eddies.
 - **SABOTAGE** - plant charges at three marked spots (a few seconds each);
   they go off when the last one is set.
 
+A marker you can't get to - behind a door that won't open, up a ledge you
+can't climb - moves to you once you've been stuck near it for a few seconds.
+An uplink or sabotage still going after 150 seconds completes on its own.
+
 ### Events
 
 A "?" door is a stop without a fight. It counts as a floor:

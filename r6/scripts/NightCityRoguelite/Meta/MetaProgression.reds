@@ -82,6 +82,8 @@ public abstract class RLMeta {
       return false;
     }
     service.AddUnlock(def.id);
+    RLTelemetry.RecordFor(0, "META", RLTelemetry.Field("did", "unlock") + RLTelemetry.Field("item", NameToString(def.id))
+      + RLTelemetry.IntField("cost", def.cost) + RLTelemetry.IntField("left", service.GetFavors()));
     return true;
   }
 

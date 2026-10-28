@@ -236,6 +236,8 @@ public abstract class RLTerminal {
     let rank = RLTerminal.Rank(service, id) + 1;
     service.AddUnlock(RLTerminal.RankID(id, rank));
     RLLog(s"Terminal: \(row.label) rank \(rank) for \(cost) Cred.");
+    RLTelemetry.RecordFor(0, "META", RLTelemetry.Field("did", "upgrade") + RLTelemetry.Field("row", NameToString(id))
+      + RLTelemetry.IntField("rank", rank) + RLTelemetry.IntField("cost", cost) + RLTelemetry.IntField("left", service.GetCred()));
     return true;
   }
 
@@ -247,6 +249,31 @@ public abstract class RLTerminal {
     } else {
       service.AddUnlock(flag);
     }
+    RLTelemetry.RecordFor(0, "META", RLTelemetry.Field("did", "switch") + RLTelemetry.Field("row", NameToString(id))
+      + RLTelemetry.Field("take", RLTerminal.TakeOn(service, id)));
+  }
+
+  // The take switched on in a row ("TraumaTeam").
+  public static func TakeOn(service: ref<RogueliteService>, row: CName) -> String {
+    let def = RLTerminal.GetRow(row);
+    if !IsDefined(def) || ArraySize(def.takes) == 0 {
+      return "";
+    }
+    let second = RLTerminal.SecondTakeOn(service, row) && ArraySize(def.takes) > 1;
+    return NameToString(def.takes[second ? 1 : 0].id);
+  }
+
+  // What the terminal gives a run: every row with a rank, as its live take
+  // and rank ("TraumaTeam2,WideNet1").
+  public static func Loadout(service: ref<RogueliteService>) -> String {
+    let text = "";
+    for row in RLTerminal.Rows() {
+      let rank = RLTerminal.Rank(service, row.id);
+      if rank > 0 {
+        text += (StrLen(text) > 0 ? "," : "") + RLTerminal.TakeOn(service, row.id) + IntToString(rank);
+      }
+    }
+    return text;
   }
 
   // "I", "II"

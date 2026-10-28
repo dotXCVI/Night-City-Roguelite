@@ -41,6 +41,10 @@ public class RogueliteService extends ScriptableService {
   private persistent let m_activeRunFloors: Int32;
   private persistent let m_activeRunKills: Int32;
   private persistent let m_activeRunBosses: Int32;
+  // The telemetry id of the run in progress until its END is on record: a
+  // quit records it as the session ends, so one still set at the next load
+  // went down with the game.
+  private persistent let m_activeRunId: Int32;
 
   // The mod's own log, kept in Codeware's persistent store so it can be read
   // after a session (red4ext/plugins/Codeware/Persistent). Newest last.
@@ -393,6 +397,12 @@ public class RogueliteService extends ScriptableService {
 
   public func GetActiveRunToken() -> Int32 = this.m_activeRunToken
 
+  public func SetActiveRunId(id: Int32) {
+    this.m_activeRunId = id;
+  }
+
+  public func GetActiveRunId() -> Int32 = this.m_activeRunId
+
   // Scores a run that was left without ending (quit or crash) as a flatline.
   // Returns the Cred paid out.
   public func SettleAbandonedRun() -> Int32 {
@@ -401,6 +411,11 @@ public class RogueliteService extends ScriptableService {
     }
     // Cred is banked per cleared arena, so an abandoned run pays nothing more.
     let payout = 0;
+    if this.m_activeRunId != 0 {
+      RLTelemetry.RecordFor(this.m_activeRunId, "END", RLTelemetry.Field("result", "crashed")
+        + RLTelemetry.IntField("floors", this.m_activeRunFloors) + RLTelemetry.IntField("kills", this.m_activeRunKills));
+      this.m_activeRunId = 0;
+    }
     this.RecordRunEnd(this.m_activeRunFloors, this.m_activeRunKills, false);
     this.ClearRunToken();
     return payout;

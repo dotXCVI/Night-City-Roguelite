@@ -146,6 +146,9 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_busyNotified: Bool;
   private let m_busyWaits: Int32;
   private let m_bugMarks: Int32;
+  // When the current door or reward screen first showed (-1: rolled, not
+  // shown yet), for how long a pick took.
+  private let m_screenShownAt: Float;
   // Quartermaster unlock: an Armory pick right after the gig.
   private let m_starterPickPending: Bool;
   // A new run's opening screens (the gig) are still being set up: no door
@@ -282,6 +285,9 @@ public class RogueliteSystem extends ScriptableSystem {
     }
 
     RLLog("Roguelite save loaded.");
+    RLTelemetry.RecordFor(0, "SESSION", RLTelemetry.Field("ver", RLConfig.ModVersion()) + RLTelemetry.IntField("cred", service.GetCred())
+      + RLTelemetry.IntField("favors", service.GetFavors()) + RLTelemetry.IntField("runs", service.GetRunsStarted())
+      + RLTelemetry.Field("upgrades", RLTerminal.Loadout(service)));
     let refund = RLMeta.RefundRetired(service);
     if refund > 0 {
       RLNotify(this.GetGameInstance(), s"Some upgrades are gone with the level-ups. +\(refund) Cred back.", 8.0);
@@ -315,6 +321,15 @@ public class RogueliteSystem extends ScriptableSystem {
 
   // Called by RogueliteService on Session/BeforeEnd.
   public func OnSessionEnding() {
+    // Leaving mid-run (a quit or a load) ends the run: on record, so the
+    // next load doesn't take it for a crash.
+    if IsDefined(this.m_run) && !Equals(this.m_state, RLState.Ending) {
+      let run = this.m_run;
+      RLTelemetry.Record(run, "END", RLTelemetry.Field("result", "quit") + RLTelemetry.IntField("floors", run.floorsCleared)
+        + RLTelemetry.IntField("kills", run.kills) + RLTelemetry.IntField("mins", RoundF((RLBoonEffects.Now(this.GetGameInstance()) - run.startTime) / 60.0))
+        + RLTelemetry.IntField("depth", run.Depth()) + RLTelemetry.Field("state", RLTelemetry.StateName(this.m_state)) + RLTelemetry.IntField("wave", this.m_wave));
+      RogueliteService.Get().SetActiveRunId(0);
+    }
     this.CancelTimer();
     if this.m_dying {
       RLDeath.End(this.GetGameInstance(), this.m_deathMenuFact);
@@ -1077,11 +1092,13 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     this.m_run.id = RandRange(1, 2000000000);
     this.m_run.startTime = RLBoonEffects.Now(game);
+    this.m_run.patrons = this.GetLineup();
     RLTelemetry.Record(this.m_run, "RUN", RLTelemetry.Field("kit", NameToString(kit)) + RLTelemetry.IntField("test", isTest ? 1 : 0)
       + RLTelemetry.IntField("from", this.m_run.Depth()) + RLTelemetry.IntField("assist", service.IsAssistOn() ? 1 : 0)
-      + RLTelemetry.IntField("runs", service.GetRunsStarted()));
+      + RLTelemetry.IntField("runs", service.GetRunsStarted()) + RLTelemetry.Field("ver", RLConfig.ModVersion())
+      + RLTelemetry.Field("upgrades", RLTerminal.Loadout(service)) + RLTelemetry.Field("patrons", RLPatrons.LineupText(this.m_run.patrons)));
+    service.SetActiveRunId(isTest ? 0 : this.m_run.id);
     this.m_pacing.ResetRun();
-    this.m_run.patrons = this.GetLineup();
     ArrayClear(this.m_lineup);
     this.m_run.coverMax = RLConfig.CoverPerRun() + (RLTerminal.Has(n"TraumaTeam", 2) ? 1 : 0);
     this.m_run.cover = this.m_run.coverMax;
@@ -1203,6 +1220,25 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     let doorCount = RLTerminal.Has(n"StreetMap", 1) ? 4 : 3;
     this.m_doors = RLRewards.RollDoors(GetPlayer(this.GetGameInstance()), RogueliteService.Get().GetPools(), this.m_run, this.m_lastArena, doorCount);
+    this.m_screenShownAt = -1.0;
+  }
+
+  // A door or reward screen came up (the popups' OnShown): the first time
+  // after a roll starts the clock on the pick.
+  public func OnScreenShown() {
+    if this.m_screenShownAt < 0.0 {
+      this.m_screenShownAt = RLUI.Now();
+    }
+  }
+
+  // "think=<seconds>;" from the screen showing to the pick.
+  private func ThinkField() -> String {
+    if this.m_screenShownAt <= 0.0 {
+      return "";
+    }
+    let seconds = RoundF(RLUI.Now() - this.m_screenShownAt);
+    this.m_screenShownAt = 0.0;
+    return RLTelemetry.IntField("think", seconds);
   }
 
   // Called from the door picker.
@@ -1215,7 +1251,7 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     let door = this.m_doors[index];
     RLTelemetry.Record(this.m_run, "PICK", RLTelemetry.Field("screen", "doors") + RLTelemetry.IntField("depth", this.m_run.Depth())
-      + RLTelemetry.Field("offered", this.DoorsText()) + RLTelemetry.IntField("idx", index));
+      + RLTelemetry.Field("offered", this.DoorsText()) + RLTelemetry.IntField("idx", index) + this.ThinkField());
     let arena = RLArenas.Get(door.arena);
     let isEvent = Equals(door.category, RLRewardCategory.Event);
     if !isEvent && !IsDefined(arena) {
@@ -1416,6 +1452,7 @@ public class RogueliteSystem extends ScriptableSystem {
   // --- Encounter events (from RLWaveSpawner) -----------------------------------------------
 
   public func OnWaveStarted(wave: Int32, waves: Int32, count: Int32) {
+    this.m_combat.WaveStarted(RLUI.Now());
     this.m_wave = wave;
     this.m_waveCount = waves;
     this.m_alive = this.m_spawner.GetAliveCount();
@@ -1532,7 +1569,7 @@ public class RogueliteSystem extends ScriptableSystem {
     if enemy.isElite || enemy.isBoss {
       enemy.affixes = RLAffixes.Roll(this.m_run, enemy.isBoss, enemy.isLieutenant);
     }
-    this.m_combat.RegisterEnemy(enemy.id, enemy.isBoss, enemy.isElite, enemy.affixes);
+    this.m_combat.RegisterEnemy(enemy.id, enemy.isBoss, enemy.isElite, enemy.affixes, enemy.record);
   }
 
   // First sighting: bosses and elites with affixes are announced.
@@ -1713,7 +1750,11 @@ public class RogueliteSystem extends ScriptableSystem {
       let id = attacker.GetEntityID();
       let role = this.m_combat.IsBoss(id) ? "boss" : (this.m_combat.IsElite(id) ? "elite" : "enemy");
       let affixes = RLAffixes.Names(this.m_combat.Affixes(id));
-      this.m_combat.lastAttacker = attacker.GetDisplayName() + " (" + role + (StrLen(affixes) > 0 ? ", " + affixes : "") + ")";
+      let foe = this.m_combat.Foe(id);
+      this.m_combat.lastAttacker = attacker.GetDisplayName() + " (" + (IsDefined(foe) ? foe.kind : role) + (StrLen(affixes) > 0 ? ", " + affixes : "") + ")";
+    }
+    if IsDefined(attacker) {
+      this.m_combat.Hurt(attacker.GetEntityID(), scale * hitEvent.attackComputed.GetTotalAttackValue(gamedataStatPoolType.Health));
     }
     if IsDefined(attacker) && this.m_combat.IsArenaEnemy(attacker.GetEntityID()) {
       RLAffixes.OnHitPlayer(attacker, this.m_combat.Affixes(attacker.GetEntityID()), this.m_combat, hitEvent);
@@ -1849,6 +1890,7 @@ public class RogueliteSystem extends ScriptableSystem {
     if !reroll {
       RLRewardDirector.AfterRoll(this.m_run, this.m_offers, null);
     }
+    this.m_screenShownAt = -1.0;
     RLTelemetry.Record(this.m_run, "OFFER", RLTelemetry.IntField("depth", this.m_run.Depth())
       + RLTelemetry.Field("screen", RLRewards.CategoryName(category)) + RLTelemetry.Field("patron", NameToString(patron))
       + RLTelemetry.Field("cards", RLTelemetry.OffersText(this.m_offers)));
@@ -1877,13 +1919,25 @@ public class RogueliteSystem extends ScriptableSystem {
     if this.m_combat.uploads > 0 || this.m_combat.ramLowSeconds > 0 {
       fields += RLTelemetry.IntField("uploads", this.m_combat.uploads) + RLTelemetry.IntField("ramlow", this.m_combat.ramLowSeconds);
     }
+    fields += RLTelemetry.Field("wavesecs", this.m_combat.WaveSeconds(RLUI.Now())) + RLTelemetry.Field("hurt", this.m_combat.HurtText())
+      + RLTelemetry.Field("held", this.HeldText());
     RLTelemetry.Record(this.m_run, "FLOOR", fields + RLTelemetry.IntField("waves", this.m_waveCount) + this.m_pacing.Summary());
+  }
+
+  // The effects held this fight ("HotBarrel,Payload+"), so one that never
+  // fired still shows in the ledger.
+  private func HeldText() -> String {
+    let text = "";
+    for state in this.m_run.boons {
+      text += (StrLen(text) > 0 ? "," : "") + NameToString(state.id) + (state.overclocked ? "+" : "");
+    }
+    return text;
   }
 
   private func RecordPick(const screen: String, const what: String, index: Int32) {
     let player = GetPlayer(this.GetGameInstance());
     RLTelemetry.Record(this.m_run, "PICK", RLTelemetry.Field("screen", screen) + RLTelemetry.IntField("depth", this.m_run.Depth())
-      + RLTelemetry.IntField("idx", index) + RLTelemetry.Field("took", what));
+      + RLTelemetry.IntField("idx", index) + RLTelemetry.Field("took", what) + this.ThinkField());
     RLTelemetry.Record(this.m_run, "BUILD", RLTelemetry.IntField("depth", this.m_run.Depth()) + RLTelemetry.BuildText(player, this.m_run));
   }
 
@@ -2316,7 +2370,9 @@ public class RogueliteSystem extends ScriptableSystem {
     RLTelemetry.Record(run, "END", RLTelemetry.Field("result", victory ? "won" : (abandoned ? "abandoned" : "lost"))
       + RLTelemetry.IntField("floors", run.floorsCleared) + RLTelemetry.IntField("kills", run.kills)
       + RLTelemetry.IntField("mins", RoundF((RLBoonEffects.Now(game) - run.startTime) / 60.0))
-      + RLTelemetry.IntField("cred", run.credEarned) + RLTelemetry.IntField("favors", run.favorsEarned));
+      + RLTelemetry.IntField("cred", run.credEarned) + RLTelemetry.IntField("favors", run.favorsEarned)
+      + RLTelemetry.IntField("depth", run.Depth()));
+    RogueliteService.Get().SetActiveRunId(0);
     this.m_state = RLState.Ending;
     RLOverdrive.Stop(game, player);
     RLBoonEffects.EndFight(player, this.m_combat);

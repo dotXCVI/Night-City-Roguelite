@@ -312,9 +312,17 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   extra damage and with what its blasts, strikes and statuses deal as they
   land (`RLCombatState.source`, `TrackBlast`, `CreditHit`); `hits` counts the
   main weapon's hits, the yardstick for a weapon effect's fires.
-  `tools/runreport.py <game folder>` prints a floor table per run; `--csv`
-  writes runs/floors/picks CSVs; `--marks` prints every bug mark; `--effects`
-  (optionally `--kit Brawler`) totals each effect's fires and damage. When adding
+  RUN carries the build (`RLConfig.ModVersion()`, "dev" in the source; the
+  release workflow stamps the tag into the ZIP's copy), the terminal loadout
+  and the line-up; FLOOR the wave times, what hurt V (`RLFoe.kind`, the
+  archetype) and the effects held; PICK the seconds the screen was up; END
+  `quit` from `OnSessionEnding` or `crashed` from the next load
+  (`m_activeRunId`). SESSION and META (terminal, armory) use run id 0.
+  `tools/runreport.py <files...>` prints a floor table per run; `--summary`
+  or `--html` sums up runs across players; `--csv` writes runs/floors/picks
+  CSVs; `--marks` prints every bug mark; `--effects` totals each effect's
+  fires and damage; `--kit/--who/--ver/--last/--tests` filter. A crash loses
+  the session (Codeware writes the store when a world unloads). When adding
   a decision point (a new screen, door type or event), record its OFFER/PICK.
 - **Test runs** are behind `RLConfig.DevTools()` (off in releases): it adds
   the FLOOR and TEST RUN cards to the terminal.

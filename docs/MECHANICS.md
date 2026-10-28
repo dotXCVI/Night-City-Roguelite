@@ -648,6 +648,8 @@ reward screen, pick, build, death and run end (about the last 50 runs). Read it
 with
 
     python3 tools/runreport.py "<game folder>"            # floor-by-floor report
+    python3 tools/runreport.py jon.dat me.dat --summary   # every player's runs summed up
+    python3 tools/runreport.py jon.dat me.dat --html r.html  # the same as a page
     python3 tools/runreport.py "<game folder>" --csv out  # CSV for charts
     python3 tools/runreport.py "<game folder>" --marks    # every F8 bug mark
     python3 tools/runreport.py "<game folder>" --log 100  # the last log lines
@@ -657,6 +659,18 @@ The record format is documented in `Core/Telemetry.reds`. With a deck, every
 fight also logs `uploads` (quickhacks that landed) and `ramlow` (seconds spent
 under a quarter of your RAM), so a run shows whether RAM or damage holds a
 netrunner back.
+
+Give runreport one file per player (named after the file, or `--as Jon,Me`)
+and it sums them up: runs and depth by kit, where and to what V dies, fight
+length and damage taken by act, which enemy types hurt most, arenas and
+objectives, how often each card and door is taken when offered, every
+effect's fires and damage (held-but-silent ones too), weapon effects per main
+weapon hit, how long picks take, and Cred spent at the terminal. Filter any
+of it with `--kit`, `--who`, `--ver` (each run carries its build), `--last N`
+and `--tests`. Runs left by a quit say where; a crash loses the session's
+data (it's only written when the game unloads a world), so quit through the
+menu. `tools/collect-logs.bat`, copied into the game folder, zips everything
+to send onto the desktop.
 
 ## Files
 

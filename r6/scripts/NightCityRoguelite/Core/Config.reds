@@ -9,6 +9,11 @@
 module NightCityRoguelite
 
 public abstract class RLConfig {
+  // The build, stamped on every run's telemetry. "dev" in the source; the
+  // release workflow writes the version tag into the ZIP's copy
+  // (tools/publish-releases.sh).
+  public static func ModVersion() -> String = "dev"
+
   // --- Keys -------------------------------------------------------------------
 
   // Opens the terminal (at home), run status (in an arena), or skips the

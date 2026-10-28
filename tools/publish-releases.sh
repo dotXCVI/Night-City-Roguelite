@@ -28,6 +28,11 @@ build() {
   # The commit's files.
   rm -rf "$work/tree" && mkdir -p "$work/tree"
   git archive "$sha" | tar -x -C "$work/tree"
+  # The build knows its version (RLConfig.ModVersion, "dev" in the source).
+  config="$work/tree/r6/scripts/NightCityRoguelite/Core/Config.reds"
+  if [ -f "$config" ]; then
+    sed -i "s/ModVersion() -> String = \"dev\"/ModVersion() -> String = \"$tag\"/" "$config"
+  fi
 
   # Release notes: this version's CHANGELOG.md section.
   notes="$work/notes.md"

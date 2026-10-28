@@ -96,6 +96,9 @@ public class RLFoe {
   // The effects that last set it burning, bleeding or shocked: the game's
   // damage over time is credited to them in the ledger.
   public let burnSource: CName;
+  // What it is, for the telemetry: its archetype ("ShotgunT3"), plus "elite"
+  // or "boss".
+  public let kind: String;
   public let bleedSource: CName;
   public let shockSource: CName;
   // Keywords the game doesn't track.
@@ -228,12 +231,18 @@ public class RLCombatState {
   private let m_dots: array<TweakDBID>;
 
   private let m_foes: array<ref<RLFoe>>;
+  private let m_hurtKinds: array<String>;
+  private let m_hurtDamage: array<Float>;
+  private let m_waveStarts: array<Float>;
   private let m_rampTarget: EntityID;
   private let m_rampCount: Int32;
   // Delay targets waiting to fire (blasts, arcs, echoes).
   private let m_pending: array<ref<IScriptable>>;
 
   public func ResetArena() {
+    ArrayClear(this.m_hurtKinds);
+    ArrayClear(this.m_hurtDamage);
+    ArrayClear(this.m_waveStarts);
     this.kills = 0;
     this.loggedHits = 0;
     this.lastAttacker = "";
@@ -303,7 +312,7 @@ public class RLCombatState {
 
   // --- Foes ------------------------------------------------------------------------------
 
-  public func RegisterEnemy(id: EntityID, isBoss: Bool, isElite: Bool, affixes: Int32) {
+  public func RegisterEnemy(id: EntityID, isBoss: Bool, isElite: Bool, affixes: Int32, opt record: TweakDBID) {
     let foe = this.Foe(id);
     if !IsDefined(foe) {
       foe = new RLFoe();
@@ -313,6 +322,71 @@ public class RLCombatState {
     foe.isBoss = isBoss;
     foe.isElite = isElite;
     foe.affixes = affixes;
+    foe.kind = RLCombatState.Kind(record) + (isBoss ? " boss" : (isElite ? " elite" : ""));
+  }
+
+  // An enemy record's archetype ("ShotgunT3", "NetrunnerT2").
+  public static func Kind(record: TweakDBID) -> String {
+    let character = TweakDBInterface.GetCharacterRecord(record);
+    if IsDefined(character) && IsDefined(character.ArchetypeData()) && IsDefined(character.ArchetypeData().Type()) {
+      return NameToString(character.ArchetypeData().Type().EnumName());
+    }
+    return "Unknown";
+  }
+
+  // --- What hurt V ---------------------------------------------------------------------------
+
+  // Damage V took this fight, by the kind of enemy that dealt it.
+  public func Hurt(attacker: EntityID, damage: Float) {
+    let foe = this.Foe(attacker);
+    let kind = IsDefined(foe) ? foe.kind : "Other";
+    let i = ArrayFindFirst(this.m_hurtKinds, kind);
+    if i < 0 {
+      ArrayPush(this.m_hurtKinds, kind);
+      ArrayPush(this.m_hurtDamage, 0.0);
+      i = ArraySize(this.m_hurtKinds) - 1;
+    }
+    this.m_hurtDamage[i] += MaxF(0.0, damage);
+  }
+
+  // "ShotgunT3 elite:420,GenericRangedT2:310,..." - the three that hurt most.
+  public func HurtText() -> String {
+    let kinds = this.m_hurtKinds;
+    let damage = this.m_hurtDamage;
+    let text = "";
+    let shown = 0;
+    while shown < 3 && ArraySize(kinds) > 0 {
+      let best = 0;
+      let i = 1;
+      while i < ArraySize(kinds) {
+        if damage[i] > damage[best] {
+          best = i;
+        }
+        i += 1;
+      }
+      text += (shown > 0 ? "," : "") + kinds[best] + ":" + IntToString(RoundF(damage[best]));
+      ArrayErase(kinds, best);
+      ArrayErase(damage, best);
+      shown += 1;
+    }
+    return text;
+  }
+
+  // When each wave began, for the floor's wave times.
+  public func WaveStarted(now: Float) {
+    ArrayPush(this.m_waveStarts, now);
+  }
+
+  // "12,20,31": seconds each wave took, the last up to `now`.
+  public func WaveSeconds(now: Float) -> String {
+    let text = "";
+    let i = 0;
+    while i < ArraySize(this.m_waveStarts) {
+      let end = i + 1 < ArraySize(this.m_waveStarts) ? this.m_waveStarts[i + 1] : now;
+      text += (i > 0 ? "," : "") + IntToString(RoundF(end - this.m_waveStarts[i]));
+      i += 1;
+    }
+    return text;
   }
 
   public func Foe(id: EntityID) -> ref<RLFoe> {

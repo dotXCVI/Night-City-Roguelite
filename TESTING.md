@@ -101,7 +101,10 @@ new roguelite characters on the same PC.
 3. Send me:
    - **What happened** and roughly when: which floor, and what you were doing.
      A screenshot helps a lot.
-   - **These two files** from your Cyberpunk 2077 game folder:
+   - **Your logs.** The easy way: copy `tools/collect-logs.bat` from the ZIP
+     into your Cyberpunk 2077 folder once. After playing (quit through the
+     menu first), double-click it and send the ZIP it puts on your desktop.
+     Or send these two files from your game folder by hand:
      - `red4ext/plugins/Codeware/Persistent/ScriptableServiceContainer.dat`
      - `r6/logs/redscript_rCURRENT.log`
    - **How it felt:** too hard, too easy, boring rewards, confusing screens,

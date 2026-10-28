@@ -5,27 +5,39 @@
 // so balance questions get numbers: how long floors take, what was offered and
 // what was picked, what the build looked like, what killed V. The last ~50
 // runs are kept (RogueliteService, saved outside the save files like Cred).
-// tools/runreport.py turns them into a floor-by-floor report and CSV.
+// tools/runreport.py turns them into run reports, a summary across runs and
+// players (text or a page), and CSV.
 //
 // One record per line:  T1|<seq>|<run id>|<kind>|key=value;key=value;...
 // (seq counts every record ever written, so order survives the store.)
 //
-//   RUN      the run started: kit, test run, starting floor, assist
-//   FLOOR    a fight ended: door (hot or not), arena, enemies, time, damage
-//            dealt and taken, main weapon hits, outcome, and the effect
-//            ledger: how often each effect fired and the damage it added -
-//            its multipliers, and its blasts and statuses as they landed
-//            (fx=ArcFlash:12:340,...)
+//   RUN      the run started: kit, test run, starting floor, assist, the
+//            build (ver, RLConfig.ModVersion), the terminal upgrades and
+//            the patron line-up
+//   FLOOR    a fight ended: door (hot or not), arena, enemies, time and each
+//            wave's seconds, damage dealt and taken, what hurt V most (by
+//            enemy archetype), main weapon hits, outcome, the effects held,
+//            and the effect ledger: how often each effect fired and the
+//            damage it added - its multipliers, and its blasts and statuses
+//            as they landed (fx=ArcFlash:12:340,...)
 //   OFFER    a reward screen was rolled: every card (kind:title:quality step)
-//   PICK     what was taken (or rerolled, bought, chosen at an event)
+//   PICK     what was taken (or rerolled, bought, chosen at an event), and
+//            how long the screen was up (think)
 //   BUILD    after each pick: level, attributes, build tags, styles, OS,
 //            main weapon and tier, cover, overclock, gig, patrons, effects
 //   COVER    a Trauma Team cover was spent: where, and what hit V
 //   ULT      Overdrive fired: the OS and the wave
 //   DEATH    what landed the last hit before V went down
-//   END      the run ended: result, floors, kills, minutes
+//   END      the run ended: won, lost, abandoned, quit (the session ended
+//            mid-run: where) or crashed (seen at the next load - only when
+//            the store was written mid-run; a crash usually loses it all)
 //   MARK     the player pressed MARK BUG: where V was, the arena, the wave
 //            and the objective's markers (see RogueliteSystem.MarkBug)
+//
+// Not about a run (run id 0):
+//   SESSION  a roguelite save loaded: build, Cred, favors, runs, upgrades
+//   META     the terminal and armory: an upgrade bought, a take switched, a
+//            kit unlocked
 //
 // A record longer than a saved name holds goes in pieces (T1+|<seq>|...,
 // RogueliteService.Pieces); tools/runreport.py joins them.
@@ -79,12 +91,15 @@ public abstract class RLTelemetry {
   public static func Version() -> String = "T1"
 
   public static func Record(run: ref<RLRunState>, const kind: String, const fields: String) {
+    RLTelemetry.RecordFor(IsDefined(run) ? run.id : 0, kind, fields);
+  }
+
+  // A record for a run by its id (0: not about a run - META, SESSION).
+  public static func RecordFor(id: Int32, const kind: String, const fields: String) {
     let service = RogueliteService.Get();
-    if !IsDefined(service) {
-      return;
+    if IsDefined(service) {
+      service.AppendTelemetry(RLTelemetry.Version(), IntToString(id) + "|" + kind + "|" + fields);
     }
-    let id = IsDefined(run) ? run.id : 0;
-    service.AppendTelemetry(RLTelemetry.Version(), IntToString(id) + "|" + kind + "|" + fields);
   }
 
   public static func Clean(const value: String) -> String {

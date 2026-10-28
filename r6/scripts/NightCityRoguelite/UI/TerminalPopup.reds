@@ -80,6 +80,9 @@ public class RLTerminalPopup extends InGamePopup {
 
   protected cb func OnShown() {
     RLLog("Menu shown.");
+    if IsDefined(this.m_system) {
+      this.m_system.OnScreenShown();
+    }
   }
 
   protected cb func OnCreate() {

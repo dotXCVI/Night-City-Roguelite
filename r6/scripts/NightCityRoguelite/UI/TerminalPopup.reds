@@ -122,7 +122,7 @@ public class RLTerminalPopup extends InGamePopup {
         this.m_header.SetFluffRight("NIGHT CITY ROGUELITE");
         break;
       case RLTerminalView.Upgrades:
-        this.m_container.SetSize(Vector2(2200.0, 1860.0));
+        this.m_container.SetSize(Vector2(2200.0, 1680.0));
         this.m_header.SetTitle("UPGRADES");
         this.m_header.SetFluffRight(s"\(RogueliteService.Get().GetCred()) CRED");
         break;
@@ -347,8 +347,8 @@ public class RLTerminalPopup extends InGamePopup {
   }
 
   // A wide, short card used for plain actions.
-  private func AddActionCard(parent: ref<inkCompoundWidget>, name: CName, const title: String, const kicker: String, accent: CName, opt height: Float) -> ref<RLCard> {
-    let card = RLCard.Create(name, 420.0, height > 0.0 ? height : 120.0, accent);
+  private func AddActionCard(parent: ref<inkCompoundWidget>, name: CName, const title: String, const kicker: String, accent: CName, opt height: Float, opt width: Float) -> ref<RLCard> {
+    let card = RLCard.Create(name, width > 0.0 ? width : 420.0, height > 0.0 ? height : 120.0, accent);
     card.SetCompact();
     card.SetKicker(kicker);
     card.SetTitle(title);
@@ -362,23 +362,28 @@ public class RLTerminalPopup extends InGamePopup {
   private func BuildHub(body: ref<inkCompoundWidget>) {
     let service = RogueliteService.Get();
 
-    // Stats
+    // Stats: six tiles across the content's width (2124 = 2200 less the
+    // inset; each tile carries 10 either side).
     let stats = RLUI.HPanel(10.0);
     stats.Reparent(body);
-    RLUI.StatTile("CRED", IntToString(service.GetCred()), n"MainColors.Gold").Reparent(stats);
-    RLUI.StatTile("FAVORS", IntToString(service.GetFavors()), n"MainColors.ActiveYellow").Reparent(stats);
-    RLUI.StatTile("RUNS", IntToString(service.GetRunsStarted()), n"MainColors.Blue").Reparent(stats);
-    RLUI.StatTile("WINS", IntToString(service.GetVictories()), n"MainColors.Blue").Reparent(stats);
-    RLUI.StatTile("BEST FLOOR", IntToString(service.GetBestDepth()), n"MainColors.Blue").Reparent(stats);
-    RLUI.StatTile("BODY COUNT", IntToString(service.GetTotalKills()), n"MainColors.Red").Reparent(stats);
+    let tile = 334.0;
+    RLUI.StatTile("CRED", IntToString(service.GetCred()), n"MainColors.Gold", tile).Reparent(stats);
+    RLUI.StatTile("FAVORS", IntToString(service.GetFavors()), n"MainColors.ActiveYellow", tile).Reparent(stats);
+    RLUI.StatTile("RUNS", IntToString(service.GetRunsStarted()), n"MainColors.Blue", tile).Reparent(stats);
+    RLUI.StatTile("WINS", IntToString(service.GetVictories()), n"MainColors.Blue", tile).Reparent(stats);
+    RLUI.StatTile("BEST FLOOR", IntToString(service.GetBestDepth()), n"MainColors.Blue", tile).Reparent(stats);
+    RLUI.StatTile("BODY COUNT", IntToString(service.GetTotalKills()), n"MainColors.Red", tile).Reparent(stats);
 
-    // The run, the kit it starts with, and the small switches.
+    // The run, the kit it starts with, and the small switches, filling the
+    // same width; the developer's cards take a column of their own.
     let main = RLUI.HPanel(9.0);
     main.SetMargin(inkMargin(0.0, 14.0, 0.0, 4.0));
     main.Reparent(body);
+    let dev = RLConfig.DevTools();
+    let tall = 660.0;
 
     let kit = service.GetSelectedKit();
-    let start = RLCard.Create(n"start", 760.0, 740.0, n"MainColors.Red");
+    let start = RLCard.Create(n"start", dev ? 740.0 : 860.0, tall, n"MainColors.Red");
     start.SetCompact();
     start.SetBanner(RLArts.City());
     start.SetKicker("THREE ACTS - EIGHTEEN FIGHTS");
@@ -398,7 +403,7 @@ public class RLTerminalPopup extends InGamePopup {
 
     // Kits are picked at the armory stash; the card opens the same screen.
     let reachable = IsDefined(this.m_system) && this.m_system.IsArmoryReachable();
-    let kitCard = RLCard.Create(n"kit", 520.0, 740.0, n"MainColors.ActiveYellow");
+    let kitCard = RLCard.Create(n"kit", dev ? 500.0 : 700.0, tall, n"MainColors.ActiveYellow");
     kitCard.SetCompact();
     kitCard.SetBanner(RLArts.Kit(kit));
     kitCard.SetBadge(RLIcons.CommonAtlas(), RLIcons.KitPart(kit));
@@ -411,12 +416,10 @@ public class RLTerminalPopup extends InGamePopup {
     this.Hook(kitCard, main);
     this.Intro(kitCard, 1);
 
-    // The column beside them fills the same height: four cards, seven with
-    // the developer's test runs and arena scout.
-    let dev = RLConfig.DevTools();
+    // The column beside them fills the same height with four cards.
     let gap = 12.0;
-    let cards = dev ? 7.0 : 4.0;
-    let height = (740.0 - gap * (cards - 1.0)) / cards;
+    let height = (tall - gap * 3.0) / 4.0;
+    let width = dev ? 400.0 : 510.0;
     let side = RLUI.VPanel(gap);
     side.Reparent(main);
     // Assist mode (Hades' God Mode): less damage taken, a little more with
@@ -425,20 +428,25 @@ public class RLTerminalPopup extends InGamePopup {
     let assist = this.AddActionCard(side, n"assist",
       service.IsAssistOn() ? "ASSIST: ON" : "ASSIST: OFF",
       s"TAKE \(reduction)% LESS DAMAGE",
-      service.IsAssistOn() ? n"MainColors.Green" : n"MainColors.Grey", height);
+      service.IsAssistOn() ? n"MainColors.Green" : n"MainColors.Grey", height, width);
     assist.SetSelected(service.IsAssistOn());
     this.Intro(assist, 2);
-    this.Intro(this.AddActionCard(side, n"database", "DATABASE", "WHAT EVERYTHING DOES", n"MainColors.ActiveWhite", height), 3);
-    this.Intro(this.AddActionCard(side, n"guide", "HOW IT WORKS", "THE BASICS", n"MainColors.Blue", height), 4);
+    this.Intro(this.AddActionCard(side, n"database", "DATABASE", "WHAT EVERYTHING DOES", n"MainColors.ActiveWhite", height, width), 3);
+    this.Intro(this.AddActionCard(side, n"guide", "HOW IT WORKS", "THE BASICS", n"MainColors.Blue", height, width), 4);
     RLTerminal.Migrate(service);
-    this.Intro(this.AddActionCard(side, n"upgrades", "UPGRADES", s"\(service.GetCred()) CRED TO SPEND", n"MainColors.Gold", height), 5);
-    // Test runs (developers): start on any floor to try a boss, an act or
-    // the new door types without playing up to it. No Cred, no stats.
+    this.Intro(this.AddActionCard(side, n"upgrades", "UPGRADES", s"\(service.GetCred()) CRED TO SPEND", n"MainColors.Gold", height, width), 5);
+    // Test runs and the arena scout (developers): start on any floor to try
+    // a boss, an act or the new door types without playing up to it.
     if dev {
-      this.AddActionCard(side, n"test_floor", s"FLOOR \(service.GetTestFloor())", "TEST RUN STARTS ON", n"MainColors.Grey", height);
-      this.AddActionCard(side, n"test_start", "TEST RUN", "NO CRED, NO STATS", n"MainColors.Grey", height);
-      let candidates = RLArenaCandidates.All();
-      this.AddActionCard(side, n"scout", "SCOUT ARENAS", s"\(ArraySize(candidates)) CANDIDATES", n"MainColors.Grey", height);
+      let devHeight = (tall - gap * 3.0) / 4.0;
+      let tools = RLUI.VPanel(gap);
+      tools.Reparent(main);
+      this.AddActionCard(tools, n"test_floor", s"FLOOR \(service.GetTestFloor())", "TEST RUN STARTS ON", n"MainColors.Grey", devHeight, width);
+      this.AddActionCard(tools, n"test_start", "TEST RUN", "NO CRED, NO STATS", n"MainColors.Grey", devHeight, width);
+      let landmarks = RLArenaScout.List(true);
+      let candidates = RLArenaScout.List(false);
+      this.AddActionCard(tools, n"scout_landmarks", "SCOUT LANDMARKS", s"\(ArraySize(landmarks)) STORY SITES", n"MainColors.Grey", devHeight, width);
+      this.AddActionCard(tools, n"scout", "SCOUT ARENAS", s"\(ArraySize(candidates)) CANDIDATES", n"MainColors.Grey", devHeight, width);
     }
   }
 
@@ -535,13 +543,13 @@ public class RLTerminalPopup extends InGamePopup {
     let service = RogueliteService.Get();
     let top = RLUI.HPanel(10.0);
     top.Reparent(body);
-    this.AddActionCard(top, n"back", "BACK", "TO THE TERMINAL", n"MainColors.Blue");
-    let note = RLUI.Text("Ranks are bought once per row and serve either take. Switching takes is free.", 24, n"MainColors.Grey");
+    this.AddActionCard(top, n"back", "BACK", "TO THE TERMINAL", n"MainColors.Blue", 100.0);
+    let note = RLUI.Text("Ranks are bought once per row and serve either take. The lit take is on; switching is free.", 24, n"MainColors.Grey");
     note.SetVAlign(inkEVerticalAlign.Center);
     note.SetMargin(inkMargin(20.0, 0.0, 0.0, 0.0));
     note.Reparent(top);
-    let list = RLUI.VPanel(6.0);
-    list.SetMargin(inkMargin(0.0, 12.0, 0.0, 0.0));
+    let list = RLUI.VPanel(5.0);
+    list.SetMargin(inkMargin(0.0, 8.0, 0.0, 0.0));
     list.Reparent(body);
     let i = 0;
     for row in RLTerminal.Rows() {
@@ -550,6 +558,9 @@ public class RLTerminalPopup extends InGamePopup {
     }
   }
 
+  // Ten rows and the BACK bar fit the screen with the header showing.
+  public static func UpgradeRowHeight() -> Float = 126.0
+
   // One strip: the row and its rank, both takes, the next rank.
   private func AddUpgradeRow(parent: ref<inkCompoundWidget>, service: ref<RogueliteService>, row: ref<RLRow>, index: Int32) {
     let strip = RLUI.HPanel(10.0);
@@ -557,7 +568,7 @@ public class RLTerminalPopup extends InGamePopup {
     let rank = RLTerminal.Rank(service, row.id);
     let max = ArraySize(row.costs);
 
-    let label = RLCard.Create(StringToName("rowlabel_" + NameToString(row.id)), 250.0, 136.0, n"MainColors.Grey");
+    let label = RLCard.Create(StringToName("rowlabel_" + NameToString(row.id)), 250.0, RLTerminalPopup.UpgradeRowHeight(), n"MainColors.Grey");
     label.SetCompact();
     label.SetKicker(s"RANK \(rank)/\(max)");
     label.SetPips(rank, max, n"MainColors.Gold");
@@ -572,14 +583,11 @@ public class RLTerminalPopup extends InGamePopup {
     while t < ArraySize(row.takes) {
       let take = row.takes[t];
       let on = Equals(second, t == 1);
-      // Name and both rank lines need the whole card: no kicker, and the
-      // take that's on says so in the corner.
-      let card = RLCard.Create(StringToName(s"take_\(t)_" + NameToString(row.id)), 750.0, 136.0, on ? n"MainColors.Blue" : n"MainColors.Grey");
+      // Name and both rank lines need the whole card: no kicker. The take
+      // that's on is the lit card.
+      let card = RLCard.Create(StringToName(s"take_\(t)_" + NameToString(row.id)), 750.0, RLTerminalPopup.UpgradeRowHeight(), on ? n"MainColors.Blue" : n"MainColors.Grey");
       card.SetCompact();
       card.HideKicker();
-      if on {
-        card.SetTag("ON", n"MainColors.Blue");
-      }
       card.SetTitle(take.name);
       card.SetTitleSize(26);
       let r = 0;
@@ -597,7 +605,7 @@ public class RLTerminalPopup extends InGamePopup {
 
     let cost = RLTerminal.NextCost(service, row);
     let affordable = cost > 0 && service.GetCred() >= cost;
-    let buy = RLCard.Create(StringToName("rank_" + NameToString(row.id)), 270.0, 136.0, cost <= 0 ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
+    let buy = RLCard.Create(StringToName("rank_" + NameToString(row.id)), 270.0, RLTerminalPopup.UpgradeRowHeight(), cost <= 0 ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
     buy.SetCompact();
     if cost <= 0 {
       buy.SetKicker("ALL RANKS");
@@ -653,9 +661,9 @@ public class RLTerminalPopup extends InGamePopup {
     } else if Equals(name, "test_start") {
       this.Close();
       this.m_system.StartRun(service.GetSelectedKit(), service.GetTestFloor());
-    } else if Equals(name, "scout") {
+    } else if Equals(name, "scout") || Equals(name, "scout_landmarks") {
       this.Close();
-      this.m_system.StartScout();
+      this.m_system.StartScout(Equals(name, "scout_landmarks"));
     } else if Equals(name, "assist") {
       service.SetAssist(!service.IsAssistOn());
       this.Rebuild();

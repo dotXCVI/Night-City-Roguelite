@@ -618,12 +618,23 @@ holster your weapon. This only happens around your fights - the world itself
 isn't edited. An enemy that ends up under the floor, on a roof or hanging back
 at the end of a wave is brought back near you.
 
-Petrochem Off-Limits, Industrial Park, Grand Imperial Mall, Oil Fields, Old
-Drive-In, Junkyard, Wind Farm and The Crater. Each has a gang that fits the
-location, and the door says what the ground is like (OPEN GROUND, MIXED or
+Petrochem Off-Limits, Industrial Park, Oil Fields, Old Drive-In, Junkyard,
+Wind Farm, The Crater, Rocky Ridge, Jackson Plains, Coronado Hideout, East
+Coronado, West Wind Estate, Longshore Stacks, Dogtown Back Streets, Japantown
+Backlot, Tyger Sweatshop, Charter Hill, Wellsprings, West Downtown and
+Northside Yards. Each has a gang that fits the location, and the door says what the ground is like (OPEN GROUND, MIXED or
 CLOSE QUARTERS): long guns like the open ones, shotguns and blades the tight
 ones. Edit `Combat/Arenas.reds` to change radii, start points or disable one.
 New ones are vetted with the arena scout (developers, see DEVELOPER_NOTES).
+
+**Boss floors** are fought at story landmarks: each landmark names the acts
+it can host, and the boss door picks one of them (any arena when an act has
+none yet). The Grand Imperial Mall hosts Act 2. The other landmarks - the All
+Foods plant, Totentanz, Ghost Town, Konpeki Plaza and its roof, Batty's
+Hotel, the Dashi parade rooftops, Embers, the Arasaka estate, Dogtown's
+stadium and its roof, the Black Sapphire, Arasaka Tower's atrium, CEO floor
+and roof, Mikoshi, the spaceport roof and Cynosure - are listed but off until
+the scout shows the open world loads them with ground and navmesh.
 
 The walls are built from the game's own holo-tape hologram and a "Player
 Blocker" collider. They stop V (and gunfire through them). An enemy that ends

@@ -325,7 +325,8 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   the session (Codeware writes the store when a world unloads). When adding
   a decision point (a new screen, door type or event), record its OFFER/PICK.
 - **Test runs** are behind `RLConfig.DevTools()` (off in releases): it adds
-  the FLOOR, TEST RUN and SCOUT ARENAS cards to the terminal.
+  the FLOOR, TEST RUN, SCOUT LANDMARKS and SCOUT ARENAS cards to the
+  terminal.
 - **New arenas** come from the arena scout. `source/arenas/candidates.tsv`
   lists candidates taken from the game's own map pins (gang outposts,
   cyberpsycho spots, gig sites; `gen_candidates.py` writes
@@ -335,7 +336,16 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   Murmur3 (seed 0x5EEDBA5E) of the path. SCOUT ARENAS visits each candidate
   with V invulnerable and records how much of a 30 and 40 m circle is
   walkable from the start (`Combat/ArenaScout.reds`); `runreport --scout`
-  ranks them, and the good ones become `RLArenas.Def` entries.
+  ranks them, and the good ones become `RLArenas.Def` entries. Watch the
+  log (or play along) for gigs, calls and scenes a site sets off: those are
+  left out, with their neighbours.
+- **Landmarks** (`kind` landmark in the TSV) are story-mission fight sites
+  from the main quests' map pins and Appearance Menu Mod's locations, for
+  boss floors. SCOUT LANDMARKS visits only those (holding V at each one
+  until it streams, since many are high up or underground). Many story
+  interiors only stream in during their quest; a landmark goes live by
+  setting its `enabled` in `RLArenas.Landmark` once the scout finds ground
+  and navmesh there. `RLRewards.PickBossArena` picks among the act's.
 - **Bug marks:** F8 (`RLConfig.BugKey()`) logs
   `===== BUG MARK #n =====` with the state machine, popup/countdown flags,
   arena, run and the spawner's view of every enemy (`RLWaveSpawner.Describe`).

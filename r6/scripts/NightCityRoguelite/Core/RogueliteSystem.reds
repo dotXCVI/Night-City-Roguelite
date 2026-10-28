@@ -748,15 +748,15 @@ public class RogueliteSystem extends ScriptableSystem {
 
   public func IsScouting() -> Bool = IsDefined(this.m_scout) && this.m_scout.IsActive()
 
-  // From the terminal's SCOUT ARENAS card: off to every arena candidate and
-  // back home (Combat/ArenaScout.reds).
-  public func StartScout() {
+  // From the terminal's SCOUT cards: off to every open-world arena candidate
+  // (or every story landmark) and back home (Combat/ArenaScout.reds).
+  public func StartScout(landmarks: Bool) {
     if !RLConfig.DevTools() || !Equals(this.m_state, RLState.Hub) || IsDefined(this.m_run) || this.IsScouting() {
       return;
     }
     this.m_apartment.StopLeash();
     this.m_scout = new RLArenaScout();
-    this.m_scout.Start(this);
+    this.m_scout.Start(this, landmarks);
   }
 
   public func OnScoutDone() {
@@ -1377,6 +1377,12 @@ public class RogueliteSystem extends ScriptableSystem {
     let ready = Equals(found.status, worldNavigationRequestStatus.OK) && RLArenaDirector.HasFloor(game, arena.position);
     if !ready && this.m_waits < 16 {
       this.m_waits += 1;
+      // Hold V at the start meanwhile: an arena up a tower streams in
+      // around the start, not under a V who fell to the street.
+      let waiting = GetPlayer(game);
+      if IsDefined(waiting) {
+        RLArenaDirector.TeleportToPoint(waiting, arena.position, arena.yaw);
+      }
       this.After(n"travelSettle", 0.5);
       return;
     }

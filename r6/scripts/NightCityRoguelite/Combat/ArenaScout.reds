@@ -2,10 +2,11 @@
 // Night City Roguelite - arena scout (dev tools)
 // -----------------------------------------------------------------------------
 // Vets arena candidates (Data/ArenaCandidates.reds: gang outposts, cyberpsycho
-// spots and gig sites from the game's own map pins) without playing them.
-// From the terminal's SCOUT ARENAS card (RLConfig.DevTools()), V is taken to
-// each candidate in turn, invulnerable, and once the ground and navmesh have
-// streamed in the scout measures it:
+// spots and gig sites from the game's own map pins, and story-mission
+// landmarks for boss floors) without playing them. From the terminal's SCOUT
+// cards (RLConfig.DevTools()) - open-world candidates or landmarks - V is
+// taken to each candidate in turn, invulnerable, and once the ground and
+// navmesh have streamed in the scout measures it:
 //
 //   start     the walkable point nearest the pin (where V would arrive)
 //   cover30   the share of a 30 m circle around it V can walk to from there
@@ -50,13 +51,24 @@ public class RLArenaScout extends RLDelayTarget {
 
   public func IsActive() -> Bool = this.m_active
 
-  public func Start(system: ref<RogueliteSystem>) {
+  // The candidates the scout visits: the story landmarks, or everything else.
+  public static func List(landmarks: Bool) -> array<ref<RLArenaCandidate>> {
+    let list: array<ref<RLArenaCandidate>>;
+    for candidate in RLArenaCandidates.All() {
+      if Equals(Equals(candidate.kind, "landmark"), landmarks) {
+        ArrayPush(list, candidate);
+      }
+    }
+    return list;
+  }
+
+  public func Start(system: ref<RogueliteSystem>, landmarks: Bool) {
     let player = GetPlayer(GetGameInstance());
     if this.m_active || !IsDefined(player) {
       return;
     }
     this.m_system = system;
-    this.m_list = RLArenaCandidates.All();
+    this.m_list = RLArenaScout.List(landmarks);
     this.m_index = 0;
     this.m_active = true;
     GameInstance.GetGodModeSystem(player.GetGame()).AddGodMode(player.GetEntityID(), gameGodModeType.Invulnerable, n"NCRogueliteScout");
@@ -95,7 +107,9 @@ public class RLArenaScout extends RLDelayTarget {
   }
 
   // Waits for the ground and navmesh around the pin to stream in (up to
-  // 15 s), then two seconds more for the rest of the circle.
+  // 15 s), then two seconds more for the rest of the circle. Until then V is
+  // put back at the pin each second, so a landmark high in a tower doesn't
+  // stream in under a V who has fallen to the street.
   private func Check() {
     let game = GetGameInstance();
     let candidate = this.m_list[this.m_index];
@@ -103,6 +117,11 @@ public class RLArenaScout extends RLDelayTarget {
     let ready = Equals(found.status, worldNavigationRequestStatus.OK) && RLArenaDirector.HasFloor(game, found.point);
     if !ready && this.m_waited < 15 {
       this.m_waited += 1;
+      let player = GetPlayer(game);
+      if IsDefined(player) {
+        let target = candidate.position;
+        RLArenaDirector.TeleportToPoint(player, Vector4(target.X, target.Y, target.Z + 1.5, 1.0), 0.0);
+      }
       RLDelay(game, this, n"check", 1.0);
       return;
     }

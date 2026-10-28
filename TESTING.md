@@ -142,6 +142,12 @@ Tell me how these feel:
   deck they count quickhacks. Do Payload, Hot Barrel, Lucky Round and the
   rest fire about as often as their cards say? On Gorilla Arms especially:
   in the last log Hot Barrel never went off in five floors.
+- **New arenas:** thirteen of them (Rocky Ridge, Longshore Stacks, Tyger
+  Sweatshop and the rest). Does one start a gig, ring your phone, play a
+  scene or show a quest marker? Press F8 and say which. Is any too cramped,
+  too big, or full of spots enemies can't reach?
+- **Boss arenas:** Act 2's boss is at the Grand Imperial Mall now. Does the
+  boss floor feel like an occasion?
 - **Arenas with rooms:** locked, sealed and keypad doors inside an arena
   should be open when you arrive. Any objective marker or enemy you still
   can't reach? Press F8 right there.

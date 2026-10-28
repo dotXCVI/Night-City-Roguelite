@@ -5,6 +5,16 @@ release on GitHub with its ZIP attached.
 
 ## Unreleased
 
+**Arenas**
+
+- **Thirteen new arenas** across the city: Rocky Ridge, Jackson Plains, Coronado Hideout, East Coronado, West Wind Estate, Longshore Stacks, Dogtown Back Streets, Japantown Backlot, Tyger Sweatshop, Charter Hill, Wellsprings, West Downtown and Northside Yards - gang outposts, cyberpsycho spots and gig sites picked by an arena scout that measured how much of each is walkable. Gig sites that started their gig, a call or a scene when V showed up were left out.
+- **Bosses fight at landmarks.** A boss floor's door takes you to one of the act's story locations - the Grand Imperial Mall hosts Act 2's boss now. More are lined up (the All Foods plant, Konpeki Plaza, Arasaka Tower's atrium, CEO floor and roof, Mikoshi, the Arasaka estate, Embers, Totentanz, Batty's Hotel, Dogtown's stadium, the Black Sapphire, Cynosure, the spaceport) and switch on once they're scouted.
+- **Arenas up high:** V is held at the start while an arena streams in, so a rooftop arena doesn't load under a V who fell to the street.
+
+**Terminal**
+
+- **The hub and the upgrades screen fit the screen:** the stats row and the cards no longer run past the panel, and the upgrades header isn't cut off. The ON tag is gone - the lit take is the one that's on.
+
 **Fixes**
 
 - **Objective markers you can't reach:** a sabotage charge spot could land somewhere V can't get to, like a shop behind a locked door in the Grand Imperial Mall. Markers now need a full walking path to V on V's floor, and one you get stuck near (close, not getting closer) moves to you after a few seconds. Thanks to Jon for the report.

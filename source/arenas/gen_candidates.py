@@ -28,6 +28,13 @@ FACTIONS = {
     'badlands/inland_avenue': ['Wraiths', 'Scavengers'],
     'badlands/se1': ['Wraiths', 'Scavengers'],
     'dogtown': ['Barghest'],
+    'story/maelstrom': ['Maelstrom'],
+    'story/wraiths': ['Wraiths'],
+    'story/arasaka': ['Arasaka'],
+    'story/voodoo': ['VoodooBoys'],
+    'story/tygers': ['TygerClaws', 'Arasaka'],
+    'story/barghest': ['Barghest'],
+    'story/militech': ['Militech', 'Barghest'],
 }
 
 

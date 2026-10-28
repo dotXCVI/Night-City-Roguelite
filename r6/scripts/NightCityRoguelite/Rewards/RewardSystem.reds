@@ -417,7 +417,7 @@ public abstract class RLRewards {
         door.event = RLEvents.Pick(run);
         return door;
     }
-    door.arena = RLRewards.PickArena(usedArenas);
+    door.arena = boss ? RLRewards.PickBossArena(run.act, usedArenas) : RLRewards.PickArena(usedArenas);
     ArrayPush(usedArenas, door.arena);
     let arena = RLArenas.Get(door.arena);
     if IsDefined(arena) {
@@ -483,10 +483,25 @@ public abstract class RLRewards {
     }
   }
 
+  // A boss fights at one of the act's story landmarks (Combat/Arenas.reds),
+  // or anywhere when none is open for the act.
+  public static func PickBossArena(act: Int32, exclude: array<CName>) -> CName {
+    let candidates: array<CName>;
+    for arena in RLArenas.Landmarks(act) {
+      if !ArrayContains(exclude, arena.id) {
+        ArrayPush(candidates, arena.id);
+      }
+    }
+    if ArraySize(candidates) == 0 {
+      return RLRewards.PickArena(exclude);
+    }
+    return candidates[RandRange(0, ArraySize(candidates))];
+  }
+
   public static func PickArena(exclude: array<CName>) -> CName {
     let candidates: array<CName>;
     let all: array<CName>;
-    for arena in RLArenas.Enabled() {
+    for arena in RLArenas.Regular() {
       ArrayPush(all, arena.id);
       if !ArrayContains(exclude, arena.id) {
         ArrayPush(candidates, arena.id);

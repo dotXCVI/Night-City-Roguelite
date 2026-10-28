@@ -66,9 +66,9 @@ public abstract class RLUI {
   }
 
   // A small panel with a caption and a big value (terminal stats row).
-  public static func StatTile(const caption: String, const value: String, color: CName) -> ref<inkWidget> {
+  public static func StatTile(const caption: String, const value: String, color: CName, opt width: Float) -> ref<inkWidget> {
     let tile = new inkCanvas();
-    tile.SetSize(Vector2(388.0, 108.0));
+    tile.SetSize(Vector2(width > 0.0 ? width : 388.0, 108.0));
     let bg = new inkImage();
     bg.SetAtlasResource(r"base\\gameplay\\gui\\common\\shapes\\atlas_shapes_sync.inkatlas");
     bg.SetTexturePart(n"cell_bg");

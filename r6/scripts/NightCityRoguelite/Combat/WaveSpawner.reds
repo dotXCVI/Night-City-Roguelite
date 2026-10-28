@@ -29,6 +29,8 @@ public class RLTrackedEnemy {
   public let record: TweakDBID;
   public let isBoss: Bool;
   public let isElite: Bool;
+  // A hot door's named miniboss: an elite with two affixes.
+  public let isLieutenant: Bool;
   public let level: Int32;
   public let affixes: Int32;
   // Bosses: 0 fresh, 1 reinforcements called, 2 enraged.
@@ -64,6 +66,8 @@ public class RLEncounterPlan {
   // Boss fights: who answers the boss's call, and their level.
   public let reinforcements: array<TweakDBID>;
   public let reinforceLevel: Int32;
+  // Hot doors: the lieutenant's place in the records (1-based; 0 = none).
+  public let lieutenant: Int32;
 
   public func WaveCount() -> Int32 = ArraySize(this.waveStarts)
 
@@ -272,7 +276,7 @@ public class RLWaveSpawner extends RLDelayTarget {
       if this.GetAliveCount() >= RLConfig.MaxAlive() {
         break;
       }
-      if this.SpawnRecord(player, this.m_plan.records[i], this.m_plan.bossFlags[i], this.m_plan.eliteFlags[i], this.m_plan.levels[i]) {
+      if this.SpawnRecord(player, this.m_plan.records[i], this.m_plan.bossFlags[i], this.m_plan.eliteFlags[i], this.m_plan.levels[i], this.m_plan.lieutenant == i + 1) {
         spawned += 1;
       }
       i += 1;
@@ -288,7 +292,7 @@ public class RLWaveSpawner extends RLDelayTarget {
     }
   }
 
-  private func SpawnRecord(player: ref<PlayerPuppet>, record: TweakDBID, isBoss: Bool, isElite: Bool, level: Int32) -> Bool {
+  private func SpawnRecord(player: ref<PlayerPuppet>, record: TweakDBID, isBoss: Bool, isElite: Bool, level: Int32, opt isLieutenant: Bool) -> Bool {
     let position: Vector4;
     if !this.FindSpawnPoint(player, position) {
       RLLog("No spawn point found for an enemy.");
@@ -314,6 +318,7 @@ public class RLWaveSpawner extends RLDelayTarget {
     enemy.record = record;
     enemy.isBoss = isBoss;
     enemy.isElite = isElite;
+    enemy.isLieutenant = isLieutenant;
     enemy.level = level;
     enemy.spawnTime = this.m_time;
     enemy.bestDistance = 9999.0;
@@ -560,7 +565,9 @@ public class RLWaveSpawner extends RLDelayTarget {
       RLWaveSpawner.MakeHostile(puppet, player);
       enemy.lastThreat = this.m_time;
     }
-    RLAffixes.OnTick(puppet, enemy.affixes);
+    let combat = IsDefined(this.m_system) ? this.m_system.GetCombat() : null;
+    let glitched = IsDefined(combat) && combat.IsGlitched(combat.Foe(enemy.id), RLBoonEffects.Now(puppet.GetGame()));
+    RLAffixes.OnTick(puppet, enemy.affixes, glitched);
     if enemy.isBoss {
       this.UpdateBoss(enemy, puppet, player);
     }

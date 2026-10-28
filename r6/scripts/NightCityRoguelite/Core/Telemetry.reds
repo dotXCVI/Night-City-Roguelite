@@ -11,11 +11,14 @@
 // (seq counts every record ever written, so order survives the store.)
 //
 //   RUN      the run started: kit, test run, starting floor, assist
-//   FLOOR    a fight ended: door, arena, enemies, time, damage, outcome
+//   FLOOR    a fight ended: door (hot or not), arena, enemies, time, damage,
+//            outcome, and the effect ledger: how often each effect fired and
+//            the damage it added (fx=ArcFlash:12:340,...)
 //   OFFER    a reward screen was rolled: every card (kind:title:quality step)
 //   PICK     what was taken (or rerolled, bought, chosen at an event)
 //   BUILD    after each pick: level, attributes, build tags, styles, OS,
-//            weapon mods, overclock, gig progress, boons
+//            main weapon and tier, cover, overclock, gig, patrons, effects
+//   COVER    a Trauma Team cover was spent: where, and what hit V
 //   ULT      Overdrive fired: the OS and the wave
 //   DEATH    what landed the last hit before V went down
 //   END      the run ended: result, floors, kills, minutes
@@ -48,20 +51,17 @@ public abstract class RLTelemetry {
   // Script enums have no names at runtime (EnumValueToString returns "").
   public static func KindName(kind: RLOfferKind) -> String {
     switch kind {
-      case RLOfferKind.Weapon: return "Weapon";
+      case RLOfferKind.Trade: return "Trade";
       case RLOfferKind.Iconic: return "Iconic";
       case RLOfferKind.Cyberware: return "Cyberware";
       case RLOfferKind.Quickhack: return "Quickhack";
-      case RLOfferKind.Boon: return "Boon";
+      case RLOfferKind.Boon: return "Effect";
       case RLOfferKind.Perk: return "Perk";
       case RLOfferKind.Grenade: return "Grenade";
-      case RLOfferKind.WeaponUpgrade: return "WeaponUpgrade";
+      case RLOfferKind.TuneUp: return "TuneUp";
       case RLOfferKind.HealthUpgrade: return "HealthUpgrade";
-      case RLOfferKind.WeaponMod: return "WeaponMod";
       case RLOfferKind.Evolve: return "Evolve";
-      case RLOfferKind.Attribute: return "Attribute";
       case RLOfferKind.Capacity: return "Capacity";
-      case RLOfferKind.BoonUpgrade: return "BoonUpgrade";
       case RLOfferKind.OperatingSystem: return "OperatingSystem";
       case RLOfferKind.Gig: return "Gig";
     }
@@ -118,24 +118,20 @@ public abstract class RLTelemetry {
       + s",T\(RoundF(stats.GetStatValue(id, gamedataStatType.TechnicalAbility)))"
       + s",I\(RoundF(stats.GetStatValue(id, gamedataStatType.Intelligence)))"
       + s",C\(RoundF(stats.GetStatValue(id, gamedataStatType.Cool)))";
-    let boons = "";
+    let effects = "";
     for state in run.boons {
-      boons += (StrLen(boons) > 0 ? "," : "") + NameToString(state.id) + ":" + IntToString(state.rarity);
-    }
-    let mods = "";
-    for weapon in run.weapons {
-      for mod in weapon.mods {
-        mods += (StrLen(mods) > 0 ? "," : "") + NameToString(mod);
-      }
+      effects += (StrLen(effects) > 0 ? "," : "") + NameToString(state.id) + (state.overclocked ? "+" : "");
     }
     return RLTelemetry.IntField("lvl", RoundF(stats.GetStatValue(id, gamedataStatType.Level)))
       + RLTelemetry.Field("attr", attrs)
       + RLTelemetry.Field("tags", RLBuildProfile.Read(player).Describe())
       + RLTelemetry.Field("styles", RLStyles.Telemetry(run))
       + RLTelemetry.Field("os", NameToString(run.os))
-      + RLTelemetry.Field("mods", mods)
+      + RLTelemetry.Field("main", RLRewards.ItemName(RLWeapons.MainRecord(run)) + ":" + IntToString(run.mainStep))
+      + RLTelemetry.IntField("cover", run.cover)
       + RLTelemetry.IntField("overclock", run.overclock)
       + RLTelemetry.Field("gig", run.gigStyle >= 0 ? RLStyle.Name(run.gigStyle) + s" \(run.gigProgress)/\(run.gigTarget)" : "")
-      + RLTelemetry.Field("boons", boons);
+      + RLTelemetry.Field("patrons", RLPatrons.LineupText(run.patrons))
+      + RLTelemetry.Field("effects", effects);
   }
 }

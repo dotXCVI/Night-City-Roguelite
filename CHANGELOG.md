@@ -5,22 +5,60 @@ release on GitHub with its ZIP attached.
 
 ## Unreleased (dev branch)
 
-Fixes from the first v0.0.18 run.
+Runs that hit different: the patrons are rebuilt around effects that combine,
+the run builds one gun, and health stops being a resource. Start a new
+roguelite character for this build.
+
+**Patrons and effects**
+
+- **Effects, not stat boons.** Every patron reward is now a rule that changes how a fight plays - Headshots MARK. Kills fire micro-missiles. Crits arc to the crowd. BURNING enemies explode. Blasts throw shrapnel. Dashing knocks enemies down.
+- **Keywords.** Effects speak eleven words - MARK, FOCUS, BLAST, SHOCK, GLITCH, BURN, BLEED, MOMENTUM, SHIELD, LUCK, DEAL - and fire whatever applied them, so effects from different patrons feed each other. A word flashes on the HUD when one lands; chains play out a beat apart so you can watch them go.
+- **26 effects, 6 weapon effects, 15 duos, 7 legendaries, 6 favours.** Every effect has an **overclock**, a stronger version offered once you hold it. A duo for every pair of patrons; a legendary once you hold two of a patron's effects; a free **favour** for three.
+- **Four patrons a run,** shown on the terminal before you start: fifteen line-ups, each a different web.
+- **Patron screens are dealt:** one card that builds on what you hold, one you haven't seen, one open. The first door of a run is always a patron, and its first screen only deals effects that start something.
+- **Cards show how they fit:** keyword chips, NEW, BUILDS ON, and a YOUR BUILD strip that lights up the effects a card links to when you hover it.
+- **The HUD's build row:** each patron's count, your cover, SHIELD and MOMENTUM.
+
+**Weapons**
+
+- **One main weapon.** Your kit's gun takes every weapon reward: Tune-Ups (a quality step, with DPS before and after), weapon effects (two slots, three on an iconic; they work on blades too) and the evolution.
+- **Sidearm:** your kit's backup steps up after every boss. So does the main.
+- **Trades:** a new gun arrives at your main slot's quality and keeps its weapon effects - swapping is about how it plays.
+- **Weapon mods are gone** (weapon effects replace them), and so is the weapon-quality damage penalty.
+
+**Run shape**
+
+- **HOT doors:** one in Act 1, two in Acts 2 and 3, placed when you need a spike most. Elites in every wave and a lieutenant with two affixes; the reward comes two steps up, with a card more and half again the eddies.
+- **Full health every fight.** **Trauma Team cover** - one a run, two with the new Trauma Platinum unlock - gets you back up at half health instead of a flatline.
+- **No level-ups:** one pick a floor, three cards a screen (four with Wide Net). Levels are set per act - 3, 10, 17 - for V and enemies alike, so every pick inside an act is pure gain.
+- **No act gates:** enemies never shrug off your damage. ARMORED is now plating that shatters once a quarter of its health is gone.
+- **Damage taken per act:** 60%, 80%, 95%.
+- **CRED doors** now and then: skip the card, bank Cred for good.
+- **Rerolls** come from charges only (one an act, more from unlocks, the Fixer and the Afterlife's favour) - no more eddies.
+- **Doors lead with the reward:** the patron's art, what the screen deals, its keywords and how many of its effects you hold.
+- **Events retuned:** the Ripperdoc restores a spent cover, the Bookie bets an effect on its overclock, Misty's cards overclock and widen screens, the stranger buys your cover for a legendary.
+- **Unlocks:** Trauma Platinum is new; Head Start and Vitality are retired and refunded. Quartermaster is a free Armory pick.
+
+**Weather**
+
+- **Arena looks:** eight time-and-weather pairs that read at a glance - HIGH NOON, GOLDEN HOUR, CLEAR NIGHT, FOG BANK, NEON RAIN, SMOG, TOXIC STORM, SANDSTORM. Random weather mostly landed on clouds at night, which nobody could see. Storms come with hot doors, elites and bosses. The mod checks the weather took and asks again if it didn't.
+
+**Fixes from the first v0.0.18 run**
 
 - **Eddies:** NCPD bounties no longer pay out for roguelite characters. Most gang members carry one, which flooded runs with eddies - enough to buy out the Fixer by floor 5.
-- **Four cards on every reward screen** (five with Wide Net, which now adds the fifth). Level-ups stay at three.
-- **Doors say what they pay:** "Pick 1 of 4 quickhacks", "Pick 1 of 4 Militech boons", "No fight - MISTY'S READING", and the objective spelled out.
+- **Doors say what they pay:** "Pick 1 of 3 quickhacks", "Pick 1 of 3 Militech effects", "No fight - MISTY'S READING", and the objective spelled out.
 - **Cyberware, quickhack, grenade and OS cards show what the item does,** in the game's own tooltip words and numbers. MaxDoc and grenade upgrades say what they change.
 - **Quickhacks that didn't install:** vendors also list crafting specs, and one of those ("Bait") could be offered and given instead of the quickhack. Specs are out of the pools.
 - **Music doubling after the Act 1 boss:** Royce's boss loop is now ended with its own outro.
 - **The Junkyard's locked garage:** enemies no longer spawn in it, and an enemy that can't be moved out of somewhere is removed (and counts as killed) right away instead of after two minutes.
-- **Logs:** reward kinds and the run state are named properly in the telemetry and bug marks.
-- **Weapon cards are always upgrades:** a new gun (or iconic) must beat your best equipped weapon's DPS by 10%; it comes at a higher quality if it needs to, or isn't offered.
+- **Logs:** reward kinds and the run state are named properly in the telemetry and bug marks; every fight logs how much damage each effect did.
 - **Music left playing after a run** is stopped when V gets home, along with every score and the pocket radio.
 - **Stuck in the floor on arrival:** V is placed again once the arena's ground has loaded, before the fade-in.
 - **Enemies that wouldn't move** are now moved with the AI's own teleport as well.
 - **Air Dash** has a 1.5 s cooldown.
 - **Card text:** item effects are rendered to plain text (no more raw markup or {__empty__}); Operating System cards show their Overdrive instead of the game's long tooltip. The stray code in popup headers is gone.
+
+**Updating:** delete both `r6/scripts/NightCityRoguelite` and `r6/tweaks/NightCityRoguelite` before installing - an old `boons.yaml` left behind is harmless but stale.
 
 ## v0.0.18 - Runs that build, the armory (2026-10-27)
 

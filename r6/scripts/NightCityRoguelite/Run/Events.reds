@@ -3,13 +3,16 @@
 // -----------------------------------------------------------------------------
 // A "?" door is a stop without a fight (Hades' chaos gates and wells, Slay the
 // Spire's ? rooms): one screen, one choice, then the next doors. It counts as
-// a floor and is followed by a level-up.
+// a floor.
 //
-//   RIPPERDOC   a back-alley clinic: a free MaxDoc patch-up, or paid chrome
-//   BOOKIE      double or nothing with eddies, or trade a boon for an Epic one
-//   TAROT       Misty reads three cards - each a blessing with a price
-//   STRANGER    an iconic weapon that makes V a target, or sell a boon
-//               (Act 2 on)
+//   RIPPERDOC   a back-alley clinic: a MaxDoc upgrade, paid chrome, and a
+//               Trauma Team policy to restore a spent cover
+//   BOOKIE      double or nothing with eddies, or bet an effect on an
+//               overclocked one
+//   TAROT       Misty reads three cards - each a deal with a price
+//   STRANGER    the Afterlife's deals (Act 2 on): an iconic for the main slot
+//               that makes V a target, sell an effect, or sell a cover for a
+//               legendary
 //
 // Prices and trade-offs are fixed when the screen opens (RLEventChoice), so
 // what the card says is what happens.
@@ -25,9 +28,11 @@ public class RLEventChoice {
   public let price: Int32;
   public let disabled: Bool;
   public let accent: CName;
-  // What the choice hands out, fixed up front (an offer, a boon to lose).
+  // What the choice hands out, fixed up front (an offer, an effect to lose
+  // or to win).
   public let offer: ref<RLOffer>;
   public let boon: CName;
+  public let prize: CName;
 }
 
 public class RLEvent {
@@ -76,7 +81,7 @@ public abstract class RLEvents {
         }
         ArrayPush(event.choices, patch);
         let chrome = RLEvents.Choice(n"Chrome", "Street Chrome", "", "", RLFixer.Discounted(run, 300 + 40 * depth), n"MainColors.Blue");
-        chrome.offer = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Cyberware, 3, null, true);
+        chrome.offer = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Cyberware, null, true);
         if IsDefined(chrome.offer) {
           chrome.title = chrome.offer.title;
           chrome.text = chrome.offer.subtitle + ". " + chrome.offer.description + ".";
@@ -86,7 +91,11 @@ public abstract class RLEvents {
           chrome.disabled = true;
         }
         ArrayPush(event.choices, chrome);
-        ArrayPush(event.choices, RLEvents.Choice(n"Lacing", "Bone Lacing", "", "+10% max health for the rest of the run.", RLFixer.Discounted(run, 200 + 30 * depth), n"MainColors.Gold"));
+        if run.cover < run.coverMax {
+          ArrayPush(event.choices, RLEvents.Choice(n"Policy", "Trauma Policy", "", "Your Trauma Team cover, restored.", RLFixer.Discounted(run, 250 + 30 * depth), n"MainColors.Green"));
+        } else {
+          ArrayPush(event.choices, RLEvents.Choice(n"Lacing", "Bone Lacing", "", "+10% max health for the rest of the run.", RLFixer.Discounted(run, 200 + 30 * depth), n"MainColors.Gold"));
+        }
         break;
       case n"Bookie":
         event.flavor = "Double or nothing, choom.";
@@ -95,13 +104,18 @@ public abstract class RLEvents {
         bet.price = stake;
         bet.disabled = stake < 50;
         ArrayPush(event.choices, bet);
-        let swap = RLEvents.Choice(n"Swap", "Bet a Boon", "", "Lose a random boon. Win an Epic one.", 0, n"MainColors.Purple");
-        swap.boon = RLBoons.RandomOwned(run, false);
-        swap.disabled = !IsNameValid(swap.boon);
-        if swap.disabled {
-          swap.text = "You have no boons to bet.";
+        let swap = RLEvents.Choice(n"Swap", "Bet an Effect", "", "", 0, n"MainColors.Purple");
+        swap.boon = RLBoons.RandomOwned(run);
+        let prize = RLRewards.AnyBoonOffer(player, run);
+        swap.disabled = !IsNameValid(swap.boon) || !IsDefined(prize);
+        if !IsNameValid(swap.boon) {
+          swap.text = "You have no effects to bet.";
+        } else if !IsDefined(prize) {
+          swap.text = "The house has nothing to put up.";
         } else {
+          swap.prize = prize.boon;
           swap.kicker = "STAKE " + RLBoons.Get(swap.boon).name;
+          swap.text = "Lose it. Win " + RLBoons.Get(prize.boon).name + ", overclocked.";
         }
         ArrayPush(event.choices, swap);
         break;
@@ -122,28 +136,42 @@ public abstract class RLEvents {
       case n"Stranger":
         event.flavor = "Says it fell off an Arasaka truck.";
         let deal = RLEvents.Choice(n"Iconic", "", "ICONIC", "", 0, n"MainColors.Gold");
-        deal.offer = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Iconic, 3, null, true);
+        deal.offer = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Iconic, null, true);
         if IsDefined(deal.offer) {
           deal.title = deal.offer.title;
-          deal.text = "Yours. But someone wants it back: take 15% more damage for the rest of the run.";
+          deal.text = "Your main weapon, effects kept. But someone wants it back: take 15% more damage for the rest of the run.";
         } else {
           deal.title = "Empty Case";
           deal.text = "He's got nothing for you.";
           deal.disabled = true;
         }
         ArrayPush(event.choices, deal);
-        let sell = RLEvents.Choice(n"Sell", "Sell a Boon", "", "", 0, n"MainColors.Purple");
-        sell.boon = RLBoons.RandomOwned(run, false);
+        let sell = RLEvents.Choice(n"Sell", "Sell an Effect", "", "", 0, n"MainColors.Purple");
+        sell.boon = RLBoons.RandomOwned(run);
         if IsNameValid(sell.boon) {
-          let owned = RLBoons.Owned(run, sell.boon);
-          sell.price = -(300 + 200 * owned.rarity + 20 * depth);
+          sell.price = -(400 + (RLBoons.IsOverclocked(run, sell.boon) ? 300 : 0) + 20 * depth);
           sell.kicker = s"+\(-sell.price) EDDIES";
           sell.text = "He takes " + RLBoons.Get(sell.boon).name + ".";
         } else {
-          sell.text = "You have no boons to sell.";
+          sell.text = "You have no effects to sell.";
           sell.disabled = true;
         }
         ArrayPush(event.choices, sell);
+        // The Afterlife's oldest deal: your safety net for something big.
+        let cover = RLEvents.Choice(n"SellCover", "Sell Your Cover", "DEAL", "", 0, n"MainColors.Red");
+        cover.prize = RLBoons.QualifiedLegendary(run);
+        if run.cover <= 0 {
+          cover.text = "You've got no cover left to sell.";
+          cover.disabled = true;
+        } else if IsNameValid(cover.prize) {
+          cover.text = "One Trauma Team cover for " + RLBoons.Get(cover.prize).name + ". Now.";
+        } else if RLBoons.CanOverclockAny(run) {
+          cover.text = "One Trauma Team cover. Every effect you hold, overclocked.";
+        } else {
+          cover.text = "Nothing he wants to give you for it. Yet.";
+          cover.disabled = true;
+        }
+        ArrayPush(event.choices, cover);
         break;
     }
     ArrayPush(event.choices, RLEvents.Choice(n"Leave", "Walk Away", "", "", 0, n"MainColors.Grey"));
@@ -164,26 +192,33 @@ public abstract class RLEvents {
       case n"Devil":
         return RLEvents.Choice(id, "The Devil", "", s"+\(800 + 60 * run.Depth()) eddies. Take 10% more damage for the rest of the run.", 0, n"MainColors.Red");
       case n"Tower":
-        if !IsNameValid(RLBoons.RandomOwned(run, true)) {
+        if !RLBoons.CanOverclockAny(run) || !RLBoons.CanCutHealth(run, 0.15) {
           return null;
         }
-        return RLEvents.Choice(id, "The Tower", "", "Two of your boons rise a rarity. -15% max health.", 0, n"MainColors.Purple");
+        return RLEvents.Choice(id, "The Tower", "", "Two of your effects, overclocked. -15% max health.", 0, n"MainColors.Purple");
       case n"Chariot":
         return RLEvents.Choice(id, "The Chariot", "", "+12% movement speed. Take 10% more damage.", 0, n"MainColors.Yellow");
       case n"Magician":
+        if !RLBoons.CanCutHealth(run, 0.15) {
+          return null;
+        }
         return RLEvents.Choice(id, "The Magician", "", "+4 max RAM. -15% max health.", 0, n"MainColors.Green");
       case n"Death":
-        if run.offerCount >= 5 || ArraySize(run.boons) == 0 {
+        let lost = RLBoons.RandomOwned(run);
+        if run.offerCount >= 4 || !IsNameValid(lost) {
           return null;
         }
         let death = RLEvents.Choice(id, "Death", "", "", 0, n"MainColors.Red");
-        death.boon = RLBoons.RandomOwned(run, false);
-        death.text = "Lose " + RLBoons.Get(death.boon).name + ". Every reward screen shows one more option.";
+        death.boon = lost;
+        death.text = "Lose " + RLBoons.Get(death.boon).name + ". Every reward screen shows one more card.";
         return death;
       case n"Star":
         return RLEvents.Choice(id, "The Star", "", "+2 free rerolls.", 0, n"MainColors.Blue");
       case n"Hermit":
-        return RLEvents.Choice(id, "The Hermit", "", "+2 levels.", 0, n"MainColors.ActiveWhite");
+        if !RLBoons.CanCutHealth(run, 0.2) {
+          return null;
+        }
+        return RLEvents.Choice(id, "The Hermit", "", "+1 Trauma Team cover. -20% max health.", 0, n"MainColors.ActiveWhite");
     }
     return null;
   }
@@ -230,20 +265,22 @@ public abstract class RLEvents {
       case n"Swap":
         let lost = RLBoons.Get(choice.boon).name;
         RLBoons.Remove(player, run, choice.boon);
-        let prize = RLRewards.BoonOffers(run, RLPatrons.PickForDoor(run), 3, 1, false);
-        if ArraySize(prize) == 0 {
+        if !IsNameValid(choice.prize) {
           return lost + " is gone.";
         }
-        RLBoons.Apply(player, run, prize[0].boon, Max(prize[0].rarity, 2));
-        return lost + " for " + prize[0].title + ".";
+        RLBoons.Apply(player, run, choice.prize, false);
+        if StrLen(RLBoons.Get(choice.prize).overclock) > 0 {
+          RLBoons.Apply(player, run, choice.prize, true);
+        }
+        return lost + " for " + RLBoons.Get(choice.prize).name + "+.";
       case n"Devil":
         RLGear.GiveEddies(player, 800 + 60 * run.Depth());
         run.damageTakenBonus += 0.10;
         return "The Devil pays.";
       case n"Tower":
-        RLBoons.UpgradeRandom(player, run, 2);
+        RLBoons.OverclockRandom(player, run, 2);
         RLEvents.AddRunMod(player, run, gamedataStatType.Health, gameStatModifierType.AdditiveMultiplier, -0.15);
-        return "The Tower falls. Your boons rise.";
+        return "The Tower falls. Your effects rise.";
       case n"Chariot":
         RLEvents.AddRunMod(player, run, gamedataStatType.MaxSpeed, gameStatModifierType.AdditiveMultiplier, 0.12);
         run.damageTakenBonus += 0.10;
@@ -254,18 +291,32 @@ public abstract class RLEvents {
         return "The Magician's trick.";
       case n"Death":
         RLBoons.Remove(player, run, choice.boon);
-        run.offerCount = Min(5, run.offerCount + 1);
+        run.offerCount = Min(4, run.offerCount + 1);
         return "Death takes, and gives.";
       case n"Star":
         run.rerolls += 2;
         return "The Star shines. +2 rerolls.";
       case n"Hermit":
-        PlayerDevelopmentSystem.GetData(player).RL_GrantLevels(2);
-        return "The Hermit's wisdom. +2 levels.";
+        run.cover += 1;
+        run.coverMax += 1;
+        RLEvents.AddRunMod(player, run, gamedataStatType.Health, gameStatModifierType.AdditiveMultiplier, -0.2);
+        return "The Hermit's patience. +1 cover.";
       case n"Iconic":
-        RLRewards.Grant(player, run, choice.offer);
+        RLWeapons.ReplaceMain(player, run, choice.offer.record);
         run.damageTakenBonus += 0.15;
-        return choice.offer.title + " is yours. Watch your back.";
+        return choice.offer.title + " is your main now. Watch your back.";
+      case n"Policy":
+        run.cover = run.coverMax;
+        return "Covered again.";
+      case n"SellCover":
+        run.cover -= 1;
+        run.coverMax -= 1;
+        if IsNameValid(choice.prize) {
+          RLBoons.Apply(player, run, choice.prize, false);
+          return RLBoons.Get(choice.prize).name + ". No safety net.";
+        }
+        RLBoons.OverclockAll(player, run);
+        return "Everything overclocked. No safety net.";
       case n"Sell":
         RLBoons.Remove(player, run, choice.boon);
         RLGear.GiveEddies(player, -choice.price);
@@ -279,6 +330,9 @@ public abstract class RLEvents {
     let mod = RPGManager.CreateStatModifier(stat, type, value);
     GameInstance.GetStatsSystem(player.GetGame()).AddModifier(Cast<StatsObjectID>(player.GetEntityID()), mod);
     ArrayPush(run.appliedMods, mod);
+    if Equals(stat, gamedataStatType.Health) && value < 0.0 {
+      run.healthCut -= value;
+    }
   }
 
   public static func RemoveRunMods(player: ref<PlayerPuppet>, run: ref<RLRunState>) {

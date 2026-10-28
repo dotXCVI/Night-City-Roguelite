@@ -3,12 +3,13 @@
 // -----------------------------------------------------------------------------
 // Turns a floor into waves of enemies.
 //
-//   Size     3 + floor/3 enemies per wave, +-1 for heavy / light doors, the
-//            last wave one bigger. Act 1 fights have 2 waves, later acts 3;
-//            heavy fights add a wave in Act 3.
-//   Mix      grunt / tough / elite odds by act (Act 1 opens with grunts only);
-//            heavy fights trade grunts for elites, light fights the reverse.
+//   Size     3 + floor/3 enemies per wave, the last wave one bigger. Act 1
+//            fights have 2 waves, later acts 3.
+//   Mix      grunt / tough / elite odds by act (Act 1 opens with grunts only).
 //   Elite    the elite floor puts one elite in every wave.
+//   Hot      a hot door's fight (Rewards/Director.reds): an elite in every
+//            wave, the mix leaning to elites, a level up, and a lieutenant
+//            in the last wave - an elite with two affixes, two levels up.
 //   Boss     two regular waves, then the boss wave with a few adds:
 //              Act 1  the faction's gang leader (or an outpost boss) and a
 //                     lieutenant
@@ -17,8 +18,8 @@
 //            The boss calls reinforcements when hurt and enrages near death
 //            (Combat/WaveSpawner.reds).
 //   Bounty   one cyberpsycho, nobody else.
-//   Levels   from the run's curve (Run/Difficulty.reds): elites +1, bosses +2,
-//            heavy doors +1, light doors -1.
+//   Levels   the act's (Run/Difficulty.reds): elites +1, bosses +2, hot
+//            fights +1.
 //   Pacing   the pacing director's pressure (-1..1) scales wave size by up to
 //            15% and shifts a little of the mix towards / away from elites
 //            (Run/Pacing.reds). Boss units are never scaled.
@@ -35,13 +36,11 @@ public abstract class RLEncounters {
     let baseLevel = RLDifficulty.EnemyBaseLevel(run);
     let threatLevel = threat - 2;
     let weights = RLEncounters.TierWeights(run, threat, pressure);
-    let perWave = 3 + run.Depth() / 3 + (threat - 2);
+    let hot = run.IsHotFight();
+    let perWave = 3 + run.Depth() / 3;
     perWave = Max(2, RoundF(Cast<Float>(perWave) * (1.0 + 0.15 * pressure)));
 
     let waves = run.act >= 2 ? 3 : 2;
-    if threat >= 3 && run.act >= 3 {
-      waves += 1;
-    }
     if run.IsEliteFloor() {
       waves = 3;
     }
@@ -54,7 +53,7 @@ public abstract class RLEncounters {
       plan.BeginWave();
       let size = w == waves - 1 ? perWave + 1 : perWave;
       let k = 0;
-      if run.IsEliteFloor() {
+      if run.IsEliteFloor() || hot {
         plan.Add(faction.Pick(2), false, baseLevel + 1 + threatLevel, true);
         k = 1;
       }
@@ -62,6 +61,10 @@ public abstract class RLEncounters {
         let tier = RLEncounters.RollTier(weights);
         plan.Add(faction.Pick(tier), false, baseLevel + (tier >= 2 ? 1 : 0) + threatLevel, tier >= 2);
         k += 1;
+      }
+      if hot && w == waves - 1 && !run.IsBossFloor() {
+        plan.Add(faction.Pick(2), false, baseLevel + 2 + threatLevel, true);
+        plan.lieutenant = ArraySize(plan.records);
       }
       w += 1;
     }
@@ -127,12 +130,6 @@ public abstract class RLEncounters {
       let shift = Min(10, weights[0]);
       weights[0] -= shift;
       weights[2] += shift;
-    } else if threat <= 1 {
-      weights[1] += weights[2];
-      weights[2] = 0;
-      let down = Min(15, weights[1]);
-      weights[1] -= down;
-      weights[0] += down;
     }
     // Pacing: a little more or less elite pressure (never elites on floors
     // that have none).

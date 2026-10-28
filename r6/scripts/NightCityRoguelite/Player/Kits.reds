@@ -214,15 +214,30 @@ public abstract class RLKits {
     return gamedataStatType.Strength;
   }
 
-  public static func Apply(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, kit: CName, healthStep: Int32, bonusAttributePoints: Int32) {
+  public static func AttributeName(stat: gamedataStatType) -> String {
+    switch stat {
+      case gamedataStatType.Strength: return "BODY";
+      case gamedataStatType.Reflexes: return "REFLEXES";
+      case gamedataStatType.TechnicalAbility: return "TECHNICAL ABILITY";
+      case gamedataStatType.Intelligence: return "INTELLIGENCE";
+      case gamedataStatType.Cool: return "COOL";
+    }
+    return "";
+  }
+
+  // Gives the kit and puts its weapons in the run's slots: the first weapon
+  // is the main, the second the sidearm (Rewards/Weapons.reds).
+  public static func Apply(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, healthStep: Int32, bonusAttributePoints: Int32) {
+    let kit = run.kit;
+    let weapons: array<ItemID>;
     let basic = RLRewards.AllowedEvolutions(1);
     let pistols = [gamedataItemType.Wea_Handgun, gamedataItemType.Wea_Revolver];
     let noIDs: array<TweakDBID>;
     let perk = gamedataNewPerkType.Reflexes_Left_Milestone_2;
     switch kit {
       case n"Blade":
-        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Katana, gamedataItemType.Wea_Sword], basic);
-        RLKits.Weapon(player, pools, pistols, basic);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Katana, gamedataItemType.Wea_Sword], basic, weapons);
+        RLKits.Weapon(player, pools, pistols, basic, weapons);
         perk = gamedataNewPerkType.Reflexes_Right_Milestone_2;
         break;
       case n"Netrunner":
@@ -230,26 +245,26 @@ public abstract class RLKits {
         let first = pools.PickQuickhack(0, noIDs);
         let second = pools.PickQuickhack(0, [first]);
         RLGear.GiveQuickhacks(player, [first, second]);
-        RLKits.Weapon(player, pools, pistols, basic);
+        RLKits.Weapon(player, pools, pistols, basic, weapons);
         perk = gamedataNewPerkType.Intelligence_Central_Milestone_1;
         break;
       case n"Marksman":
-        RLKits.Weapon(player, pools, [gamedataItemType.Wea_PrecisionRifle, gamedataItemType.Wea_SniperRifle], basic);
-        RLKits.Weapon(player, pools, pistols, basic);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_PrecisionRifle, gamedataItemType.Wea_SniperRifle], basic, weapons);
+        RLKits.Weapon(player, pools, pistols, basic, weapons);
         perk = gamedataNewPerkType.Cool_Left_Milestone_2;
         break;
       case n"Brawler":
         RLGear.InstallCyberware(player, pools.PickCyberware(0, false, gamedataItemType.Cyb_StrongArms, noIDs));
-        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Shotgun, gamedataItemType.Wea_ShotgunDual], basic);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Shotgun, gamedataItemType.Wea_ShotgunDual], basic, weapons);
         perk = gamedataNewPerkType.Body_Left_Milestone_2;
         break;
       case n"Gunslinger":
-        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Revolver], basic);
-        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Handgun], basic);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Revolver], basic, weapons);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Handgun], basic, weapons);
         perk = gamedataNewPerkType.Cool_Central_Milestone_2;
         break;
       case n"Demolitions":
-        RLKits.Weapon(player, pools, [gamedataItemType.Wea_SubmachineGun], basic);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_SubmachineGun], basic, weapons);
         RLConsumables.SetGrenade(player, RLConsumables.PickGrenadeOfFamily("Frag", 2));
         perk = gamedataNewPerkType.Tech_Left_Milestone_1;
         break;
@@ -258,19 +273,19 @@ public abstract class RLKits {
         RLGear.InstallCyberware(player, pools.PickCyberware(0, false, gamedataItemType.Cyb_NanoWires, noIDs));
         RLGear.InstallCyberware(player, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
         RLGear.GiveQuickhacks(player, [pools.PickQuickhack(0, noIDs)]);
-        RLKits.Weapon(player, pools, pistols, basic);
+        RLKits.Weapon(player, pools, pistols, basic, weapons);
         perk = gamedataNewPerkType.Intelligence_Inbetween_Left_2;
         break;
       case n"Juggernaut":
-        if !RLKits.Weapon(player, pools, [gamedataItemType.Wea_LightMachineGun], basic) {
-          RLKits.Weapon(player, pools, [gamedataItemType.Wea_AssaultRifle], basic);
+        if !RLKits.Weapon(player, pools, [gamedataItemType.Wea_LightMachineGun], basic, weapons) {
+          RLKits.Weapon(player, pools, [gamedataItemType.Wea_AssaultRifle], basic, weapons);
         }
-        RLKits.Weapon(player, pools, pistols, basic);
+        RLKits.Weapon(player, pools, pistols, basic, weapons);
         perk = gamedataNewPerkType.Body_Central_Milestone_1;
         break;
       default:
-        RLKits.Weapon(player, pools, [gamedataItemType.Wea_AssaultRifle, gamedataItemType.Wea_SubmachineGun], basic);
-        RLKits.Weapon(player, pools, pistols, basic);
+        RLKits.Weapon(player, pools, [gamedataItemType.Wea_AssaultRifle, gamedataItemType.Wea_SubmachineGun], basic, weapons);
+        RLKits.Weapon(player, pools, pistols, basic, weapons);
     }
     let data = PlayerDevelopmentSystem.GetData(player);
     if IsDefined(data) {
@@ -279,6 +294,7 @@ public abstract class RLKits {
       RLPerks.Grant(data, perk, 0);
       data.UpdateUIBB();
     }
+    RLWeapons.AssignSlots(run, weapons);
     RLConsumables.GiveStarterHealth(player, healthStep);
     // Everyone starts with a basic grenade; rewards replace or upgrade it.
     if !TDBID.IsValid(RLConsumables.CurrentGrenade(player)) {
@@ -287,11 +303,16 @@ public abstract class RLKits {
     RLLog("Kit applied: " + NameToString(kit) + ".");
   }
 
-  private static func Weapon(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, types: array<gamedataItemType>, evolutions: array<gamedataWeaponEvolution>) -> Bool {
+  private static func Weapon(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, types: array<gamedataItemType>, evolutions: array<gamedataWeaponEvolution>, out weapons: array<ItemID>) -> Bool {
     let record = pools.PickWeapon(types, evolutions);
     if !TDBID.IsValid(record) {
       record = pools.PickWeapon(types);
     }
-    return RLGear.GiveWeapon(player, record, n"Common", true);
+    let given = RLGear.GiveWeaponItem(player, record, n"Common", true);
+    if !ItemID.IsValid(given) {
+      return false;
+    }
+    ArrayPush(weapons, given);
+    return true;
   }
 }

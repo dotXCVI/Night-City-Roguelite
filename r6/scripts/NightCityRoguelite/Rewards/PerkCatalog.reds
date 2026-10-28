@@ -111,8 +111,9 @@ public abstract class RLPerkCatalog {
   }
 
   // Up to `count` different offerable perks, weighted by power and build.
-  // `spike`: at least one of them stronger than the floor expects.
-  public static func Pick(player: ref<PlayerPuppet>, run: ref<RLRunState>, profile: ref<RLBuildProfile>, count: Int32, spike: Bool, exclude: array<gamedataNewPerkType>) -> array<ref<RLPerkDef>> {
+  // `strong`: how many of them must be stronger than the floor expects (a
+  // spike one, a hot door all).
+  public static func Pick(player: ref<PlayerPuppet>, run: ref<RLRunState>, profile: ref<RLBuildProfile>, count: Int32, strong: Int32, exclude: array<gamedataNewPerkType>) -> array<ref<RLPerkDef>> {
     let picked: array<ref<RLPerkDef>>;
     let data = PlayerDevelopmentSystem.GetData(player);
     if !IsDefined(data) {
@@ -125,17 +126,18 @@ public abstract class RLPerkCatalog {
         ArrayPush(candidates, def);
       }
     }
-    if spike {
-      let strong: array<ref<RLPerkDef>>;
+    if strong > 0 {
+      let above: array<ref<RLPerkDef>>;
       for def in candidates {
         if def.power > expected {
-          ArrayPush(strong, def);
+          ArrayPush(above, def);
         }
       }
-      let first = RLPerkCatalog.WeightedPick(strong, expected, profile);
-      if IsDefined(first) {
-        ArrayPush(picked, first);
-        ArrayRemove(candidates, first);
+      while ArraySize(picked) < Min(strong, count) && ArraySize(above) > 0 {
+        let def = RLPerkCatalog.WeightedPick(above, expected, profile);
+        ArrayPush(picked, def);
+        ArrayRemove(above, def);
+        ArrayRemove(candidates, def);
       }
     }
     while ArraySize(picked) < count && ArraySize(candidates) > 0 {

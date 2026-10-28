@@ -14,16 +14,21 @@ perks, real gangs. No custom models.
 ## What you get
 
 - **Pick your fight.** After every arena, choose the next door by what it
-  pays - chrome, iron, quickhacks, perks, a patron's favor, or something
-  stranger. Every door shows the place, the threat and the gang waiting there.
+  pays - chrome, your gun, quickhacks, perks, a patron's backing, or
+  something stranger. HOT doors hit harder and pay double.
 - **Patrons.** Arasaka, Militech, the Voodoo Boys, Maelstrom, the Aldecaldos
-  and the Afterlife all want you on their side. Their boons stack, combine and
-  break the game in fun ways.
+  and the Afterlife - four of them work the city each run. Their effects
+  change how fights play, and they're built to chain: MARK a target, SHOCK
+  the crowd, set it on fire, BLAST what's left. Fifteen duos, seven
+  legendaries, a favour for going all in.
 - **Builds that come together.** Twelve fighting styles - blades, monowire,
   dual pistols, smart guns, netrunning and more. Lean into one and it ranks
   up, with a signature move at rank III.
-- **Guns that matter.** Every weapon card shows its DPS against what you're
-  holding. Mod them, upgrade them, and evolve a favorite into an iconic.
+- **One gun, built up.** Your main weapon takes every upgrade: tune it up,
+  load it with weapon effects, trade it without losing them, and evolve it
+  into an iconic.
+- **Trauma Team has your back.** Full health every fight and one cover a
+  run - flatline once, get back up.
 - **Overdrive.** Beat the Act 1 boss, pick an operating system, and earn an
   ultimate: ZERO HOUR stops time, RAMPAGE turns you into a wrecking ball,
   BLACKWALL fries every enemy in the room.
@@ -53,8 +58,8 @@ folders into your game folder.
 
 Your story saves are never touched.
 
-**Updating?** Delete `r6/scripts/NightCityRoguelite` from your game folder
-first, then install the new build the same way. Your Cred and unlocks carry
+**Updating?** Delete `r6/scripts/NightCityRoguelite` and
+`r6/tweaks/NightCityRoguelite` from your game folder first, then install the new build the same way. Your Cred and unlocks carry
 over. Full steps are in [TESTING.md](TESTING.md#updating-from-an-older-version).
 
 ## First run
@@ -83,7 +88,7 @@ you - your reward, the Fixer, the next door.
 - More arenas, including city-center streets
 - Named bosses with their own fights
 - A heat system for when the base game gets too easy
-- More patrons, more duo boons
+- More patrons and effects
 - Translations
 
 ## Found a bug?

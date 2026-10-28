@@ -5,7 +5,7 @@
 // choices still adds up to one build you can see:
 //
 //   points   an equipped weapon or arm cyberware of the style counts 2; every
-//            perk, boon and mod on an equipped weapon counts 1; a
+//            perk, effect and weapon effect (for the main's style) counts 1; a
 //            cyberdeck counts 2 for Netrunner, quickhacks 1 each (up to 3),
 //            a grenade 1 for Demolitions; a finished gig adds 2.
 //   ranks    I at 3 points, II at 6, III at 9.
@@ -226,12 +226,10 @@ public abstract class RLStyles {
         }
       }
     }
-    // Mods count while their weapon is equipped.
-    for weapon in run.weapons {
-      let style = RLWeapons.FamilyStyle(RLWeapons.FamilyOfRecord(weapon.record));
-      if style >= 0 && IsDefined(equipment) && equipment.IsEquipped(weapon.itemID) {
-        points[style] += ArraySize(weapon.mods);
-      }
+    // Weapon effects count for the main weapon's style.
+    let mainStyle = RLWeapons.FamilyStyle(RLWeapons.FamilyOfRecord(RLWeapons.MainRecord(run)));
+    if mainStyle >= 0 {
+      points[mainStyle] += RLBoons.WeaponEffectCount(run);
     }
     if run.gigDone && run.gigStyle >= 0 {
       points[run.gigStyle] += 2;

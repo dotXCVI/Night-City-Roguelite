@@ -62,11 +62,11 @@ public class RLGuidePopup extends InGamePopup {
     bottom.SetHAlign(inkEHorizontalAlign.Center);
     bottom.Reparent(column);
     this.AddPage(bottom, 3, RLArts.City(), "THE RUN",
-      "Three acts. Six fights each, a boss to close every act. Win, take a reward, pick your next door.");
+      "Three acts, six fights each, a boss to close every act. Pick a door by what it pays, win, take a card. HOT doors pay double.");
     this.AddPage(bottom, 4, RLArts.Patrons(), "PATRONS",
-      "Arasaka, Militech, the Voodoo Boys and more want you on their side. Stack their boons. Play one way long enough and it ranks up.");
+      "Four of six work the city each run. Their effects feed each other: SHOCK, BURN, MARK, BLAST. Three from one earns their favour.");
     this.AddPage(bottom, 5, RLArts.Flatline(), "FLATLINE",
-      "Die and you wake up here with nothing. Cred stays. Spend it, gear up, go again.");
+      "Trauma Team picks you up once a run. Go down again and you wake up here with nothing but your Cred.");
 
     let actions = RLUI.HPanel(0.0);
     actions.SetHAlign(inkEHorizontalAlign.Center);

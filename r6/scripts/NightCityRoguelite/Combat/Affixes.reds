@@ -4,14 +4,16 @@
 // Elites (and, from Act 2, bosses) roll affixes that change how they fight -
 // the Diablo / Hades "Elite" layer:
 //
-//   ARMORED       takes 35% less damage
+//   ARMORED       plating: takes 70% less until a quarter of its health is
+//                 gone, then the plating shatters and it takes full damage
 //   BERSERK       hits harder and moves faster (the game's own berserk buff)
 //   REGENERATING  recovers 2% health a second
 //   VOLATILE      explodes a moment after it dies - step away
 //   VAMPIRIC      hitting V heals it for 8% health (once a second at most)
 //
 // Affixes are announced when the enemy spawns. The number of affixes grows
-// with the act (Roll). The explosion helper is shared with the boons.
+// with the act (Roll); a hot door's lieutenant always has two. A GLITCHED
+// enemy doesn't regenerate. The explosion helper is shared with the effects.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -28,10 +30,12 @@ public abstract class RLAffix {
 
 public abstract class RLAffixes {
   // Affixes for a new elite or boss: elites get one from floor 3 and two in
-  // Act 3; bosses one from Act 2.
-  public static func Roll(run: ref<RLRunState>, isBoss: Bool) -> Int32 {
+  // Act 3; bosses one from Act 2; a lieutenant two.
+  public static func Roll(run: ref<RLRunState>, isBoss: Bool, opt isLieutenant: Bool) -> Int32 {
     let count = 0;
-    if isBoss {
+    if isLieutenant {
+      count = 2;
+    } else if isBoss {
       count = run.act >= 2 ? 1 : 0;
     } else if run.act >= 3 {
       count = 2;
@@ -76,7 +80,21 @@ public abstract class RLAffixes {
 
   // --- Effects ---------------------------------------------------------------------------
 
-  public static func DamageTakenFactor(affixes: Int32) -> Float = RLAffixes.Has(affixes, RLAffix.Armored()) ? 0.65 : 1.0
+  // ARMORED plating: 70% of a hit stopped until the enemy is down to three
+  // quarters of its health; then it shatters, with a flash and a crack.
+  public static func DamageTakenFactor(fx: ref<RLFx>, foe: ref<RLFoe>, target: ref<ScriptedPuppet>, health: Float) -> Float {
+    if !IsDefined(foe) || foe.platingBroken || !RLAffixes.Has(foe.affixes, RLAffix.Armored()) {
+      return 1.0;
+    }
+    if health > 75.0 {
+      return 0.3;
+    }
+    foe.platingBroken = true;
+    RLKeywords.Tag(fx, "PLATING SHATTERED", n"MainColors.ActiveWhite");
+    GameInstance.GetAudioSystem(fx.game).PlayShockwave(n"explosion", target.GetWorldPosition());
+    StatusEffectHelper.ApplyStatusEffect(target, t"BaseStatusEffect.ExplosionStun", fx.player.GetEntityID());
+    return 1.0;
+  }
 
   // First sighting of the enemy.
   public static func OnSpawned(puppet: ref<ScriptedPuppet>, affixes: Int32) {
@@ -85,9 +103,9 @@ public abstract class RLAffixes {
     }
   }
 
-  // Once a second while the enemy lives.
-  public static func OnTick(puppet: ref<ScriptedPuppet>, affixes: Int32) {
-    if RLAffixes.Has(affixes, RLAffix.Regenerating()) {
+  // Once a second while the enemy lives. A GLITCHED enemy can't heal.
+  public static func OnTick(puppet: ref<ScriptedPuppet>, affixes: Int32, glitched: Bool) {
+    if RLAffixes.Has(affixes, RLAffix.Regenerating()) && !glitched {
       RLAffixes.Heal(puppet, 2.0);
     }
   }
@@ -98,7 +116,8 @@ public abstract class RLAffixes {
     if !RLAffixes.Has(affixes, RLAffix.Vampiric()) || Equals(hitEvent.attackData.GetAttackType(), gamedataAttackType.Effect) {
       return;
     }
-    if combat.TryHeal(puppet.GetEntityID(), RLBoonEffects.Now(puppet.GetGame())) {
+    let now = RLBoonEffects.Now(puppet.GetGame());
+    if !combat.IsGlitched(combat.Foe(puppet.GetEntityID()), now) && combat.TryHeal(puppet.GetEntityID(), now) {
       RLAffixes.Heal(puppet, 8.0);
     }
   }

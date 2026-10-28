@@ -102,9 +102,10 @@ public abstract class RLArts {
       case RLRewardCategory.Chrome: return RLArts.Make(2, n"lore_ripperdoc");
       case RLRewardCategory.Daemons: return RLArts.Make(5, n"lore_ice");
       case RLRewardCategory.Training: return RLArts.Make(3, n"lore_solo");
-      case RLRewardCategory.Iconic: return RLArts.Make(1, n"w_malorian_silverhand");
+      case RLRewardCategory.Cred: return RLArts.Make(2, n"l_afterlife");
       case RLRewardCategory.Workshop: return RLArts.Make(3, n"lore_techie");
       case RLRewardCategory.Event: return RLArts.Make(3, n"c_misty");
+      case RLRewardCategory.Boons: return RLArts.Make(4, n"lore_corporations");
       case RLRewardCategory.Bounty: return RLArts.Make(4, n"lore_cyberpsychosis");
       case RLRewardCategory.System: return RLArts.Make(4, n"lore_blackwall");
       case RLRewardCategory.Gig: return RLArts.Make(5, n"lore_fixers");

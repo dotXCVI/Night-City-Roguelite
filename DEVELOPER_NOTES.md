@@ -111,9 +111,9 @@ Every file starts with a header comment explaining its design - read it.
 | Area | Files |
 | --- | --- |
 | Core | `Config.reds` (all tunables), `Runtime.reds` (RLLog/RLDebug/RLNotify, RLDelay timers, RLDelayTarget), `RogueliteService.reds` (meta progression persisted outside saves, F7 key, session hooks), `RogueliteSystem.reds` (per-save state machine - the orchestrator), `RunState.reds`, `Story.reds` (quiet story) |
-| Run | `Difficulty.reds` (enemy level + damage curves, act gates, incoming damage hook), `Encounters.reds` (wave plans, bosses, bounties), `Pacing.reds` (L4D director), `Fixer.reds` (+ buy-backs), `Objectives.reds` (survive / uplink / sabotage), `Events.reds` ("?" doors), `Overdrive.reds` (the ultimate, overclock episodes), `Gigs.reds` |
-| Rewards | `RewardSystem.reds` (doors, offers, granting, skip/banish), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Patrons.reds`, `Boons.reds` (catalogue, rarities, stat boons), `BoonEffects.reds` (RLCombatState + the hit/kill/tick hooks everything plugs into), `Styles.reds`, `Weapons.reds` (families, DPS previews, evolution, quality curve), `WeaponMods.reds`, `LevelUp.reds` |
-| Combat | `Arenas.reds` (8 arenas), `ArenaDirector.reds` (teleport, walls tick, bounds), `ArenaWalls.reds`, `ArenaCleaner.reds`, `WaveSpawner.reds` (+ boss phases, objective hold-open), `Affixes.reds` (elite affixes, `RLExplosions`), `DamageHooks.reds` (outgoing hit + NPC death hooks), `Loot.reds` |
+| Run | `Difficulty.reds` (act levels, act damage scale, incoming damage hook), `Encounters.reds` (wave plans, bosses, bounties), `Pacing.reds` (L4D director), `Fixer.reds` (+ buy-backs), `Objectives.reds` (survive / uplink / sabotage), `Events.reds` ("?" doors), `Overdrive.reds` (the ultimate, overclock episodes), `Gigs.reds` |
+| Rewards | `RewardSystem.reds` (doors, offers, granting, skip/banish), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Patrons.reds` (keywords, the run's line-up), `Boons.reds` (the effect catalogue: effects, weapon effects, duos, legendaries, favours; stat effects), `BoonEffects.reds` (every effect's rule: hit/kill/dash/tick/fight hooks), `Styles.reds`, `Weapons.reds` (main + sidearm slots, Tune-Ups, trades, evolution, DPS previews) |
+| Combat | `Arenas.reds` (8 arenas), `ArenaDirector.reds` (teleport, walls tick, bounds), `ArenaWalls.reds`, `ArenaCleaner.reds`, `WaveSpawner.reds` (+ boss phases, objective hold-open), `Affixes.reds` (elite affixes, plating, `RLExplosions`), `DamageHooks.reds` (outgoing hit + NPC death hooks), `CombatState.reds` (`RLCombatState`: per-fight foes, keyword timers, MOMENTUM/SHIELD, the effect ledger), `Keywords.reds` (`RLKeywords`: the only place keywords are applied and shown; `RLLuck`; `RLEffectStep` chain beats), `Loot.reds` |
 | Player | `CharacterReset.reds`, `Kits.reds`, `Perks.reds`, `Consumables.reds` (quality steps, MaxDoc ladder, grenades), `DeathGuard.reds`, `Death.reds`, `OSHooks.reds` (OS activation -> Overdrive) |
 | Hub/Menu/Audio | `ApartmentHub.reds`, `HomeDevices.reds` (front door, computer, armory door and stash), `MainMenuEntry.reds`, `Music.reds` |
 | UI | `Card.reds` (the one card widget everything uses - banner art, badge, hover lift; `RLIcons` incl. the gang logo atlas), `Art.reds` (codex pictures), `Widgets.reds`, `Hud.reds` (+ boss bar), `Transition.reds`, `TerminalPopup.reds`, `ArmoryPopup.reds` (kits), `GuidePopup.reds` (first-run guide), `RewardPopup.reds`, `EventPopup.reds`, `FixerPopup.reds` |
@@ -138,9 +138,10 @@ RunHome / Cleared --door--> Traveling (fade out, teleport while black,
     --> InEncounter (waves; an objective holds the encounter open) --> Cleared
 Cleared: reward popup (auto-opens after 2.5 s) -> AdvanceFloor() ->
     Fixer if next floor is a boss -> door picker -> Traveling ...
-"?" door: no trip - OpenEvent -> event popup -> OnEventChoice (+1 level,
-    counts as a floor) -> AdvanceFloor() -> next doors
-InEncounter --health at 1%--> Flatlined (real death, resurrect) --> Ending
+"?" door: no trip - OpenEvent -> event popup -> OnEventChoice (counts as
+    a floor) -> AdvanceFloor() -> next doors
+InEncounter --health at 1%--> a Trauma Team cover spent (back to 50%), or
+    with none left Flatlined (real death, resurrect) --> Ending
     (home, reset) --> Hub
 Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 ```
@@ -222,39 +223,53 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 17. **V's own blasts** (Volatile Kills, sabotage charges) set
     `RLCombatState.selfBlastUntil`; hits from V in that window are zeroed so
     they can't hurt V. Keep that when adding new player explosions.
-18. **Hit flags carry styles:** `RLHitFlag` bits 1-32 are how a hit landed,
-    bits from 256 up are its styles (`RLHitFlag.Style`). The last hit's
-    flags and weapon are what the kill hook sees, so style signatures,
-    weapon mods' kill effects and gig counts all read the killing hit. Keep
-    new hit kinds below 256.
-19. **Between fights, the floor advances on the level-up**, not the reward:
-    reward (or event, or skip) -> `BeginLevelUp` -> level-up pick ->
-    `AdvanceFloor`. Gig and starter-pick screens come before the first door
-    and never advance anything (`advancePending` is false then).
+18. **Hit flags carry styles:** `RLHitFlag` bits 1-128 are how a hit landed
+    (64 = the main weapon, 128 = a status tick), bits from 256 up are its
+    styles (`RLHitFlag.Style`). The last hit's flags and weapon are what the
+    kill hook sees, so style signatures, effect kill rules and gig counts all
+    read the killing hit. Keep new hit kinds below 256.
+19. **Between fights, the floor advances on the reward pick** (or the event,
+    or the skip) -> `AdvanceFloor`. Gig and starter-pick screens come before
+    the first door and never advance anything (`advancePending` is false
+    then).
+20. **Keywords go through `RLKeywords` only.** Every effect that reacts to
+    MARK/SHOCK/BURN... fires whatever applied it, so a new effect that puts
+    a status on an enemy must call `RLKeywords.Mark/Shock/...`, never the
+    status effect system directly. Effects that spread to other enemies run
+    a beat later through `RLEffectStep`, never recursively in the same call.
+21. **`RLBoonEffects.EndFight` before `ResetArena`**, on every way out of a
+    fight (cleared, flatline, run end): it lifts FOCUS time dilation, the
+    MOMENTUM speed modifier and the drone. Skipping it leaves V slowed.
 
 ## 8. Balance (all numbers live in Config.reds or the named file)
 
-- Enemy level = floor depth + act offset (-1 / 0 / +1). V gains 1 level per
-  reward (only XP source).
-- Damage V takes: 55% on floor 1 -> 100% on floor 18 (game difficulty Hard),
-  x pacing (+/-8%), x (1 - assist), x boons, x (1 + event trade-offs).
+- Levels per act, V and enemies alike: 3 / 10 / 17 (`ActLevel`); elites +1,
+  bosses +2, hot fights +1. No XP from anything.
+- Damage V takes per act: 60% / 80% / 95% (`ActIncomingDamage`, game
+  difficulty Hard), x pacing (+/-8%), x (1 - assist), x effects, x (1 +
+  event trade-offs). No act gates: enemies never resist V's damage.
+- Health: full every fight. Trauma Team cover: 1 a run (+1 Trauma
+  Platinum), back up at 50%.
   Assist = 20% + 2% per run lost while on, max 80%, visible toggle only.
 - Doors: event 22% (from floor 2), bounty 15% (Act 2+), objective 30% of
-  fights (from floor 3). Boon weights per patron screen: new 10, upgrade 6,
-  duo 6, legendary 4; rarity = director roll above expectation (+1 from floor
-  10); upgrades +1 (+2 on a big roll).
+  fights (from floor 3), Cred door 8% (from floor 3). Three cards a screen
+  (four with Wide Net); patron screens deal builds-on / unseen / open.
+- Hot doors: 1 in Act 1, 2 in Acts 2-3 (`HotDoorsPerAct`), not floor 1 of a run, not
+  consecutive, not the elite or boss floor; need score 20 + d30 + 18 x
+  main-weapon gap + 15 x flat streak (+20 after a cover) >= 55, forced when
+  the act runs short of floors. Pay +2 steps, +1 card, x1.5 eddies.
 - Bosses: reinforcements at 60% health, enrage at 30%. Affixes: elites 1 from
   floor 3, 1-2 in Act 2, 2 in Act 3; bosses 1 from Act 2.
 - Waves: 2 per fight in Act 1, 3 later; per-wave size grows with depth and
   threat; elite floors have an elite every wave; boss floor = 2 waves + boss.
 - Reward quality expectation: Common (floor 1) -> Legendary+ (floor 18);
-  director odds [25 below, 55 at, 16 +1, 4 +2]; heavy/elite and light shift
-  them; pity +6 per flat screen, spike after 2 flat screens; magnificence
-  makes big picks rarer.
-- Eddies per arena: (100 + 40 x depth) x 0.75 light / 1.0 / 1.4 heavy, +400
-  on boss floors. Fixer prices scale with depth; Street Smart -20%.
-- Rerolls: 1 free per act (+1 per Fixer Contacts unlock, Fixer sells +2);
-  then eddies: (60 + 20 x depth), +50% per paid reroll on the same screen.
+  director odds [25 below, 55 at, 16 +1, 4 +2], elite floors [10, 50, 30,
+  10]; boss and hot rewards +2; pity +6 per flat screen, spike after 2 flat
+  screens; magnificence makes big picks rarer.
+- Eddies per arena: (100 + 40 x depth), x1.5 on hot doors, +400 on boss
+  floors. Fixer prices scale with depth; Street Smart -20%.
+- Rerolls: charges only - 1 per act (+1 per Fixer Contacts unlock, Fixer
+  sells +2), plus one free per screen with the Afterlife's favour.
 - MaxDoc floor: rises with depth (`HealthFloorStep`); one extra drop per arena
   (boss always, elite 25%), max floor + 2.
 - The v0.0.13 playtest log (good tuning reference): a Solo run reached floor 8
@@ -301,7 +316,23 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
      and nothing overflows its card.
   3. The owner wants to drop F7 for in-world interactions over time: home
      already works by devices; between fights is still F7 / auto-open.
-- **The content patch (dev, untested in game):** level-ups after every floor,
+- **The effects overhaul (dev, untested in game):** patrons rebuilt as
+  keyword effects (26 effects, 6 weapon effects, 15 duos, 7 legendaries, 6
+  favours; four patrons a run), main weapon + sidearm (no weapon mods), hot
+  doors, Trauma Team cover with full health every fight, levels per act (no
+  level-ups), three cards a screen, Cred doors, reward-first door cards,
+  weather looks. Design: the "Runs That Hit Different" pitch doc. Least
+  certain - check first:
+  1. Keyword statuses landing on enemies (`PingMarkStatusEffect` outline for
+     MARK, `Electrocuted`, `DisableCyberware` for GLITCH) - HUD tags flash
+     when they do.
+  2. The dash hook (`Player/OSHooks.reds`, PlayerJustDodged/Dashed) firing
+     Kinetic Dash, Convoy, Burnout.
+  3. FOCUS time dilation always lifting (`EndFight`).
+  4. Weather: "Weather check: wanted ..., showing ..." lines in the log.
+  5. Per-fight effect damage in the FLOOR telemetry (`fx=`) - the ledger is
+     how to tell which effects carry a run.
+- **The content patch (v0.0.18):** level-ups after every floor,
   styles, the weapons rework (DPS on cards, mods, evolutions), Overdrive from
   an OS at the Act 1 boss, gigs, capacity overclock, skip/banish/buy-back,
   act gates, the Wireman kit and 33 more perks. Design: the "Runs That Build"

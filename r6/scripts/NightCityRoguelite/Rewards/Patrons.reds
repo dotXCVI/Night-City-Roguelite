@@ -2,18 +2,18 @@
 // Night City Roguelite - patrons
 // -----------------------------------------------------------------------------
 // Night City's powers sponsor V's run the way Hades' gods do: a patron door
-// leads to a fight whose reward is three boons from that patron. Each patron
-// has a style, five boons that grow in rarity, a legendary capstone for V's
-// third boon from them, and duo boons shared with other patrons.
+// leads to a fight whose reward is a pick of that patron's effects
+// (Rewards/Boons.reds). Each patron speaks two keywords:
 //
-//   ARASAKA        precision    crits, headshots, first strikes, slow time
-//   MILITECH       firepower    ranged and explosive damage, ammo, grenades
-//   VOODOO BOYS    the Net      RAM, quickhack damage and spread
-//   MAELSTROM      brutality    melee, low-health fury, exploding kills
-//   ALDECALDOS     survival     health, speed, damage taken, second winds
-//   THE AFTERLIFE  fortune      eddies, lucky hits, cheaper Fixer, more choice
+//   ARASAKA        MARK, FOCUS      precision: tag them, slow time, finish
+//   MILITECH       BLAST, DRONE     firepower: everything ends in a blast
+//   VOODOO BOYS    SHOCK, GLITCH    the Net: current through crowds
+//   MAELSTROM      BURN, BLEED      brutality: fire, blood, trophies
+//   ALDECALDOS     MOMENTUM, SHIELD the road: keep moving, stay standing
+//   THE AFTERLIFE  LUCK, DEAL       fortune: chances, and prices
 //
-// Boon data and effects: Rewards/Boons.reds, Rewards/BoonEffects.reds.
+// Four of the six work the city in any one run (RollLineup), shown on the
+// terminal before it starts: fifteen line-ups, each a different web.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -55,14 +55,42 @@ public abstract class RLPatrons {
     return IsDefined(patron) ? patron.name : "PATRON";
   }
 
-  // The patron behind a door: one V already serves is twice as likely (Hades
-  // nudges towards depth), and every patron stays possible.
+  // Four patrons for a run, at random.
+  public static func RollLineup() -> array<CName> {
+    let pool: array<CName>;
+    for patron in RLPatrons.All() {
+      ArrayPush(pool, patron.id);
+    }
+    let lineup: array<CName>;
+    while ArraySize(lineup) < 4 && ArraySize(pool) > 0 {
+      let i = RandRange(0, ArraySize(pool));
+      ArrayPush(lineup, pool[i]);
+      ArrayErase(pool, i);
+    }
+    return lineup;
+  }
+
+  // "ARASAKA, VOODOO BOYS, MAELSTROM, THE AFTERLIFE"
+  public static func LineupText(lineup: array<CName>) -> String {
+    let text = "";
+    for id in lineup {
+      text += (StrLen(text) > 0 ? ", " : "") + RLPatrons.Name(id);
+    }
+    return text;
+  }
+
+  // The patron behind a door, from the run's four: one V already serves is
+  // twice as likely (Hades nudges towards depth), and every one stays
+  // possible.
   public static func PickForDoor(run: ref<RLRunState>) -> CName {
-    let patrons = RLPatrons.All();
+    let patrons = run.patrons;
+    if ArraySize(patrons) == 0 {
+      patrons = RLPatrons.RollLineup();
+    }
     let total = 0;
     let weights: array<Int32>;
     for patron in patrons {
-      let weight = RLBoons.CountForPatron(run, patron.id) > 0 ? 2 : 1;
+      let weight = RLBoons.CountForPatron(run, patron) > 0 ? 2 : 1;
       ArrayPush(weights, weight);
       total += weight;
     }
@@ -70,12 +98,51 @@ public abstract class RLPatrons {
     let i = 0;
     while i < ArraySize(patrons) {
       if roll < weights[i] {
-        return patrons[i].id;
+        return patrons[i];
       }
       roll -= weights[i];
       i += 1;
     }
-    return patrons[0].id;
+    return patrons[0];
+  }
+
+  // The patron V leans on most (none before the first effect).
+  public static func Lead(run: ref<RLRunState>) -> CName {
+    let best = n"";
+    let bestCount = 0;
+    for patron in run.patrons {
+      let count = RLBoons.CountForPatron(run, patron);
+      if count > bestCount {
+        bestCount = count;
+        best = patron;
+      }
+    }
+    return best;
+  }
+
+  // The patron's keywords, for cards and the HUD (Militech's DRONE only
+  // while the drone is dealt).
+  public static func Keywords(id: CName) -> array<CName> {
+    switch id {
+      case n"Arasaka": return [n"MARK", n"FOCUS"];
+      case n"Militech": return RLConfig.DroneEscort() ? [n"BLAST", n"DRONE"] : [n"BLAST"];
+      case n"VoodooBoys": return [n"SHOCK", n"GLITCH"];
+      case n"Maelstrom": return [n"BURN", n"BLEED"];
+      case n"Aldecaldos": return [n"MOMENTUM", n"SHIELD"];
+      case n"Afterlife": return [n"LUCK", n"DEAL"];
+    }
+    let none: array<CName>;
+    return none;
+  }
+
+  // A short name for the HUD row ("VOODOO").
+  public static func ShortName(id: CName) -> String {
+    switch id {
+      case n"VoodooBoys": return "VOODOO";
+      case n"Afterlife": return "AFTERLIFE";
+      case n"Aldecaldos": return "ALDECALDOS";
+    }
+    return RLPatrons.Name(id);
   }
 
   public static func Accent(id: CName) -> CName {

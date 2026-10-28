@@ -98,7 +98,7 @@ public class RLArmoryPopup extends InGamePopup {
     card.SetTitleSize(36);
     card.AddLine(RLMeta.KitTagline(kit), n"MainColors.ActiveWhite", 24);
     card.AddLine(RLMeta.KitDescription(kit), n"MainColors.Grey", 22);
-    card.AddLine(RLLevelUp.AttributeName(RLKits.MainAttribute(kit)) + "  /  " + RLLevelUp.AttributeName(RLKits.SecondAttribute(kit)), n"MainColors.Blue", 20);
+    card.AddLine(RLKits.AttributeName(RLKits.MainAttribute(kit)) + "  /  " + RLKits.AttributeName(RLKits.SecondAttribute(kit)), n"MainColors.Blue", 20);
     card.SetSelected(selected);
     card.SetDisabled(!available && !affordable);
     card.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");

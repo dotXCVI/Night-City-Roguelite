@@ -20,6 +20,12 @@
 // Hover lifts the card a little and lights its frame and art in the accent
 // colour - the text never sits on a tint, so it reads the same either way.
 // A selected card keeps a thick frame; disabled cards are dimmed.
+//
+// The juice is short and the same everywhere: cards deal in 80 ms apart, a
+// Rare-or-better card flashes its quality colour once as it lands, a picked
+// card swells while the rest fall away (250 ms), a card V can't afford
+// shakes. HOT doors pulse - the only thing on a screen that moves on its own.
+// Keyword chips, a NEW badge and the hot marker are small pieces on top.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -50,6 +56,9 @@ public class RLCard extends CustomButton {
   protected let m_pips: wref<inkHorizontalPanel>;
   protected let m_lines: wref<inkVerticalPanel>;
   protected let m_footer: wref<inkText>;
+  protected let m_flash: wref<inkImage>;
+  protected let m_corner: wref<inkHorizontalPanel>;
+  protected let m_hotProxy: ref<inkAnimProxy>;
   protected let m_disabledAnimDef: ref<inkAnimDef>;
   protected let m_disabledAnimProxy: ref<inkAnimProxy>;
   protected let m_hoverAnimDef: ref<inkAnimDef>;
@@ -201,6 +210,19 @@ public class RLCard extends CustomButton {
     lines.SetChildMargin(inkMargin(0.0, 3.0, 0.0, 3.0));
     lines.Reparent(body);
 
+    // A frame that flashes once in the card's quality colour (PlayReveal),
+    // and pulses on a hot door (SetHot).
+    let flash = RLCard.Shape(n"cell_fg_thick", this.m_accent);
+    flash.SetOpacity(0.0);
+    flash.Reparent(lift);
+
+    // Badges in the top right corner: NEW, HOT.
+    let corner = RLUI.HPanel(4.0);
+    corner.SetAnchor(inkEAnchor.TopRight);
+    corner.SetAnchorPoint(Vector2(1.0, 0.0));
+    corner.SetMargin(inkMargin(0.0, 16.0, 16.0, 0.0));
+    corner.Reparent(lift);
+
     let footer = RLUI.Text("", 26, this.m_accent, true);
     footer.SetLetterCase(textLetterCase.UpperCase);
     footer.SetAnchor(inkEAnchor.BottomLeft);
@@ -227,6 +249,8 @@ public class RLCard extends CustomButton {
     this.m_pips = pips;
     this.m_lines = lines;
     this.m_footer = footer;
+    this.m_flash = flash;
+    this.m_corner = corner;
     this.SetRootWidget(root);
   }
 
@@ -302,6 +326,8 @@ public class RLCard extends CustomButton {
       }
       this.m_bannerProxy = this.m_banner.PlayAnimationWithOptions(this.m_bannerAnimDef, options);
     }
+    // Screens that light up what a card works with listen for these.
+    this.CallCustomCallback(on ? n"OnCardHoverOn" : n"OnCardHoverOff");
   }
 
   // Pressing needs no extra feedback: the click sound and the screen
@@ -427,6 +453,137 @@ public class RLCard extends CustomButton {
     }
   }
 
+  // A row of small keyword chips ("MAKES SHOCK", "USES BURN"), each in its
+  // own colour.
+  public func AddChips(labels: array<String>, colors: array<CName>) {
+    if ArraySize(labels) == 0 {
+      return;
+    }
+    let row = RLUI.HPanel(0.0);
+    row.SetChildMargin(inkMargin(0.0, 0.0, 8.0, 0.0));
+    row.SetMargin(inkMargin(0.0, 6.0, 0.0, 2.0));
+    row.Reparent(this.m_lines);
+    let i = 0;
+    while i < ArraySize(labels) {
+      RLCard.Chip(labels[i], colors[i], 22).Reparent(row);
+      i += 1;
+    }
+  }
+
+  // A small framed label: keyword chips, badges, the build strip.
+  public static func Chip(const label: String, color: CName, size: Int32) -> ref<inkCanvas> {
+    let chip = new inkCanvas();
+    chip.SetFitToContent(true);
+    let back = RLCard.Shape(n"cell_bg", color);
+    back.SetOpacity(0.16);
+    back.Reparent(chip);
+    let edge = RLCard.Shape(n"cell_fg", color);
+    edge.SetOpacity(0.7);
+    edge.Reparent(chip);
+    let text = RLUI.Text(label, size, color, true);
+    text.SetLetterCase(textLetterCase.UpperCase);
+    text.SetMargin(inkMargin(12.0, 3.0, 12.0, 3.0));
+    text.Reparent(chip);
+    return chip;
+  }
+
+  // NEW: never taken in any run.
+  public func SetNew() {
+    RLCard.Chip("NEW", n"MainColors.ActiveYellow", 22).Reparent(this.m_corner);
+  }
+
+  // A hot door: red marker, red frame, a slow pulse.
+  public func SetHot() {
+    RLCard.Chip("HOT", n"MainColors.Red", 26).Reparent(this.m_corner);
+    this.m_flash.UnbindProperty(n"tintColor");
+    this.m_flash.BindProperty(n"tintColor", n"MainColors.Red");
+    let pulse = new inkAnimTransparency();
+    pulse.SetStartTransparency(0.25);
+    pulse.SetEndTransparency(0.95);
+    pulse.SetDuration(0.9);
+    pulse.SetMode(inkanimInterpolationMode.EasyInOut);
+    pulse.SetType(inkanimInterpolationType.Sinusoidal);
+    let anim = new inkAnimDef();
+    anim.AddInterpolator(pulse);
+    let options: inkAnimOptions;
+    options.loopType = inkanimLoopType.PingPong;
+    options.loopInfinite = true;
+    this.m_hotProxy = this.m_flash.PlayAnimationWithOptions(anim, options);
+  }
+
+  // Rare and up flash their quality colour once as they land.
+  public func PlayReveal(step: Int32, delay: Float) {
+    if step < 4 || IsDefined(this.m_hotProxy) {
+      return;
+    }
+    this.m_flash.UnbindProperty(n"tintColor");
+    this.m_flash.SetTintColor(RLCard.QualityColor(step));
+    let up = new inkAnimTransparency();
+    up.SetStartTransparency(0.0);
+    up.SetEndTransparency(1.0);
+    up.SetStartDelay(delay + 0.18);
+    up.SetDuration(0.12);
+    let down = new inkAnimTransparency();
+    down.SetStartTransparency(1.0);
+    down.SetEndTransparency(step >= 8 ? 0.35 : 0.0);
+    down.SetStartDelay(delay + 0.30);
+    down.SetDuration(step >= 8 ? 0.5 : 0.35);
+    let anim = new inkAnimDef();
+    anim.AddInterpolator(up);
+    anim.AddInterpolator(down);
+    this.m_flash.PlayAnimation(anim);
+  }
+
+  // The picked card swells; returns the animation so the screen can close
+  // when it's done.
+  public func PlayPick() -> ref<inkAnimProxy> {
+    let grow = new inkAnimScale();
+    grow.SetStartScale(Vector2(1.025, 1.025));
+    grow.SetEndScale(Vector2(1.08, 1.08));
+    grow.SetDuration(0.25);
+    grow.SetMode(inkanimInterpolationMode.EasyOut);
+    grow.SetType(inkanimInterpolationType.Quadratic);
+    let anim = new inkAnimDef();
+    anim.AddInterpolator(grow);
+    this.m_flash.SetOpacity(1.0);
+    return this.m_lift.PlayAnimation(anim);
+  }
+
+  // The cards not picked fall away.
+  public func PlayDismiss() {
+    let fade = new inkAnimTransparency();
+    fade.SetStartTransparency(this.m_root.GetOpacity());
+    fade.SetEndTransparency(0.0);
+    fade.SetDuration(0.2);
+    let drop = new inkAnimTranslation();
+    drop.SetStartTranslation(Vector2(0.0, 0.0));
+    drop.SetEndTranslation(Vector2(0.0, 40.0));
+    drop.SetDuration(0.2);
+    let anim = new inkAnimDef();
+    anim.AddInterpolator(fade);
+    anim.AddInterpolator(drop);
+    this.m_root.PlayAnimation(anim);
+  }
+
+  // Can't have it: a quick shake.
+  public func Shake() {
+    let anim = new inkAnimDef();
+    let offsets = [14.0, -12.0, 8.0, -4.0, 0.0];
+    let from = 0.0;
+    let i = 0;
+    while i < ArraySize(offsets) {
+      let move = new inkAnimTranslation();
+      move.SetStartTranslation(Vector2(from, 0.0));
+      move.SetEndTranslation(Vector2(offsets[i], 0.0));
+      move.SetStartDelay(0.04 * Cast<Float>(i));
+      move.SetDuration(0.04);
+      anim.AddInterpolator(move);
+      from = offsets[i];
+      i += 1;
+    }
+    this.m_lift.PlayAnimation(anim);
+  }
+
   // Information only: no hover, no clicks.
   public func SetStatic() {
     this.m_root.SetInteractive(false);
@@ -537,15 +694,6 @@ public abstract class RLIcons {
     return StrBeginsWith(path, "UIIcon.") ? TDBID.Create(path) : TDBID.Create("UIIcon." + path);
   }
 
-  // UIIcon record for a boon's HUD buff icon.
-  public static func BoonIcon(boon: CName) -> TweakDBID {
-    let effect = TweakDBInterface.GetStatusEffectRecord(RLBoons.BuffID(boon));
-    if !IsDefined(effect) || !IsDefined(effect.UiData()) {
-      return TDBID.None();
-    }
-    return TDBID.Create("UIIcon." + effect.UiData().IconPath());
-  }
-
   public static func LogoAtlas() -> ResRef = r"base\\gameplay\\gui\\common\\icons\\gang_logos.inkatlas"
 
   // A faction's logo in the gang logo atlas.
@@ -584,8 +732,8 @@ public abstract class RLIcons {
       case RLRewardCategory.Daemons: return n"ico_deck";
       case RLRewardCategory.Boons: return n"ico_tarot";
       case RLRewardCategory.Training: return n"ico_stats";
-      case RLRewardCategory.Iconic: return n"ico_inventory";
       case RLRewardCategory.Workshop: return n"ico_cafting_upgrading";
+      case RLRewardCategory.Cred: return n"ico_money";
       case RLRewardCategory.Event: return n"ico_journal";
       case RLRewardCategory.Bounty: return n"ico_money";
       case RLRewardCategory.System: return n"ico_cyberware";
@@ -600,8 +748,8 @@ public abstract class RLIcons {
       case RLRewardCategory.Daemons: return n"MainColors.Green";
       case RLRewardCategory.Boons: return n"MainColors.Purple";
       case RLRewardCategory.Training: return n"MainColors.ActiveWhite";
-      case RLRewardCategory.Iconic: return n"MainColors.Gold";
       case RLRewardCategory.Workshop: return n"MainColors.Yellow";
+      case RLRewardCategory.Cred: return n"MainColors.Gold";
       case RLRewardCategory.Event: return n"MainColors.Blue";
       case RLRewardCategory.Bounty: return n"MainColors.Red";
       case RLRewardCategory.System: return n"MainColors.Blue";

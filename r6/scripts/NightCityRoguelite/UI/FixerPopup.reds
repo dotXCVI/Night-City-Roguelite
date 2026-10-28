@@ -3,8 +3,8 @@
 // -----------------------------------------------------------------------------
 // The Fixer's stock as cards (UI/Card.reds). The eddie balance sits on top and
 // every card says what it costs: affordable in gold, out of reach in grey with
-// how much is missing, bought ones marked SOLD; gear V can sell back is in
-// blue with what the Fixer pays. Once nothing else is
+// how much is missing (a click shakes it), bought ones marked SOLD; gear V
+// can sell back is in blue with what the Fixer pays. Once nothing else is
 // affordable, LEAVE lights up. Closing (C / ESC) doesn't leave: F7 brings the
 // Fixer back.
 // -----------------------------------------------------------------------------
@@ -135,7 +135,7 @@ public class RLFixerPopup extends InGamePopup {
     if !item.contact && !item.sell && IsDefined(item.offer) && item.offer.step > 0 {
       card.SetQuality(item.offer.step);
     }
-    card.SetDisabled(!affordable);
+    card.SetDisabled(item.sold);
     card.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
     card.Reparent(parent);
     if !this.m_introPlayed {
@@ -157,8 +157,13 @@ public class RLFixerPopup extends InGamePopup {
     if StrBeginsWith(name, "item_") {
       if this.m_system.BuyFromFixer(StringToInt(StrAfterFirst(name, "_"))) {
         this.PlaySound(n"Item", n"OnBuy");
+        this.Rebuild();
+      } else {
+        let card = button as RLCard;
+        if IsDefined(card) {
+          card.Shake();
+        }
       }
-      this.Rebuild();
       return true;
     }
     return false;

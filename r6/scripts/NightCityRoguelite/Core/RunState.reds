@@ -22,30 +22,61 @@ public class RLRunState {
   // Telemetry (Core/Telemetry.reds): this run's id and when it started.
   public let id: Int32;
   public let startTime: Float;
-  // Boons held this run (Rewards/Boons.reds).
+
+  // The four patrons working the city this run (Rewards/Patrons.reds), and
+  // the effects V holds from them (Rewards/Boons.reds).
+  public let patrons: array<CName>;
   public let boons: array<ref<RLBoonState>>;
-  // Trade-offs taken at events (Run/Events.reds): extra damage V takes (0.15
-  // = +15%), and stat modifiers that are removed when the run ends.
+  // Effects already offered this run: a NEW card is one that isn't here.
+  public let seen: array<CName>;
+
+  // Trauma Team cover: the run's lives. A lethal hit with cover left spends
+  // one and V gets back up on the spot.
+  public let cover: Int32;
+  public let coverMax: Int32;
+  public let coverSpent: Int32;
+
+  // The weapon slots (Rewards/Weapons.reds): the main weapon takes every
+  // weapon reward, the sidearm only steps up with the acts. The slot holds
+  // the quality step, so a traded gun keeps it.
+  public let mainWeapon: ItemID;
+  public let mainStep: Int32;
+  public let sidearm: ItemID;
+  public let sidearmStep: Int32;
+
+  // Trade-offs taken at events and deals: extra damage V takes (0.15 =
+  // +15%), and stat modifiers that are removed when the run ends.
   public let damageTakenBonus: Float;
   public let appliedMods: array<ref<gameStatModifierData>>;
+  // Max health those trade-offs took (0.15 = -15%); see RLBoons.HealthCut.
+  public let healthCut: Float;
+  // Loan Shark: fights left on the loan before it pays. Trophy Wall: kills
+  // counted towards it this run.
+  public let loanFights: Int32;
+  public let trophyKills: Int32;
   // Every weapon the run handed out (kit and rewards): any other weapon V
   // carries was picked up in an arena and is taken away on the next trip.
   public let grantedWeapons: array<TweakDBID>;
-  // Free reroll charges (refilled at the start of every act) and paid rerolls
-  // bought on the current screen (each one costs more).
+  // Free reroll charges (refilled at the start of every act); the Afterlife's
+  // favour adds one free reroll on every screen.
   public let rerolls: Int32;
   public let rerollsPerAct: Int32;
-  public let paidRerolls: Int32;
+  public let screenRerollUsed: Bool;
   public let offerCount: Int32;
   // The fight in progress (or just cleared): its reward type and threat.
   public let door: ref<RLDoor>;
 
-  // Reward director (Rewards/Director.reds).
+  // Reward director (Rewards/Director.reds): quality luck, and hot doors -
+  // how many the act has left and the floor of the last one.
   public let pityOffset: Int32;
   public let flatStreak: Int32;
   public let magnificence: Int32;
+  public let hotLeft: Int32;
+  public let lastHotDepth: Int32;
+  public let hotDecidedDepth: Int32;
+  public let hotDecision: Bool;
 
-  // Workshop doors (floors 4 and 10; offered once more if passed over).
+  // Workshop doors (floors 4, 10 and 16; offered once more if passed over).
   public let workshopShown: Bool;
   public let workshopCarry: Bool;
 
@@ -54,8 +85,6 @@ public class RLRunState {
 
   // Styles (Rewards/Styles.reds): points per style, recounted after picks.
   public let stylePoints: array<Int32>;
-  // Weapons with mods (Rewards/Weapons.reds).
-  public let weapons: array<ref<RLWeaponState>>;
   // Cards banished for the rest of the run (RLRewards.OfferKey) and banishes
   // left (one per act).
   public let banished: array<String>;
@@ -82,15 +111,19 @@ public class RLRunState {
 
   public func Threat() -> Int32 = IsDefined(this.door) ? this.door.threat : 2
 
+  public func IsHotFight() -> Bool = IsDefined(this.door) && this.door.hot
+
   public static func Create(token: Int32, kit: CName) -> ref<RLRunState> {
     let run = new RLRunState();
     run.token = token;
     run.kit = kit;
     run.act = 1;
     run.floor = 1;
-    run.offerCount = 4;
+    run.offerCount = 3;
     run.banishes = 1;
     run.gigStyle = -1;
+    run.hotLeft = RLRewardDirector.HotDoorsPerAct(1);
+    run.lastHotDepth = -9;
     return run;
   }
 
@@ -107,14 +140,18 @@ public class RLRunState {
   public func IsEliteFloor() -> Bool = this.floor == RLConfig.EliteFloor()
   public func IsFinalFloor() -> Bool = this.act >= RLConfig.Acts() && this.floor >= RLConfig.FloorsPerAct()
 
-  public func Advance() {
+  // Moves to the next floor; true when that starts a new act.
+  public func Advance() -> Bool {
     this.floor += 1;
-    if this.floor > RLConfig.FloorsPerAct() {
-      this.floor = 1;
-      this.act += 1;
-      this.rerolls = Max(this.rerolls, this.rerollsPerAct);
-      this.banishes = Max(this.banishes, 1);
+    if this.floor <= RLConfig.FloorsPerAct() {
+      return false;
     }
+    this.floor = 1;
+    this.act += 1;
+    this.rerolls = Max(this.rerolls, this.rerollsPerAct);
+    this.banishes = Max(this.banishes, 1);
+    this.hotLeft = RLRewardDirector.HotDoorsPerAct(this.act);
+    return true;
   }
 
   // Jumps to an overall floor (1-based), for test runs.
@@ -122,6 +159,7 @@ public class RLRunState {
     let d = Clamp(depth, 1, this.TotalFloors()) - 1;
     this.act = d / RLConfig.FloorsPerAct() + 1;
     this.floor = d % RLConfig.FloorsPerAct() + 1;
+    this.hotLeft = RLRewardDirector.HotDoorsPerAct(this.act);
   }
 
   public func FloorLabel() -> String {

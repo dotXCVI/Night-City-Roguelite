@@ -4,17 +4,17 @@
 // A shop stop after every elite floor, before the boss door (Hades' Charon,
 // Gunfire Reborn's peddler): eddies earned in the run buy one of each stock
 // item. Eddies come from every cleared arena (more for heavy fights and
-// bosses) and the Bounty Hunter boon; they are wiped with the rest of the
-// gear when the run ends.
+// bosses, half again for hot doors); they are wiped with the rest of the gear
+// when the run ends.
 //
-//   MaxDoc upgrade, a better grenade, a boon, a perk card, an upgrade and a
-//   mod for an equipped weapon, and a fixer contact (two free rerolls).
+//   MaxDoc upgrade, a better grenade, an effect from one of the run's
+//   patrons, a perk card, a Tune-Up and a weapon effect for the main weapon,
+//   and a fixer contact (two free rerolls).
 //
 // The Fixer also buys back gear V carries but doesn't use (weapons and
 // cyberware that aren't equipped) - Cyberpunk's card removal.
 //
-// Prices scale with the floor; the Street Smart unlock takes 20% off, and the
-// Fixer's Cut boon more.
+// Prices scale with the floor; the Street Smart unlock takes 20% off.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -36,8 +36,7 @@ public abstract class RLFixer {
   // Eddies for a cleared arena.
   public static func ArenaEddies(run: ref<RLRunState>) -> Int32 {
     let base = Cast<Float>(100 + 40 * run.Depth());
-    let threat = run.Threat();
-    let scale = threat <= 1 ? 0.75 : (threat >= 3 ? 1.4 : 1.0);
+    let scale = run.IsHotFight() ? 1.5 : 1.0;
     return RoundF(base * scale) + (run.IsBossFloor() ? 400 : 0);
   }
 
@@ -52,22 +51,22 @@ public abstract class RLFixer {
     RLFixer.AddItem(stock, run, RLRewards.HealthUpgradeOffer(player), 250 + 50 * depth);
     let grenade = RLRewards.GrenadeUpgradeOffer(player);
     if !IsDefined(grenade) {
-      grenade = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Grenade, 2, profile, false);
+      grenade = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Grenade, profile, false);
     }
     RLFixer.AddItem(stock, run, grenade, 300 + 60 * depth);
-    RLFixer.AddItem(stock, run, RLRewards.BuildOffer(player, pools, run, RLOfferKind.Boon, 2, profile, false), 350 + 50 * depth);
+    let effect = RLRewards.AnyBoonOffer(player, run);
+    RLFixer.AddItem(stock, run, effect, 350 + 50 * depth);
     let none: array<gamedataNewPerkType>;
-    let perks = RLPerkCatalog.Pick(player, run, profile, 1, false, none);
+    let perks = RLPerkCatalog.Pick(player, run, profile, 1, 0, none);
     if ArraySize(perks) > 0 {
       RLFixer.AddItem(stock, run, RLRewards.PerkOffer(run, perks[0]), 500 + 80 * depth);
     }
-    let weapons = RLRewards.WeaponUpgradeOffers(player, 1, 2);
-    if ArraySize(weapons) > 0 {
-      RLFixer.AddItem(stock, run, weapons[0], 450 + 70 * depth);
-    }
-    let mods = RLWeaponMods.Offers(player, run, 1);
-    if ArraySize(mods) > 0 {
-      RLFixer.AddItem(stock, run, mods[0], 400 + 60 * depth);
+    RLFixer.AddItem(stock, run, RLRewards.TuneUpOffer(player, run, 2), 450 + 70 * depth);
+    // One weapon effect on the shelf at most: the main weapon may have room
+    // for only one.
+    let effectDef = IsDefined(effect) ? RLBoons.Get(effect.boon) : null;
+    if !IsDefined(effectDef) || NotEquals(effectDef.kind, RLBoonKind.Weapon) {
+      RLFixer.AddItem(stock, run, RLFixer.WeaponEffectOffer(player, run), 400 + 60 * depth);
     }
     let contact = new RLFixerItem();
     contact.contact = true;
@@ -75,6 +74,17 @@ public abstract class RLFixer {
     ArrayPush(stock, contact);
     RLFixer.AddBuyBacks(stock, player);
     return stock;
+  }
+
+  // A weapon effect for the main weapon from one of the run's patrons, or none.
+  private static func WeaponEffectOffer(player: ref<PlayerPuppet>, run: ref<RLRunState>) -> ref<RLOffer> {
+    let candidates: array<ref<RLBoonDef>>;
+    for def in RLBoons.All() {
+      if Equals(def.kind, RLBoonKind.Weapon) && ArrayContains(run.patrons, def.patron) && RLBoons.IsOfferable(run, def) && ItemID.IsValid(run.mainWeapon) {
+        ArrayPush(candidates, def);
+      }
+    }
+    return ArraySize(candidates) > 0 ? RLRewards.BoonOffer(run, candidates[RandRange(0, ArraySize(candidates))]) : null;
   }
 
   // Weapons and cyberware V carries without using them, up to three.
@@ -111,13 +121,12 @@ public abstract class RLFixer {
         || !transactions.RemoveItem(player, item.sellItem, 1) {
         return false;
       }
-      RLWeapons.Forget(run, item.sellItem);
       RLGear.GiveEddies(player, item.price);
       item.sold = true;
       RLLog(s"Fixer: bought back \(item.sellName) for \(item.price).");
       return true;
     }
-    if item.sold || RLFixer.Balance(player) < item.price {
+    if item.sold || RLFixer.Balance(player) < item.price || !item.contact && !RLRewards.StillGrantable(run, item.offer) {
       return false;
     }
     GameInstance.GetTransactionSystem(player.GetGame()).RemoveItem(player, RLFixer.MoneyID(), item.price);
@@ -163,7 +172,7 @@ public abstract class RLFixer {
   }
 
   public static func Discounted(run: ref<RLRunState>, price: Int32) -> Int32 {
-    let scale = 1.0 - RLBoons.Value(run, n"FixersCut") / 100.0;
+    let scale = 1.0;
     if RLMeta.PerkActive(RogueliteService.Get(), n"perk.StreetSmart") {
       scale *= 0.8;
     }

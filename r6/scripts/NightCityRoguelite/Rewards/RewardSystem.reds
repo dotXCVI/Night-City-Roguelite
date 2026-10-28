@@ -1,53 +1,50 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - rewards
 // -----------------------------------------------------------------------------
-// Hades-style: between arenas the player picks the next fight by its reward
-// type (a "door"). Each door shows the reward, the arena, the enemy faction
-// and the threat - all the planning happens here, between fights:
+// Between fights V picks the next fight by what it pays (a "door"), and after
+// it, one card from that door's screen - two decisions a floor, both at the
+// terminal-free moments between arenas:
 //
-//   TRAINING  perk cards (Rewards/PerkCatalog.reds)            light
-//   ARMORY    a better weapon, an upgrade or mod for yours,   standard
-//             grenades
-//   PATRON    three boons from one patron (Rewards/Patrons)   standard
-//   DAEMONS   quickhacks                                       standard
-//   WORKSHOP  upgrades, mods and evolutions for gear you own   standard
-//             (floors 4, 10 and 16)
-//   CHROME    cyberware, installed on the spot                 heavy
-//   BOUNTY    a lone cyberpsycho; boons and eddies (Act 2+)    heavy
-//   ?         an event instead of a fight (Run/Events.reds)    -
+//   PATRON    effects from one of the run's four patrons (Rewards/Boons.reds)
+//   ARMORY    the main weapon: a Tune-Up, weapon effects, a TRADE, grenades
+//   TUNE-UP   floors 4, 10 and 16: the evolution, big Tune-Ups, the MaxDoc
+//   CHROME    cyberware, installed on the spot
+//   DAEMONS   quickhacks
+//   TRAINING  perks (the only place they come from)
+//   BOUNTY    a lone cyberpsycho (Act 2 on): eddies and a patron pick
+//   CRED      now and then: Cred for the meta, no card at all
+//   ?         an event instead of a fight (Run/Events.reds)
 //
-// Heavy doors appear from floor 3. Some fights come with an objective
-// (Run/Objectives.reds). Before a boss floor there is a single boss door: the
-// Act 1 boss pays out an Operating System (and Overdrive), the others chrome.
-// Iconics aren't a door any more: weapons evolve into them
-// (Rewards/Weapons.reds).
+// Every regular door is the same fight; danger lives only on HOT doors, which
+// the Director places when V needs a spike most (Rewards/Director.reds). A
+// hot door pays its own reward two quality steps up, one card more, a big
+// card on patron screens, and half again the eddies.
 //
-// Besides the door rewards: the level-up after every floor
-// (Rewards/LevelUp.reds), the gig at the start (Run/Gigs.reds). A reward
-// screen can be skipped for eddies, and one card per act banished for the
-// rest of the run. Card quality, pity, spikes and build weighting are the
-// reward director's (Rewards/Director.reds).
+// Patron screens are dealt, not drawn: one card that builds on what V holds
+// (an overclock, a duo, an effect that uses what V's effects make), one V
+// hasn't seen this run, one open. The first screen of a run deals only
+// effects that make something, so the first pick always starts a build.
+//
+// A screen can be skipped for eddies, and one card per act banished for the
+// rest of the run.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
 
 public enum RLOfferKind {
-  Weapon = 0,
+  Trade = 0,
   Iconic = 1,
   Cyberware = 2,
   Quickhack = 3,
   Boon = 4,
   Perk = 5,
   Grenade = 6,
-  WeaponUpgrade = 7,
+  TuneUp = 7,
   HealthUpgrade = 8,
-  WeaponMod = 9,
-  Evolve = 10,
-  Attribute = 11,
-  Capacity = 12,
-  BoonUpgrade = 13,
-  OperatingSystem = 14,
-  Gig = 15,
+  Evolve = 9,
+  Capacity = 10,
+  OperatingSystem = 11,
+  Gig = 12,
 }
 
 public enum RLRewardCategory {
@@ -56,24 +53,24 @@ public enum RLRewardCategory {
   Daemons = 2,
   Boons = 3,
   Training = 4,
-  Iconic = 5,
-  Workshop = 6,
-  Event = 7,
-  Bounty = 8,
+  Workshop = 5,
+  Event = 6,
+  Bounty = 7,
+  Cred = 8,
   // Not doors: the screens between them.
-  LevelUp = 9,
-  System = 10,
-  Gig = 11,
+  System = 9,
+  Gig = 10,
 }
 
 // One choice for the next fight.
 public class RLDoor {
   public let category: RLRewardCategory;
   public let threat: Int32;
+  public let hot: Bool;
   public let arena: CName;
   public let faction: ref<RLFactionPool>;
   public let boss: Bool;
-  // Patron doors (and bounties): whose boons the reward screen offers.
+  // Patron doors (and bounties): whose effects the reward screen offers.
   public let patron: CName;
   // Event doors: which event (Run/Events.reds).
   public let event: CName;
@@ -88,19 +85,20 @@ public class RLOffer {
   public let perk: gamedataNewPerkType;
   public let tier: CName;
   public let step: Int32;
+  // Effects: which, its overclock or not, its patron.
   public let boon: CName;
-  // Boons: the rarity taken (an upgrade's new rarity) and the patron.
-  public let rarity: Int32;
+  public let overclock: Bool;
   public let patron: CName;
+  // Effects V holds that this card works with (BUILDS ON), and a card V has
+  // never taken in any run (NEW).
+  public let links: array<CName>;
+  public let isNew: Bool;
   public let tags: array<CName>;
-  // Weapon mods: the mod. Operating Systems: the kind (Sandevistan,
-  // Berserk, Cyberdeck).
+  // Operating Systems: the kind (Sandevistan, Berserk, Cyberdeck).
   public let mod: CName;
-  // Attribute cards: the attribute. Capacity and gig cards: the amount or
-  // the style.
-  public let stat: gamedataStatType;
+  // Capacity and gig cards: the amount or the style.
   public let amount: Int32;
-  // Weapon cards: DPS against V's best equipped weapon.
+  // Numbers that matter on the card ("DPS 212 > 268").
   public let dpsLine: String;
   public let title: String;
   public let subtitle: String;
@@ -118,13 +116,12 @@ public abstract class RLRewards {
       case RLRewardCategory.Armory: return "ARMORY";
       case RLRewardCategory.Chrome: return "CHROME";
       case RLRewardCategory.Daemons: return "DAEMONS";
-      case RLRewardCategory.Boons: return "BOONS";
+      case RLRewardCategory.Boons: return "PATRON";
       case RLRewardCategory.Training: return "TRAINING";
-      case RLRewardCategory.Iconic: return "ICONIC";
-      case RLRewardCategory.Workshop: return "WORKSHOP";
+      case RLRewardCategory.Workshop: return "TUNE-UP";
       case RLRewardCategory.Event: return "?";
       case RLRewardCategory.Bounty: return "BOUNTY";
-      case RLRewardCategory.LevelUp: return "LEVEL UP";
+      case RLRewardCategory.Cred: return "CRED";
       case RLRewardCategory.System: return "OPERATING SYSTEM";
       case RLRewardCategory.Gig: return "TAKE A GIG";
     }
@@ -139,18 +136,23 @@ public abstract class RLRewards {
     return RLRewards.CategoryName(door.category);
   }
 
-  // What a door pays, in plain words ("Pick 1 of 4 quickhacks").
+  // How many cards the door's screen deals.
+  public static func CardCount(run: ref<RLRunState>, door: ref<RLDoor>) -> Int32 {
+    return IsDefined(door) && door.hot ? run.offerCount + 1 : run.offerCount;
+  }
+
+  // What a door pays, in plain words ("Pick 1 of 3 Voodoo Boys effects.").
   public static func DoorPromise(door: ref<RLDoor>, count: Int32) -> String {
     let pick = s"Pick 1 of \(count) ";
     switch door.category {
-      case RLRewardCategory.Armory: return pick + "guns, upgrades and mods for yours, or grenades.";
+      case RLRewardCategory.Armory: return pick + "for your main weapon: tune-ups, weapon effects, a trade.";
       case RLRewardCategory.Chrome: return pick + "cyberware, installed on the spot.";
       case RLRewardCategory.Daemons: return pick + "quickhacks.";
       case RLRewardCategory.Training: return pick + "perks.";
-      case RLRewardCategory.Iconic: return pick + "iconic weapons.";
-      case RLRewardCategory.Workshop: return "Evolve or upgrade a weapon, mod it, or upgrade your MaxDoc.";
-      case RLRewardCategory.Boons: return pick + RLPatrons.Name(door.patron) + " boons.";
-      case RLRewardCategory.Bounty: return "One cyberpsycho. Pays big in eddies, plus a " + RLPatrons.Name(door.patron) + " boon pick.";
+      case RLRewardCategory.Workshop: return "Evolve or tune up your main weapon, or upgrade your MaxDoc.";
+      case RLRewardCategory.Boons: return pick + RLPatrons.Name(door.patron) + " effects.";
+      case RLRewardCategory.Bounty: return "One cyberpsycho. Pays big in eddies, plus a " + RLPatrons.Name(door.patron) + " pick.";
+      case RLRewardCategory.Cred: return "No card. Cred, kept for good.";
       case RLRewardCategory.Event: return "No fight - " + RLEvents.Title(door.event);
       case RLRewardCategory.System: return "Pick your operating system. It unlocks Overdrive, your ultimate.";
     }
@@ -160,43 +162,24 @@ public abstract class RLRewards {
   // What a door's reward is, where the name alone doesn't say.
   public static func CategoryDescription(category: RLRewardCategory) -> String {
     switch category {
-      case RLRewardCategory.Armory: return "Fresh iron and frags.";
+      case RLRewardCategory.Armory: return "Make your gun yours.";
       case RLRewardCategory.Chrome: return "New chrome, straight off the table.";
       case RLRewardCategory.Daemons: return "Quickhacks. Fry their optics.";
       case RLRewardCategory.Boons: return "Someone powerful backs you.";
       case RLRewardCategory.Training: return "Perks. Sharpen what works.";
-      case RLRewardCategory.Iconic: return "One-of-a-kind iron.";
       case RLRewardCategory.Workshop: return "Tune up what you're packing.";
       case RLRewardCategory.Event: return "No fight. Something else.";
       case RLRewardCategory.Bounty: return "Cyberpsycho loose. NCPD pays.";
+      case RLRewardCategory.Cred: return "Skip the shopping. Bank it.";
       case RLRewardCategory.System: return "Your operating system. And Overdrive.";
     }
     return "";
   }
 
-  // 1 = light, 2 = standard, 3 = heavy.
-  public static func CategoryThreat(category: RLRewardCategory) -> Int32 {
-    switch category {
-      case RLRewardCategory.Event: return 0;
-      case RLRewardCategory.Training: return 1;
-      case RLRewardCategory.Chrome:
-      case RLRewardCategory.Iconic:
-      case RLRewardCategory.Bounty: return 3;
-    }
-    return 2;
-  }
+  // Cred a Cred door pays.
+  public static func CredDoorAmount(run: ref<RLRunState>) -> Int32 = 30 + 15 * run.act
 
-  public static func ThreatName(threat: Int32) -> String {
-    if threat <= 0 {
-      return "NO FIGHT";
-    }
-    if threat <= 1 {
-      return "LIGHT";
-    }
-    return threat >= 3 ? "HEAVY" : "STANDARD";
-  }
-
-  // The floors with a Workshop door (and the one after, when it was passed over).
+  // The floors with a Tune-Up door (and the one after, when it was passed over).
   public static func IsWorkshopFloor(depth: Int32) -> Bool = depth == 4 || depth == 10 || depth == 16
 
   // Smart weapons are strong for new characters, so the weapon classes open
@@ -218,8 +201,9 @@ public abstract class RLRewards {
   // --- Doors ---------------------------------------------------------------------------
 
   // Doors for the run's next floor: a single boss door before a boss floor, a
-  // light Training fight first, otherwise `count` different reward types in
-  // different arenas, each with its enemy faction already known.
+  // Training fight first, otherwise `count` different reward types in
+  // different arenas, each with its enemy faction already known - and now
+  // and then one of them HOT.
   public static func RollDoors(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, lastArena: CName, count: Int32) -> array<ref<RLDoor>> {
     let doors: array<ref<RLDoor>>;
     let usedArenas: array<CName>;
@@ -230,20 +214,20 @@ public abstract class RLRewards {
       return doors;
     }
     if run.floorsCleared == 0 && !run.isTest {
-      ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Training, false, usedArenas));
+      ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Boons, false, usedArenas));
       return doors;
     }
     let used: array<RLRewardCategory>;
-    // The workshop is one of the doors on floors 4, 10 and 16 (and once more
-    // on the next floor if it was passed over), like Hades' Daedalus hammers.
     let depth = run.Depth();
+    // The Tune-Up is one of the doors on floors 4, 10 and 16 (and once more
+    // on the next floor if it was passed over), like Hades' Daedalus hammers.
     if RLRewards.IsWorkshopFloor(depth) || run.workshopCarry {
       run.workshopShown = true;
       ArrayPush(used, RLRewardCategory.Workshop);
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Workshop, false, usedArenas));
     }
-    // Now and then a door is an event (no fight) or, from Act 2, a bounty.
-    // Test runs always show both.
+    // Now and then a door is an event (no fight), a bounty (Act 2 on) or
+    // Cred. Test runs always show the event and the bounty.
     if (depth >= 2 || run.isTest) && !run.IsEliteFloor() && ArraySize(doors) < count && (run.isTest || RandF() < RLConfig.EventDoorChance()) {
       ArrayPush(used, RLRewardCategory.Event);
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Event, false, usedArenas));
@@ -251,6 +235,10 @@ public abstract class RLRewards {
     if run.act >= 2 && ArraySize(doors) < count && (run.isTest || RandF() < RLConfig.BountyDoorChance()) {
       ArrayPush(used, RLRewardCategory.Bounty);
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Bounty, false, usedArenas));
+    }
+    if depth >= 3 && !run.isTest && ArraySize(doors) < count && RandF() < RLConfig.CredDoorChance() {
+      ArrayPush(used, RLRewardCategory.Cred);
+      ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Cred, false, usedArenas));
     }
     let profile = RLBuildProfile.Read(player);
     let guard = 0;
@@ -268,7 +256,76 @@ public abstract class RLRewards {
         }
       }
     }
+    if RLRewardDirector.WantsHotDoor(player, run) {
+      RLRewards.MakeOneHot(player, pools, run, doors, usedArenas);
+    }
     return doors;
+  }
+
+  // The Director's door: the family V's build lacks most - the Armory when
+  // the main weapon is behind the floor, otherwise the patron V leans on.
+  // An existing door of that kind turns hot, or takes the last regular
+  // door's place (an event, bounty or Cred door's when there is none; the
+  // Tune-Up door always stays).
+  private static func MakeOneHot(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, out doors: array<ref<RLDoor>>, out usedArenas: array<CName>) {
+    let behind = run.mainStep < RLQuality.ExpectedStep(run.Depth(), run.TotalFloors()) - 1;
+    let category = behind ? RLRewardCategory.Armory : RLRewardCategory.Boons;
+    let patron = RLPatrons.Lead(run);
+    for door in doors {
+      let matches = behind
+        ? Equals(door.category, RLRewardCategory.Armory)
+        : Equals(door.category, RLRewardCategory.Boons) && (!IsNameValid(patron) || Equals(door.patron, patron));
+      if matches {
+        RLRewards.SetHot(run, door);
+        return;
+      }
+    }
+    let replace = RLRewards.LastDoorWhere(doors, true);
+    if replace < 0 {
+      replace = RLRewards.LastDoorWhere(doors, false);
+    }
+    if replace < 0 {
+      return;
+    }
+    let door = RLRewards.MakeDoor(pools, run, category, false, usedArenas);
+    if Equals(category, RLRewardCategory.Boons) && IsNameValid(patron) && !RLRewards.HasPatronDoor(doors, patron) {
+      door.patron = patron;
+    }
+    doors[replace] = door;
+    RLRewards.SetHot(run, door);
+  }
+
+  // The last regular door (or, `regular` false, the last that isn't the
+  // Tune-Up); -1 when there is none.
+  private static func LastDoorWhere(doors: array<ref<RLDoor>>, regular: Bool) -> Int32 {
+    let i = ArraySize(doors) - 1;
+    while i >= 0 {
+      let fits = regular ? RLRewards.IsRegular(doors[i]) : !Equals(doors[i].category, RLRewardCategory.Workshop);
+      if fits {
+        return i;
+      }
+      i -= 1;
+    }
+    return -1;
+  }
+
+  private static func SetHot(run: ref<RLRunState>, door: ref<RLDoor>) {
+    door.hot = true;
+    door.threat = 3;
+    door.objective = RLObjectiveKind.None;
+    RLRewardDirector.OnHotPlaced(run);
+  }
+
+  // A plain fight door (not the Tune-Up, an event, a bounty or Cred).
+  private static func IsRegular(door: ref<RLDoor>) -> Bool {
+    switch door.category {
+      case RLRewardCategory.Workshop:
+      case RLRewardCategory.Event:
+      case RLRewardCategory.Bounty:
+      case RLRewardCategory.Cred:
+        return false;
+    }
+    return !door.boss;
   }
 
   private static func CountCategory(doors: array<ref<RLDoor>>, category: RLRewardCategory) -> Int32 {
@@ -293,7 +350,7 @@ public abstract class RLRewards {
   private static func MakeDoor(pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, boss: Bool, out usedArenas: array<CName>) -> ref<RLDoor> {
     let door = new RLDoor();
     door.category = category;
-    door.threat = boss ? 3 : RLRewards.CategoryThreat(category);
+    door.threat = boss ? 3 : (Equals(category, RLRewardCategory.Event) ? 0 : 2);
     door.boss = boss;
     switch category {
       case RLRewardCategory.Boons:
@@ -317,15 +374,15 @@ public abstract class RLRewards {
   }
 
   private static func RollCategory(pools: ref<RLTweakPools>, run: ref<RLRunState>, profile: ref<RLBuildProfile>) -> RLRewardCategory {
-    // No heavy fights (Chrome) before floor 3.
+    // No chrome before floor 3.
     let early = run.Depth() < 3;
     // Daemons doors show up more for netrunner builds.
     let daemons = 0;
     if pools.HasQuickhacks() && !early {
-      daemons = 10 + RoundF(10.0 * MinF(profile.Weight(n"netrunner"), 3.0) / 3.0);
+      daemons = 8 + RoundF(10.0 * MinF(profile.Weight(n"netrunner"), 3.0) / 3.0);
     }
     // Armory, Chrome, Daemons, Boons, Training
-    let weights: array<Int32> = [26, early ? 0 : 20, daemons, 24, 20];
+    let weights: array<Int32> = [24, early ? 0 : 16, daemons, 32, 16];
     let total = 0;
     for w in weights {
       total += w;
@@ -362,93 +419,372 @@ public abstract class RLRewards {
 
   // --- Offers --------------------------------------------------------------------------
 
-  // The reward screen for a cleared fight: all of the door's reward type.
-  public static func RollForCategory(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, patron: CName, threat: Int32, count: Int32) -> array<ref<RLOffer>> {
+  // The reward screen for a cleared fight. `hot`: the door was hot - two
+  // quality steps up and a big card.
+  public static func RollForCategory(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, patron: CName, hot: Bool, count: Int32) -> array<ref<RLOffer>> {
     let profile = RLBuildProfile.Read(player);
-    let spike = RLRewardDirector.SpikeDue(run);
+    let spike = hot || RLRewardDirector.SpikeDue(run);
     let offers: array<ref<RLOffer>>;
     switch category {
-      case RLRewardCategory.LevelUp:
-        return RLLevelUp.Offers(player, pools, run);
       case RLRewardCategory.System:
         return RLRewards.OperatingSystemOffers(player, pools, run);
       case RLRewardCategory.Gig:
         return RLGigs.Offers(run);
       case RLRewardCategory.Training:
-        offers = RLRewards.PerkOffers(player, run, profile, count, spike);
+        offers = RLRewards.PerkOffers(player, run, profile, count, hot ? count : (spike ? 1 : 0));
         break;
       case RLRewardCategory.Workshop:
         offers = RLRewards.WorkshopOffers(player, pools, run, count);
         break;
       case RLRewardCategory.Boons:
       case RLRewardCategory.Bounty:
-        offers = RLRewards.BoonOffers(run, patron, threat, Min(count, 3), spike);
+        offers = RLRewards.BoonOffers(player, run, patron, count, hot);
         break;
       case RLRewardCategory.Armory:
-        offers = RLRewards.ArmoryOffers(player, pools, run, threat, count, profile, spike);
+        offers = RLRewards.ArmoryOffers(player, pools, run, count, hot, spike);
         break;
       default:
-        offers = RLRewards.ItemOffers(player, pools, run, category, threat, count, profile, spike);
+        offers = RLRewards.ItemOffers(player, pools, run, category, count, profile, spike, hot);
     }
     RLRewards.DropBanished(run, offers);
     // Nothing of that type is available (or the patron has nothing left):
-    // another patron's boons instead.
-    if ArraySize(offers) == 0 {
-      offers = RLRewards.BoonOffers(run, RLPatrons.PickForDoor(run), threat, Min(count, 3), false);
-    }
-    for other in RLPatrons.All() {
+    // another patron's effects instead.
+    for other in run.patrons {
       if ArraySize(offers) == 0 {
-        offers = RLRewards.BoonOffers(run, other.id, threat, Min(count, 3), false);
+        offers = RLRewards.BoonOffers(player, run, other, count, hot);
       }
     }
-    RLRewards.KeepOneOffBuild(player, pools, run, category, threat, profile, offers);
-    RLRewardDirector.AfterRoll(run, offers, profile);
+    RLRewards.KeepOneOffBuild(player, pools, run, category, profile, offers);
     return offers;
   }
 
-  // The Armory: one card that improves a weapon V carries (a mod, or two
-  // quality steps), then new weapons that are never worse than V's best and
-  // the odd grenade.
-  private static func ArmoryOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, threat: Int32, count: Int32, profile: ref<RLBuildProfile>, spike: Bool) -> array<ref<RLOffer>> {
+  // Cards V actually got to see: patron cards stop counting as unseen.
+  public static func MarkSeen(run: ref<RLRunState>, offers: array<ref<RLOffer>>) {
+    for offer in offers {
+      if Equals(offer.kind, RLOfferKind.Boon) && !ArrayContains(run.seen, offer.boon) {
+        ArrayPush(run.seen, offer.boon);
+      }
+    }
+  }
+
+  // --- Patron screens ---------------------------------------------------------------------
+
+  // A patron's screen, dealt: a card that builds on V's effects, a card V
+  // hasn't seen this run, then open picks. `big`: a hot door - one card is
+  // an overclock, a duo or a legendary when V qualifies for one.
+  public static func BoonOffers(player: ref<PlayerPuppet>, run: ref<RLRunState>, patron: CName, count: Int32, big: Bool) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
-    let own = RandF() < 0.5 ? RLWeaponMods.Offers(player, run, 1) : RLRewards.WeaponUpgradeOffers(player, 1, 2);
-    if ArraySize(own) == 0 {
-      own = RLWeaponMods.Offers(player, run, 1);
+    let builds: array<ref<RLBoonDef>>;
+    let fresh: array<ref<RLBoonDef>>;
+    let open: array<ref<RLBoonDef>>;
+    let bigs: array<ref<RLBoonDef>>;
+    let starting = RLRewards.HeldEffects(run) == 0;
+    for def in RLBoons.All() {
+      if (Equals(def.patron, patron) || Equals(def.partner, patron)) && RLBoons.IsOfferable(run, def) && RLRewards.FitsSlots(run, def) {
+        let owned = RLBoons.Has(run, def.id);
+        // The first pick of a run starts a build: only effects that make something.
+        if !starting || (ArraySize(def.makes) > 0 && !owned && (Equals(def.kind, RLBoonKind.Effect) || Equals(def.kind, RLBoonKind.Weapon))) {
+          let special = owned || Equals(def.kind, RLBoonKind.Duo) || Equals(def.kind, RLBoonKind.Legendary);
+          let links = RLBoons.Links(run, def);
+          if special || ArraySize(links) > 0 {
+            ArrayPush(builds, def);
+          }
+          if special {
+            ArrayPush(bigs, def);
+          }
+          if !owned && !ArrayContains(run.seen, def.id) {
+            ArrayPush(fresh, def);
+          }
+          ArrayPush(open, def);
+        }
+      }
     }
-    // The upgrade goes first: the off-build card KeepOneOffBuild may swap in
-    // is always the last one.
-    for offer in own {
-      ArrayPush(offers, offer);
+    let taken: array<CName>;
+    if big {
+      RLRewards.DealOne(player, run, bigs, taken, offers);
     }
-    for offer in RLRewards.ItemOffers(player, pools, run, RLRewardCategory.Armory, threat, count - ArraySize(own), profile, spike) {
-      ArrayPush(offers, offer);
+    RLRewards.DealOne(player, run, builds, taken, offers);
+    RLRewards.DealOne(player, run, fresh, taken, offers);
+    while ArraySize(offers) < count && RLRewards.DealOne(player, run, open, taken, offers) {
+    }
+    while ArraySize(offers) > count {
+      ArrayPop(offers);
     }
     return offers;
   }
 
-  // A screen never shows the same item twice (in any quality), at most one
-  // grenade, and no weapon or grenade V already carries - the Workshop is
-  // where owned gear gets better.
-  private static func ItemOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, threat: Int32, count: Int32, profile: ref<RLBuildProfile>, spike: Bool) -> array<ref<RLOffer>> {
+  // Effects V holds (favours aside).
+  public static func HeldEffects(run: ref<RLRunState>) -> Int32 {
+    let count = 0;
+    for state in run.boons {
+      let def = RLBoons.Get(state.id);
+      if IsDefined(def) && NotEquals(def.kind, RLBoonKind.Favour) {
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  // Weapon effects need a main weapon.
+  private static func FitsSlots(run: ref<RLRunState>, def: ref<RLBoonDef>) -> Bool {
+    return NotEquals(def.kind, RLBoonKind.Weapon) || ItemID.IsValid(run.mainWeapon);
+  }
+
+  // Deals one card from `pool` that isn't on the screen yet; false when
+  // there is none.
+  private static func DealOne(player: ref<PlayerPuppet>, run: ref<RLRunState>, pool: array<ref<RLBoonDef>>, out taken: array<CName>, out offers: array<ref<RLOffer>>) -> Bool {
+    let candidates: array<ref<RLBoonDef>>;
+    for def in pool {
+      if !ArrayContains(taken, def.id) {
+        ArrayPush(candidates, def);
+      }
+    }
+    if ArraySize(candidates) == 0 {
+      return false;
+    }
+    let def = candidates[RandRange(0, ArraySize(candidates))];
+    ArrayPush(taken, def.id);
+    ArrayPush(offers, RLRewards.BoonOffer(run, def));
+    return true;
+  }
+
+  // One effect card: the effect, or its overclock when V holds it.
+  public static func BoonOffer(run: ref<RLRunState>, def: ref<RLBoonDef>) -> ref<RLOffer> {
+    let overclock = RLBoons.Has(run, def.id);
+    let offer = new RLOffer();
+    offer.kind = RLOfferKind.Boon;
+    offer.boon = def.id;
+    offer.overclock = overclock;
+    offer.patron = def.patron;
+    offer.tags = def.tags;
+    offer.title = overclock ? def.name + "+" : def.name;
+    offer.description = overclock ? def.overclock : def.text;
+    let patrons = Equals(def.kind, RLBoonKind.Duo) ? RLPatrons.Name(def.patron) + " + " + RLPatrons.Name(def.partner) : RLPatrons.Name(def.patron);
+    offer.subtitle = (overclock ? "OVERCLOCK" : RLBoons.KindName(def.kind)) + " - " + patrons;
+    if overclock {
+      ArrayPush(offer.links, def.id);
+      offer.step = 6;
+      offer.excitement = 2;
+    } else {
+      offer.links = RLBoons.Links(run, def);
+      offer.isNew = !RogueliteService.Get().HasTakenBoon(def.id);
+      switch def.kind {
+        case RLBoonKind.Legendary:
+          offer.step = 8;
+          offer.excitement = 3;
+          break;
+        case RLBoonKind.Duo:
+          offer.step = 6;
+          offer.excitement = 2;
+          break;
+        default:
+          offer.step = 4;
+          offer.excitement = ArraySize(offer.links) > 0 ? 1 : 0;
+      }
+    }
+    return offer;
+  }
+
+  // A random effect from one of the run's patrons (the Fixer, events).
+  public static func AnyBoonOffer(player: ref<PlayerPuppet>, run: ref<RLRunState>) -> ref<RLOffer> {
+    let patrons = run.patrons;
+    while ArraySize(patrons) > 0 {
+      let i = RandRange(0, ArraySize(patrons));
+      let offers = RLRewards.BoonOffers(player, run, patrons[i], 1, false);
+      if ArraySize(offers) > 0 {
+        return offers[0];
+      }
+      ArrayErase(patrons, i);
+    }
+    return null;
+  }
+
+  // --- The Armory ---------------------------------------------------------------------------
+
+  // The main weapon's screen: the evolution when it's ready, a Tune-Up,
+  // weapon effects from the run's patrons, one TRADE, now and then a grenade.
+  private static func ArmoryOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, count: Int32, hot: Bool, spike: Bool) -> array<ref<RLOffer>> {
+    let offers: array<ref<RLOffer>>;
+    let evolve = RLRewards.EvolveOffer(player, pools, run);
+    if IsDefined(evolve) {
+      ArrayPush(offers, evolve);
+    }
+    let tune = RLRewards.TuneUpOffer(player, run, hot ? 3 : (spike ? 2 : 1));
+    if IsDefined(tune) {
+      ArrayPush(offers, tune);
+    }
+    let effects: array<ref<RLBoonDef>>;
+    for def in RLBoons.All() {
+      if Equals(def.kind, RLBoonKind.Weapon) && ArrayContains(run.patrons, def.patron) && RLBoons.IsOfferable(run, def) && RLRewards.FitsSlots(run, def) {
+        ArrayPush(effects, def);
+      }
+    }
+    let taken: array<CName>;
+    let room = count - ArraySize(offers) - 1;
+    while room > 0 && RLRewards.DealOne(player, run, effects, taken, offers) {
+      room -= 1;
+    }
+    if ArraySize(offers) < count {
+      let trade = RLRewards.TradeOffer(player, pools, run);
+      if IsDefined(trade) {
+        ArrayPush(offers, trade);
+      }
+    }
+    let guard = 0;
+    while ArraySize(offers) < count && guard < 6 {
+      guard += 1;
+      let grenade = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Grenade, null, spike);
+      if IsDefined(grenade) && !RLRewards.IsDuplicate(offers, grenade) {
+        ArrayPush(offers, grenade);
+      }
+    }
+    return offers;
+  }
+
+  // `steps` quality steps for the main weapon's slot, with its DPS before and
+  // after.
+  public static func TuneUpOffer(player: ref<PlayerPuppet>, run: ref<RLRunState>, steps: Int32) -> ref<RLOffer> {
+    if !ItemID.IsValid(run.mainWeapon) || run.mainStep >= RLQuality.MaxStep() {
+      return null;
+    }
+    let record = RLWeapons.MainRecord(run);
+    let offer = new RLOffer();
+    offer.kind = RLOfferKind.TuneUp;
+    offer.itemID = run.mainWeapon;
+    offer.record = record;
+    offer.amount = Min(RLQuality.MaxStep(), run.mainStep + steps) - run.mainStep;
+    offer.step = run.mainStep + offer.amount;
+    offer.title = RLRewards.ItemName(record);
+    offer.subtitle = "TUNE-UP - " + RLQuality.DisplayName(run.mainStep) + " > " + RLQuality.DisplayName(offer.step);
+    offer.description = offer.amount > 1 ? s"Your main weapon, \(offer.amount) steps up." : "Your main weapon, a step up.";
+    let item = RLWeapons.MainItem(player, run);
+    let before = IsDefined(item) ? item.GetStatValueByType(gamedataStatType.EffectiveDPS) : 0.0;
+    let after = RLWeapons.PreviewDPS(player, record, offer.step);
+    if before > 0.0 && after > before {
+      offer.dpsLine = s"DPS \(RoundF(before)) > \(RoundF(after))";
+    }
+    let recipe = RLWeapons.EvolveRecipe(run);
+    if StrLen(recipe) > 0 {
+      offer.description += " " + recipe;
+    }
+    offer.excitement = offer.amount;
+    return offer;
+  }
+
+  // A different gun for the main slot, at the slot's step, keeping every
+  // weapon effect: it's about how it plays.
+  public static func TradeOffer(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>) -> ref<RLOffer> {
+    if !ItemID.IsValid(run.mainWeapon) {
+      return null;
+    }
+    let current = RLWeapons.MainRecord(run);
+    let noTypes: array<gamedataItemType>;
+    let tries = 0;
+    while tries < 6 {
+      tries += 1;
+      let record = pools.PickWeapon(noTypes, RLRewards.AllowedEvolutions(run.Depth()));
+      if TDBID.IsValid(record) && record != current && NotEquals(RLRewards.ItemName(record), RLRewards.ItemName(current)) {
+        let offer = new RLOffer();
+        offer.kind = RLOfferKind.Trade;
+        offer.record = record;
+        offer.step = run.mainStep;
+        offer.tier = RLQuality.TierName(run.mainStep);
+        offer.title = RLRewards.ItemName(record);
+        offer.subtitle = "TRADE - " + RLWeapons.ClassLine(record) + " - " + RLQuality.DisplayName(run.mainStep);
+        offer.description = RLWeapons.Playstyle(record) + " Same tier, same weapon effects.";
+        offer.tags = RLBuildProfile.RecordTags(record);
+        return offer;
+      }
+    }
+    return null;
+  }
+
+  // The evolution, when the main weapon is ready for it.
+  public static func EvolveOffer(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>) -> ref<RLOffer> {
+    if !RLWeapons.CanEvolve(run) {
+      return null;
+    }
+    let iconic = pools.PickIconicFor(RPGManager.GetItemType(run.mainWeapon));
+    if !TDBID.IsValid(iconic) {
+      return null;
+    }
+    let offer = new RLOffer();
+    offer.kind = RLOfferKind.Evolve;
+    offer.itemID = run.mainWeapon;
+    offer.record = iconic;
+    offer.step = run.mainStep;
+    offer.title = RLRewards.ItemName(iconic);
+    offer.subtitle = "EVOLVE - " + RLRewards.ItemName(RLWeapons.MainRecord(run));
+    offer.description = "Becomes this iconic, effects and all, with a third weapon effect slot. " + RLWeapons.Playstyle(iconic);
+    offer.excitement = 3;
+    return offer;
+  }
+
+  // --- Tune-Up doors ---------------------------------------------------------------------
+
+  // Upgrades for what V carries: the evolution when it's ready, two steps for
+  // the main weapon, the MaxDoc, the grenade, room for chrome when overclocked.
+  public static func WorkshopOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, count: Int32) -> array<ref<RLOffer>> {
+    let offers: array<ref<RLOffer>>;
+    let evolve = RLRewards.EvolveOffer(player, pools, run);
+    if IsDefined(evolve) {
+      ArrayPush(offers, evolve);
+    }
+    let tune = RLRewards.TuneUpOffer(player, run, 2);
+    if IsDefined(tune) {
+      ArrayPush(offers, tune);
+    }
+    let health = RLRewards.HealthUpgradeOffer(player);
+    if IsDefined(health) && ArraySize(offers) < count {
+      ArrayPush(offers, health);
+    }
+    let grenade = RLRewards.GrenadeUpgradeOffer(player);
+    if IsDefined(grenade) && ArraySize(offers) < count {
+      ArrayPush(offers, grenade);
+    }
+    if run.overclock > 0 && ArraySize(offers) < count {
+      ArrayPush(offers, RLRewards.CapacityOffer(run));
+    }
+    return offers;
+  }
+
+  public static func CapacityAmount() -> Int32 = 4
+
+  public static func CapacityOffer(run: ref<RLRunState>) -> ref<RLOffer> {
+    let offer = new RLOffer();
+    offer.kind = RLOfferKind.Capacity;
+    offer.amount = RLRewards.CapacityAmount();
+    offer.title = s"Capacity +\(offer.amount)";
+    offer.subtitle = "CYBERWARE CAPACITY";
+    offer.description = run.overclock > 0
+      ? s"Room for more chrome. Pays down your overclock (\(run.overclock) over)."
+      : "Room for more chrome.";
+    offer.step = 4;
+    ArrayPush(offer.tags, n"chrome");
+    return offer;
+  }
+
+  // --- Item screens (chrome, quickhacks, perks) ---------------------------------------------
+
+  // A screen never shows the same item twice (in any quality) or one V
+  // already carries.
+  // A spike puts one card two steps up; a hot door all of them.
+  private static func ItemOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, count: Int32, profile: ref<RLBuildProfile>, spike: Bool, hot: Bool) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
     let owned = RLRewards.OwnedNames(player);
+    let kind = Equals(category, RLRewardCategory.Daemons) ? RLOfferKind.Quickhack : RLOfferKind.Cyberware;
     let guard = 0;
     while ArraySize(offers) < count && guard < 40 {
       guard += 1;
-      let kind = RLRewards.KindFor(category, run);
-      if Equals(kind, RLOfferKind.Grenade) && RLRewards.HasKind(offers, RLOfferKind.Grenade) {
-        kind = RLOfferKind.Weapon;
-      }
-      // The spike goes on the first card.
-      let offer = RLRewards.BuildOffer(player, pools, run, kind, threat, profile, spike && ArraySize(offers) == 0);
-      if IsDefined(offer) && !RLRewards.IsDuplicate(offers, offer) && !RLRewards.IsOwned(owned, offer) {
+      let offer = RLRewards.BuildOffer(player, pools, run, kind, profile, hot || spike && ArraySize(offers) == 0);
+      if IsDefined(offer) && !RLRewards.IsDuplicate(offers, offer) && !ArrayContains(owned, offer.title) {
         ArrayPush(offers, offer);
       }
     }
     return offers;
   }
 
-  // Names of the weapons and grenades V carries.
+  // Names of the weapons, grenades and chrome V carries.
   private static func OwnedNames(player: ref<PlayerPuppet>) -> array<String> {
     let names: array<String>;
     let items: array<wref<gameItemData>>;
@@ -456,7 +792,7 @@ public abstract class RLRewards {
     for item in items {
       if IsDefined(item) {
         let category = RPGManager.GetItemCategory(item.GetID());
-        if Equals(category, gamedataItemCategory.Weapon) || Equals(RPGManager.GetItemType(item.GetID()), gamedataItemType.Gad_Grenade) {
+        if Equals(category, gamedataItemCategory.Weapon) || Equals(category, gamedataItemCategory.Cyberware) || Equals(RPGManager.GetItemType(item.GetID()), gamedataItemType.Gad_Grenade) {
           ArrayPush(names, RLRewards.ItemName(ItemID.GetTDBID(item.GetID())));
         }
       }
@@ -464,37 +800,10 @@ public abstract class RLRewards {
     return names;
   }
 
-  private static func IsOwned(owned: array<String>, offer: ref<RLOffer>) -> Bool {
-    switch offer.kind {
-      case RLOfferKind.Weapon:
-      case RLOfferKind.Iconic:
-      case RLOfferKind.Grenade:
-        return ArrayContains(owned, offer.title);
-    }
-    return false;
-  }
-
-  private static func HasKind(offers: array<ref<RLOffer>>, kind: RLOfferKind) -> Bool {
-    for offer in offers {
-      if Equals(offer.kind, kind) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  // The price of a reroll once the free ones are used: it grows with the run
-  // and by half again for every paid reroll on the same screen.
-  public static func RerollPrice(run: ref<RLRunState>) -> Int32 {
-    let base = Cast<Float>(60 + 20 * run.Depth());
-    let price = base * (1.0 + 0.5 * Cast<Float>(run.paidRerolls));
-    return RLFixer.Discounted(run, 5 * RoundF(price / 5.0));
-  }
-
-  private static func PerkOffers(player: ref<PlayerPuppet>, run: ref<RLRunState>, profile: ref<RLBuildProfile>, count: Int32, spike: Bool) -> array<ref<RLOffer>> {
+  private static func PerkOffers(player: ref<PlayerPuppet>, run: ref<RLRunState>, profile: ref<RLBuildProfile>, count: Int32, strong: Int32) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
     let none: array<gamedataNewPerkType>;
-    for def in RLPerkCatalog.Pick(player, run, profile, count, spike, none) {
+    for def in RLPerkCatalog.Pick(player, run, profile, count, strong, none) {
       ArrayPush(offers, RLRewards.PerkOffer(run, def));
     }
     return offers;
@@ -513,11 +822,11 @@ public abstract class RLRewards {
     return offer;
   }
 
-  // Every screen keeps at least one card that doesn't match the build, so
-  // the director nudges and never decides.
-  private static func KeepOneOffBuild(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, threat: Int32, profile: ref<RLBuildProfile>, out offers: array<ref<RLOffer>>) {
+  // Item screens keep at least one card that doesn't match the build, so the
+  // director nudges and never decides.
+  private static func KeepOneOffBuild(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, profile: ref<RLBuildProfile>, out offers: array<ref<RLOffer>>) {
     let count = ArraySize(offers);
-    if count < 3 || Equals(category, RLRewardCategory.Workshop) || Equals(category, RLRewardCategory.Boons) || Equals(category, RLRewardCategory.Bounty) {
+    if count < 3 || (NotEquals(category, RLRewardCategory.Chrome) && NotEquals(category, RLRewardCategory.Daemons) && NotEquals(category, RLRewardCategory.Training)) {
       return;
     }
     for offer in offers {
@@ -536,21 +845,21 @@ public abstract class RLRewards {
         for offer in offers {
           ArrayPush(exclude, offer.perk);
         }
-        let picks = RLPerkCatalog.Pick(player, run, null, 1, false, exclude);
+        let picks = RLPerkCatalog.Pick(player, run, null, 1, 0, exclude);
         if ArraySize(picks) > 0 {
           replacement = RLRewards.PerkOffer(run, picks[0]);
         }
       } else {
-        replacement = RLRewards.BuildOffer(player, pools, run, RLRewards.KindFor(category, run), threat, null, false);
+        replacement = RLRewards.BuildOffer(player, pools, run, Equals(category, RLRewardCategory.Daemons) ? RLOfferKind.Quickhack : RLOfferKind.Cyberware, null, false);
       }
-      if IsDefined(replacement) && !profile.HasAny(replacement.tags) && !RLRewards.IsDuplicate(offers, replacement) && !RLRewards.IsOwned(owned, replacement) {
+      if IsDefined(replacement) && !profile.HasAny(replacement.tags) && !RLRewards.IsDuplicate(offers, replacement) && !ArrayContains(owned, replacement.title) {
         offers[last] = replacement;
         return;
       }
     }
   }
 
-  private static func IsDuplicate(offers: array<ref<RLOffer>>, candidate: ref<RLOffer>) -> Bool {
+  public static func IsDuplicate(offers: array<ref<RLOffer>>, candidate: ref<RLOffer>) -> Bool {
     for offer in offers {
       if Equals(offer.kind, candidate.kind) {
         if TDBID.IsValid(candidate.record) && (offer.record == candidate.record || Equals(offer.title, candidate.title)) {
@@ -567,61 +876,28 @@ public abstract class RLRewards {
     return false;
   }
 
-  private static func KindFor(category: RLRewardCategory, run: ref<RLRunState>) -> RLOfferKind {
-    switch category {
-      case RLRewardCategory.Armory:
-        return RandF() < 0.25 ? RLOfferKind.Grenade : RLOfferKind.Weapon;
-      case RLRewardCategory.Chrome:
-        return RLOfferKind.Cyberware;
-      case RLRewardCategory.Daemons:
-        return RLOfferKind.Quickhack;
-    }
-    return RLOfferKind.Boon;
-  }
-
-  // One card of the given kind, its quality from the reward director.
-  public static func BuildOffer(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, kind: RLOfferKind, threat: Int32, profile: ref<RLBuildProfile>, spike: Bool) -> ref<RLOffer> {
+  // One item card, its quality from the reward director.
+  public static func BuildOffer(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, kind: RLOfferKind, profile: ref<RLBuildProfile>, spike: Bool) -> ref<RLOffer> {
     let depth = run.Depth();
     let expected = RLQuality.ExpectedStep(depth, run.TotalFloors());
-    let step = RLRewardDirector.RollStep(run, threat, spike);
+    let step = RLRewardDirector.RollStep(run, spike);
     let offer = new RLOffer();
     offer.kind = kind;
     offer.step = step;
     let noIDs: array<TweakDBID>;
     switch kind {
-      case RLOfferKind.Weapon:
-        // A real upgrade over the best weapon V has equipped (see
-        // UpgradeStep), never far above the floor.
-        offer.step = Min(RLQuality.MaxStep(), Max(step, RLWeapons.BestEquippedStep(player)));
-        let tries = 0;
-        while tries < 4 && !TDBID.IsValid(offer.record) {
-          let candidate = RLRewards.PickWeighted(pools, profile, kind, offer.step, RLRewards.AllowedEvolutions(depth));
-          let upgradeStep = RLRewards.UpgradeStep(player, candidate, offer.step, expected + 3);
-          if upgradeStep >= 0 {
-            offer.record = candidate;
-            offer.step = upgradeStep;
-          }
-          tries += 1;
-        }
-        offer.tier = RLQuality.TierName(offer.step);
-        offer.subtitle = RLQuality.DisplayName(offer.step);
-        offer.excitement = offer.step - expected;
-        break;
       case RLOfferKind.Iconic:
-        // Iconics are never below Rare, and never a step down either.
-        let iconic = pools.PickIconic();
-        let iconicStep = RLRewards.UpgradeStep(player, iconic, Clamp(step + 2, 4, RLQuality.MaxStep()), RLQuality.MaxStep());
-        if iconicStep >= 0 {
-          offer.record = iconic;
-          offer.step = iconicStep;
-        }
+        // The stranger's iconic: never below Rare.
+        offer.record = pools.PickIconic();
+        offer.step = Clamp(step + 2, 4, RLQuality.MaxStep());
         offer.tier = RLQuality.TierName(offer.step);
-        offer.subtitle = "ICONIC - " + RLQuality.DisplayName(offer.step);
+        offer.subtitle = "ICONIC - " + RLWeapons.ClassLine(offer.record) + " - " + RLQuality.DisplayName(offer.step);
+        offer.description = RLWeapons.Playstyle(offer.record);
         offer.excitement = offer.step - expected;
         break;
       case RLOfferKind.Cyberware:
         // Once Overdrive is unlocked the Operating System stays the one it came with.
-        offer.record = RLRewards.PickWeighted(pools, profile, kind, step, RLRewards.AllowedEvolutions(depth), run.overdriveUnlocked);
+        offer.record = RLRewards.PickWeighted(pools, profile, step, run.overdriveUnlocked);
         if TDBID.IsValid(offer.record) {
           offer.step = RLQuality.StepOfRecord(offer.record);
           // What it adds (less anything it replaces) against what's free.
@@ -654,15 +930,12 @@ public abstract class RLRewards {
           offer.step = RLQuality.StepOfRecord(offer.record);
           offer.subtitle = "GRENADE - " + RLQuality.DisplayName(offer.step);
           if TDBID.IsValid(RLConsumables.CurrentGrenade(player)) {
-            offer.description = "Replaces your grenade";
+            offer.description = "Replaces your grenade. Grenades count as BLASTs.";
           }
           offer.excitement = offer.step - expected;
           ArrayPush(offer.tags, n"explosive");
         }
         break;
-      case RLOfferKind.Boon:
-        let boons = RLRewards.BoonOffers(run, RLPatrons.PickForDoor(run), threat, 1, spike);
-        return ArraySize(boons) > 0 ? boons[0] : null;
     }
     if !TDBID.IsValid(offer.record) {
       return null;
@@ -671,51 +944,15 @@ public abstract class RLRewards {
       offer.tags = RLBuildProfile.RecordTags(offer.record);
     }
     offer.title = RLRewards.ItemName(offer.record);
-    // Weapons say what they are, how they play and how they compare.
-    if Equals(kind, RLOfferKind.Weapon) || Equals(kind, RLOfferKind.Iconic) {
-      offer.subtitle = (Equals(kind, RLOfferKind.Iconic) ? "ICONIC " : "") + RLWeapons.ClassLine(offer.record) + " - " + RLQuality.DisplayName(offer.step);
-      offer.description = RLWeapons.Playstyle(offer.record);
-      offer.dpsLine = RLWeapons.CompareLine(player, RLWeapons.PreviewDPS(player, offer.record, offer.step));
-    }
     return offer;
   }
 
-  // How much better a new weapon must be than V's best equipped one.
-  public static func MinUpgrade() -> Float = 1.1
-
-  // The lowest quality step from `step` up to `cap` at which the weapon beats
-  // V's best equipped weapon by MinUpgrade; -1 when it can't. Always `step`
-  // when V has nothing to compare with.
-  public static func UpgradeStep(player: ref<PlayerPuppet>, record: TweakDBID, step: Int32, cap: Int32) -> Int32 {
-    if !TDBID.IsValid(record) {
-      return -1;
-    }
-    let name: String;
-    let current = RLWeapons.BestEquippedDPS(player, name);
-    if current <= 0.0 {
-      return step;
-    }
-    let s = step;
-    while s <= Min(cap, RLQuality.MaxStep()) {
-      let dps = RLWeapons.PreviewDPS(player, record, s);
-      // No number to compare (some melee): the card shows no DPS line.
-      if dps <= 0.0 || dps >= current * RLRewards.MinUpgrade() {
-        return s;
-      }
-      s += 1;
-    }
-    return -1;
-  }
-
-  // A few candidates from the pool, picked by build weight.
-  private static func PickWeighted(pools: ref<RLTweakPools>, profile: ref<RLBuildProfile>, kind: RLOfferKind, step: Int32, evolutions: array<gamedataWeaponEvolution>, opt noOperatingSystem: Bool) -> TweakDBID {
+  // A few cyberware candidates from the pool, picked by build weight.
+  private static func PickWeighted(pools: ref<RLTweakPools>, profile: ref<RLBuildProfile>, step: Int32, noOperatingSystem: Bool) -> TweakDBID {
     let candidates: array<TweakDBID>;
-    let noTypes: array<gamedataItemType>;
     let i = 0;
     while i < 4 {
-      let candidate = Equals(kind, RLOfferKind.Weapon)
-        ? pools.PickWeapon(noTypes, evolutions)
-        : pools.PickCyberware(RLRewards.BandForStep(step), false, gamedataItemType.Invalid, candidates);
+      let candidate = pools.PickCyberware(RLRewards.BandForStep(step), false, gamedataItemType.Invalid, candidates);
       if TDBID.IsValid(candidate) && !ArrayContains(candidates, candidate) && !(noOperatingSystem && RLRewards.IsOperatingSystem(candidate)) {
         ArrayPush(candidates, candidate);
       }
@@ -738,196 +975,6 @@ public abstract class RLRewards {
     return candidates[ArraySize(candidates) - 1];
   }
 
-  // --- Boons ---------------------------------------------------------------------------
-
-  // A patron's reward screen: up to `count` of its boons V can take now -
-  // new ones, upgrades of ones V holds, its legendary, and duos shared with
-  // patrons V already serves.
-  public static func BoonOffers(run: ref<RLRunState>, patron: CName, threat: Int32, count: Int32, spike: Bool) -> array<ref<RLOffer>> {
-    let offers: array<ref<RLOffer>>;
-    let candidates: array<ref<RLBoonDef>>;
-    let weights: array<Int32>;
-    for def in RLBoons.All() {
-      if (Equals(def.patron, patron) || Equals(def.partner, patron)) && RLBoons.IsOfferable(run, def) {
-        ArrayPush(candidates, def);
-        ArrayPush(weights, RLRewards.BoonWeight(run, def));
-      }
-    }
-    while ArraySize(offers) < count && ArraySize(candidates) > 0 {
-      let total = 0;
-      for weight in weights {
-        total += weight;
-      }
-      let roll = RandRange(0, Max(1, total));
-      let i = 0;
-      while i < ArraySize(candidates) - 1 && roll >= weights[i] {
-        roll -= weights[i];
-        i += 1;
-      }
-      ArrayPush(offers, RLRewards.BoonOffer(run, candidates[i], patron, threat, spike && ArraySize(offers) == 0));
-      ArrayErase(candidates, i);
-      ArrayErase(weights, i);
-    }
-    return offers;
-  }
-
-  // New boons are the bread and butter; upgrades, duos and the legendary are
-  // the exciting finds.
-  private static func BoonWeight(run: ref<RLRunState>, def: ref<RLBoonDef>) -> Int32 {
-    switch def.kind {
-      case RLBoonKind.Legendary: return 4;
-      case RLBoonKind.Duo: return 6;
-    }
-    return RLBoons.Has(run, def.id) ? 6 : 10;
-  }
-
-  // One boon card. A new boon's rarity comes from the reward director (a
-  // better roll is a rarer boon, and deep runs start at Rare); an upgrade is
-  // one rarity up (two on a lucky roll).
-  public static func BoonOffer(run: ref<RLRunState>, def: ref<RLBoonDef>, patron: CName, threat: Int32, spike: Bool) -> ref<RLOffer> {
-    let roll = RLRewardDirector.RollStep(run, threat, spike) - RLQuality.ExpectedStep(run.Depth(), run.TotalFloors());
-    let owned = RLBoons.Owned(run, def.id);
-    let offer = new RLOffer();
-    offer.kind = RLOfferKind.Boon;
-    offer.boon = def.id;
-    offer.patron = Equals(def.kind, RLBoonKind.Duo) ? def.patron : patron;
-    offer.tags = def.tags;
-    offer.title = def.name;
-    let top = RLBoons.HighestRarity(def);
-    if IsDefined(owned) {
-      offer.rarity = Min(top, owned.rarity + (roll >= 2 ? 2 : 1));
-      offer.subtitle = RLBoons.RarityName(owned.rarity) + " > " + RLBoons.RarityName(offer.rarity);
-      offer.excitement = 1;
-    } else if Equals(def.kind, RLBoonKind.Core) {
-      offer.rarity = Clamp(Max(0, roll) + (run.Depth() >= 10 ? 1 : 0), 0, top);
-      offer.subtitle = RLPatrons.Name(def.patron) + " - " + RLBoons.RarityName(offer.rarity);
-      offer.excitement = offer.rarity;
-    } else {
-      offer.subtitle = Equals(def.kind, RLBoonKind.Legendary)
-        ? "LEGENDARY - " + RLPatrons.Name(def.patron)
-        : "DUO - " + RLPatrons.Name(def.patron) + " + " + RLPatrons.Name(def.partner);
-      offer.excitement = 2;
-    }
-    offer.step = RLRewards.BoonStep(def, offer.rarity);
-    offer.description = RLBoons.Text(def, offer.rarity);
-    return offer;
-  }
-
-  // Card colour: the rarity, gold for a legendary, green for a duo.
-  public static func BoonStep(def: ref<RLBoonDef>, rarity: Int32) -> Int32 {
-    switch def.kind {
-      case RLBoonKind.Legendary: return 8;
-      case RLBoonKind.Duo: return 2;
-    }
-    return RLBoons.RarityStep(rarity);
-  }
-
-  // --- Workshop ------------------------------------------------------------------------
-
-  // Upgrades for gear V owns: an evolution when a weapon is ready for one,
-  // two quality steps for the weapons (equipped first), a mod, the MaxDoc and
-  // the grenade - up to `count` cards.
-  public static func WorkshopOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, count: Int32) -> array<ref<RLOffer>> {
-    let offers = RLRewards.EvolveOffers(player, pools, run, 1);
-    let health = RLRewards.HealthUpgradeOffer(player);
-    let grenade = RLRewards.GrenadeUpgradeOffer(player);
-    let mods = RLWeaponMods.Offers(player, run, 1);
-    let gearSlots = (IsDefined(health) ? 1 : 0) + (IsDefined(grenade) ? 1 : 0) + ArraySize(mods);
-    for offer in RLRewards.WeaponUpgradeOffers(player, Max(1, count - gearSlots - ArraySize(offers)), 2) {
-      ArrayPush(offers, offer);
-    }
-    for offer in mods {
-      if ArraySize(offers) < count {
-        ArrayPush(offers, offer);
-      }
-    }
-    if IsDefined(health) && ArraySize(offers) < count {
-      ArrayPush(offers, health);
-    }
-    if IsDefined(grenade) && ArraySize(offers) < count {
-      ArrayPush(offers, grenade);
-    }
-    return offers;
-  }
-
-  // `steps` quality steps for V's weapons (equipped first).
-  public static func WeaponUpgradeOffers(player: ref<PlayerPuppet>, count: Int32, steps: Int32) -> array<ref<RLOffer>> {
-    let offers: array<ref<RLOffer>>;
-    let stowed: array<ref<RLOffer>>;
-    let transactionSystem = GameInstance.GetTransactionSystem(player.GetGame());
-    let equipment = EquipmentSystem.GetData(player);
-    let items: array<wref<gameItemData>>;
-    transactionSystem.GetItemList(player, items);
-    for item in items {
-      if IsDefined(item) && RLWeapons.IsRealWeapon(item.GetID()) {
-        let step = RLRewards.ItemStep(item);
-        if step < RLQuality.MaxStep() {
-          let offer = new RLOffer();
-          offer.kind = RLOfferKind.WeaponUpgrade;
-          offer.itemID = item.GetID();
-          offer.record = ItemID.GetTDBID(item.GetID());
-          offer.step = Min(RLQuality.MaxStep(), step + steps);
-          offer.title = RLRewards.ItemName(offer.record);
-          offer.subtitle = RLQuality.DisplayName(step) + " > " + RLQuality.DisplayName(offer.step);
-          let before = item.GetStatValueByType(gamedataStatType.EffectiveDPS);
-          let after = RLWeapons.PreviewDPS(player, offer.record, offer.step);
-          offer.description = RLWeapons.ClassLine(offer.record);
-          if before > 0.0 && after > 0.0 {
-            offer.dpsLine = s"DPS \(RoundF(before)) > \(RoundF(after))";
-          }
-          let tag = RLWeapons.FamilyTag(RLWeapons.FamilyOf(RPGManager.GetItemType(offer.itemID)));
-          if IsNameValid(tag) {
-            ArrayPush(offer.tags, tag);
-          }
-          offer.excitement = 1;
-          // Equipped weapons first.
-          if IsDefined(equipment) && equipment.IsEquipped(item.GetID()) {
-            ArrayPush(offers, offer);
-          } else {
-            ArrayPush(stowed, offer);
-          }
-        }
-      }
-    }
-    for offer in stowed {
-      ArrayPush(offers, offer);
-    }
-    while ArraySize(offers) > count {
-      ArrayPop(offers);
-    }
-    return offers;
-  }
-
-  // Evolution cards: a weapon ready to evolve becomes an iconic of its type
-  // (or of its family when its type has none).
-  public static func EvolveOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, count: Int32) -> array<ref<RLOffer>> {
-    let offers: array<ref<RLOffer>>;
-    for itemID in RLWeapons.Evolvable(player, run) {
-      if ArraySize(offers) < count {
-        let iconic = pools.PickIconicFor(RPGManager.GetItemType(itemID));
-        if TDBID.IsValid(iconic) {
-          let item = GameInstance.GetTransactionSystem(player.GetGame()).GetItemData(player, itemID);
-          let offer = new RLOffer();
-          offer.kind = RLOfferKind.Evolve;
-          offer.itemID = itemID;
-          offer.record = iconic;
-          offer.step = IsDefined(item) ? RLRewards.ItemStep(item) : 8;
-          offer.title = RLRewards.ItemName(iconic);
-          offer.subtitle = "EVOLVE - " + RLRewards.ItemName(ItemID.GetTDBID(itemID));
-          offer.description = "Becomes this iconic, keeps its mods, gains a third mod slot. " + RLWeapons.Playstyle(iconic);
-          offer.dpsLine = RLWeapons.CompareLine(player, RLWeapons.PreviewDPS(player, iconic, offer.step));
-          offer.excitement = 3;
-          let tag = RLWeapons.FamilyTag(RLWeapons.FamilyOf(RPGManager.GetItemType(itemID)));
-          if IsNameValid(tag) {
-            ArrayPush(offer.tags, tag);
-          }
-          ArrayPush(offers, offer);
-        }
-      }
-    }
-    return offers;
-  }
-
   // --- Operating Systems -------------------------------------------------------------------
 
   public static func OperatingSystems() -> array<CName> = [n"Sandevistan", n"Berserk", n"Cyberdeck"]
@@ -941,7 +988,7 @@ public abstract class RLRewards {
   // quality. Each unlocks its own Overdrive.
   public static func OperatingSystemOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
-    let step = RLRewardDirector.RollStep(run, 3, true);
+    let step = RLRewardDirector.RollStep(run, true);
     for os in RLRewards.OperatingSystems() {
       let record = pools.PickOperatingSystem(os, RLRewards.BandForStep(step));
       if TDBID.IsValid(record) {
@@ -974,7 +1021,7 @@ public abstract class RLRewards {
     offer.record = ladder[current + 1];
     offer.step = RLQuality.StepOfRecord(offer.record);
     offer.title = RLRewards.ItemName(offer.record);
-    offer.subtitle = RLQuality.DisplayName(RLQuality.StepOfRecord(ladder[current])) + " > " + RLQuality.DisplayName(offer.step);
+    offer.subtitle = "UPGRADE - " + RLQuality.DisplayName(RLQuality.StepOfRecord(ladder[current])) + " > " + RLQuality.DisplayName(offer.step);
     offer.description = "Your MaxDoc heals more.";
     offer.excitement = 1;
     return offer;
@@ -997,25 +1044,28 @@ public abstract class RLRewards {
     offer.record = record;
     offer.step = RLQuality.StepOfRecord(record);
     offer.title = RLRewards.ItemName(record);
-    offer.subtitle = RLQuality.DisplayName(step) + " > " + RLQuality.DisplayName(offer.step);
+    offer.subtitle = "UPGRADE - " + RLQuality.DisplayName(step) + " > " + RLQuality.DisplayName(offer.step);
     offer.description = "Replaces your grenade.";
     offer.excitement = 1;
     ArrayPush(offer.tags, n"explosive");
     return offer;
   }
 
-  // Quality step of an owned item (0 Common .. 10 Legendary++).
-  public static func ItemStep(item: wref<gameItemData>) -> Int32 {
-    return RoundF(item.GetStatValueByType(gamedataStatType.Quality) * 2.0 + item.GetStatValueByType(gamedataStatType.IsItemPlus));
-  }
-
   // --- Granting ------------------------------------------------------------------------
 
   public static func Grant(player: ref<PlayerPuppet>, run: ref<RLRunState>, offer: ref<RLOffer>) {
     switch offer.kind {
-      case RLOfferKind.Weapon:
+      case RLOfferKind.Trade:
+        RLWeapons.ReplaceMain(player, run, offer.record);
+        break;
+      case RLOfferKind.Evolve:
+        RLWeapons.ReplaceMain(player, run, offer.record);
+        break;
       case RLOfferKind.Iconic:
         RLGear.GiveWeapon(player, offer.record, offer.tier, false);
+        break;
+      case RLOfferKind.TuneUp:
+        RLWeapons.TuneUp(player, run, offer.amount);
         break;
       case RLOfferKind.Cyberware:
         if offer.amount > 0 {
@@ -1026,25 +1076,9 @@ public abstract class RLRewards {
       case RLOfferKind.OperatingSystem:
         RLRewards.InstallOperatingSystem(player, run, offer);
         break;
-      case RLOfferKind.WeaponMod:
-        RLWeaponMods.Install(run, offer.itemID, offer.mod);
-        break;
-      case RLOfferKind.Evolve:
-        RLWeapons.Evolve(player, run, offer.itemID, offer.record, offer.step);
-        break;
-      case RLOfferKind.Attribute:
-        let development = PlayerDevelopmentSystem.GetData(player);
-        if IsDefined(development) {
-          development.RL_RaiseAttribute(offer.stat, 1);
-          development.UpdateUIBB();
-        }
-        break;
       case RLOfferKind.Capacity:
         RLEvents.AddRunMod(player, run, gamedataStatType.Humanity, gameStatModifierType.Additive, Cast<Float>(offer.amount));
         run.overclock = Max(0, run.overclock - offer.amount);
-        break;
-      case RLOfferKind.BoonUpgrade:
-        RLBoons.Apply(player, run, offer.boon, offer.rarity);
         break;
       case RLOfferKind.Gig:
         RLGigs.Take(run, offer.amount);
@@ -1053,7 +1087,7 @@ public abstract class RLRewards {
         RLGear.GiveQuickhacks(player, [offer.record]);
         break;
       case RLOfferKind.Boon:
-        RLBoons.Apply(player, run, offer.boon, offer.rarity);
+        RLBoons.Apply(player, run, offer.boon, offer.overclock);
         break;
       case RLOfferKind.Perk:
         let def = RLPerkCatalog.Find(offer.perk);
@@ -1063,12 +1097,6 @@ public abstract class RLRewards {
         break;
       case RLOfferKind.Grenade:
         RLConsumables.SetGrenade(player, offer.record);
-        break;
-      case RLOfferKind.WeaponUpgrade:
-        let itemData = GameInstance.GetTransactionSystem(player.GetGame()).GetItemData(player, offer.itemID);
-        if IsDefined(itemData) {
-          RPGManager.ForceItemTier(player, itemData, RLQuality.TierName(offer.step));
-        }
         break;
       case RLOfferKind.HealthUpgrade:
         RLConsumables.UpgradeHealthOnce(player, RLQuality.MaxStep());
@@ -1108,17 +1136,14 @@ public abstract class RLRewards {
 
   // --- Saying no ---------------------------------------------------------------------------
 
-  // What a banish removes: the item, perk, boon or mod, in any quality.
+  // What a banish removes: the item, perk or effect, in any quality.
   public static func OfferKey(offer: ref<RLOffer>) -> String {
     switch offer.kind {
       case RLOfferKind.Perk:
         return "perk:" + EnumValueToString("gamedataNewPerkType", Cast<Int64>(EnumInt(offer.perk)));
       case RLOfferKind.Boon:
-      case RLOfferKind.BoonUpgrade:
         return "boon:" + NameToString(offer.boon);
-      case RLOfferKind.WeaponMod:
-        return "mod:" + NameToString(offer.mod);
-      case RLOfferKind.Weapon:
+      case RLOfferKind.Trade:
       case RLOfferKind.Iconic:
       case RLOfferKind.Cyberware:
       case RLOfferKind.Quickhack:
@@ -1129,6 +1154,22 @@ public abstract class RLRewards {
   }
 
   public static func CanBanish(offer: ref<RLOffer>) -> Bool = StrLen(RLRewards.OfferKey(offer)) > 0
+
+  // An effect card made earlier (a Fixer's shelf) can have gone stale: V
+  // took it meanwhile, or the main weapon's slots filled up.
+  public static func StillGrantable(run: ref<RLRunState>, offer: ref<RLOffer>) -> Bool {
+    if !IsDefined(offer) {
+      return false;
+    }
+    if NotEquals(offer.kind, RLOfferKind.Boon) {
+      return true;
+    }
+    if offer.overclock {
+      return RLBoons.Has(run, offer.boon) && !RLBoons.IsOverclocked(run, offer.boon);
+    }
+    let def = RLBoons.Get(offer.boon);
+    return IsDefined(def) && !RLBoons.Has(run, offer.boon) && RLBoons.IsOfferable(run, def);
+  }
 
   // Takes banished cards off a freshly rolled screen.
   public static func DropBanished(run: ref<RLRunState>, out offers: array<ref<RLOffer>>) {
@@ -1142,28 +1183,21 @@ public abstract class RLRewards {
     }
   }
 
-  // A door's reward screen (not a level-up, gig or the Operating System).
+  // A door's reward screen (not the gig or the Operating System).
   public static func IsDoorReward(category: RLRewardCategory) -> Bool {
-    switch category {
-      case RLRewardCategory.LevelUp:
-      case RLRewardCategory.Gig:
-      case RLRewardCategory.System:
-        return false;
-    }
-    return true;
+    return NotEquals(category, RLRewardCategory.Gig) && NotEquals(category, RLRewardCategory.System);
   }
 
   // The screen's name in telemetry.
   public static func ScreenName(category: RLRewardCategory) -> String {
     switch category {
-      case RLRewardCategory.LevelUp: return "levelup";
       case RLRewardCategory.Gig: return "gig";
       case RLRewardCategory.System: return "os";
     }
     return "reward";
   }
 
-  // The screen already shows this card (same item, perk, boon or mod).
+  // The screen already shows this card (same item, perk or effect).
   public static func ContainsCard(offers: array<ref<RLOffer>>, candidate: ref<RLOffer>) -> Bool {
     let key = RLRewards.OfferKey(candidate);
     for offer in offers {
@@ -1176,6 +1210,11 @@ public abstract class RLRewards {
 
   // Eddies for skipping a reward screen.
   public static func SkipEddies(run: ref<RLRunState>) -> Int32 = 100 + 25 * run.Depth()
+
+  // Quality step of an owned item (0 Common .. 10 Legendary++).
+  public static func ItemStep(item: wref<gameItemData>) -> Int32 {
+    return RoundF(item.GetStatValueByType(gamedataStatType.Quality) * 2.0 + item.GetStatValueByType(gamedataStatType.IsItemPlus));
+  }
 
   // --- Names ---------------------------------------------------------------------------
 

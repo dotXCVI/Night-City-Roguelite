@@ -6,7 +6,9 @@
 //               armory, UI/ArmoryPopup.reds), assist, test runs, the guide,
 //               upgrades.
 //   DoorPicker  (between fights): one card per door - pick the next fight
-//               by its reward; reroll the doors, or abandon.
+//               by what it pays (the reward leads, the arena is a strip at
+//               the bottom); HOT doors are marked and pulse. Reroll the
+//               doors, or abandon.
 //   InArena     (during a fight): run status, abandon.
 // Everything clickable is an RLCard (UI/Card.reds).
 // -----------------------------------------------------------------------------
@@ -90,7 +92,7 @@ public class RLTerminalPopup extends InGamePopup {
 
     let footer = InGamePopupFooter.Create();
     if Equals(this.m_view, RLTerminalView.DoorPicker) {
-      footer.SetFluffText("EVERY WIN ALSO PAYS EDDIES AND A LEVEL-UP");
+      footer.SetFluffText("EVERY WIN ALSO PAYS EDDIES");
     }
     footer.Reparent(this);
 
@@ -135,12 +137,16 @@ public class RLTerminalPopup extends InGamePopup {
       RLUI.SectionLabel("OVERDRIVE").Reparent(body);
       RLUI.WrappedText(RLOverdrive.Status(run) + " - " + RLOverdrive.Description(run.os), 28, n"MainColors.Blue", 1600.0).Reparent(body);
     }
+    if IsDefined(run) {
+      RLUI.SectionLabel("YOUR RUN").Reparent(body);
+      RLUI.WrappedText(s"MAIN: \(RLRewards.ItemName(RLWeapons.MainRecord(run))) (\(RLQuality.DisplayName(run.mainStep)))   COVER: \(run.cover)/\(run.coverMax)", 28, n"MainColors.Blue", 1600.0).Reparent(body);
+    }
     if IsDefined(run) && ArraySize(run.boons) > 0 {
-      RLUI.SectionLabel("BOONS").Reparent(body);
-      for patron in RLPatrons.All() {
-        let line = RLTerminalPopup.PatronBoons(run, patron.id);
+      RLUI.SectionLabel("EFFECTS").Reparent(body);
+      for patron in run.patrons {
+        let line = RLTerminalPopup.PatronEffects(run, patron);
         if StrLen(line) > 0 {
-          RLUI.WrappedText(patron.name + "  " + line, 28, patron.accent, 1600.0).Reparent(body);
+          RLUI.WrappedText(RLPatrons.Name(patron) + "  " + line, 28, RLPatrons.Accent(patron), 1600.0).Reparent(body);
         }
       }
     }
@@ -173,58 +179,70 @@ public class RLTerminalPopup extends InGamePopup {
     actions.SetMargin(inkMargin(0.0, 28.0, 0.0, 0.0));
     actions.Reparent(body);
     if count > 1 && IsDefined(this.m_system) {
-      let reroll = RLRewardPopup.RerollCard(this.m_system);
+      let reroll = RLRewardPopup.RerollCard(this.m_system, false);
       this.Hook(reroll, actions);
       this.Intro(reroll, count);
     }
     this.Intro(this.AddAbandonCard(actions), count + 1);
   }
 
+  // The reward leads: its picture and badge, what it pays in plain words.
+  // Where and against whom sits at the bottom.
   private func AddDoorCard(parent: ref<inkCompoundWidget>, door: ref<RLDoor>, index: Int32, width: Float) {
     let isPatron = Equals(door.category, RLRewardCategory.Boons) && IsNameValid(door.patron);
-    let accent = door.boss ? n"MainColors.Red" : (isPatron ? RLPatrons.Accent(door.patron) : RLIcons.CategoryAccent(door.category));
-    let card = RLCard.Create(StringToName(s"door_\(index)"), width, 740.0, accent);
-    // The art is where the fight is; the badge is what it pays.
+    let accent = door.boss || door.hot ? n"MainColors.Red" : (isPatron ? RLPatrons.Accent(door.patron) : RLIcons.CategoryAccent(door.category));
+    let card = RLCard.Create(StringToName(s"door_\(index)"), width, 760.0, accent);
     card.SetCompact();
-    card.SetBanner(IsDefined(RLArenas.Get(door.arena)) && NotEquals(door.category, RLRewardCategory.Event) ? RLArts.Arena(door.arena) : RLArts.Category(door.category));
+    card.SetBanner(isPatron ? RLArts.Patron(door.patron) : RLArts.Category(door.category));
     if isPatron {
       let patron = RLPatrons.Get(door.patron);
       card.SetBadge(IsDefined(patron) && patron.isLogo ? RLIcons.LogoAtlas() : RLIcons.HubAtlas(), IsDefined(patron) ? patron.iconPart : n"ico_tarot");
     } else {
       card.SetBadge(RLIcons.HubAtlas(), RLIcons.CategoryPart(door.category));
     }
-    card.SetKicker(door.boss ? "BOSS" : RLRewards.ThreatName(door.threat));
-    card.SetPips(door.threat, 3, RLIcons.ThreatAccent(door.threat));
-    card.SetTitle(RLRewards.DoorTitle(door));
-    // What it pays, plainly; then the flavour.
+    if door.hot {
+      card.SetHot();
+    }
     let run = IsDefined(this.m_system) ? this.m_system.GetRun() : null;
-    card.AddLine(RLRewards.DoorPromise(door, IsDefined(run) ? run.offerCount : 3), n"MainColors.ActiveWhite", 26);
-    if isPatron {
-      let patron = RLPatrons.Get(door.patron);
-      card.AddLine(IsDefined(patron) ? patron.tagline : "", n"MainColors.Blue", 24);
-    } else {
-      card.AddLine(RLRewards.CategoryDescription(door.category), n"MainColors.Blue", 24);
+    card.SetKicker(door.boss ? "BOSS" : (isPatron ? RLTerminalPopup.KeywordLine(door.patron) : RLRewards.CategoryDescription(door.category)));
+    card.SetTitle(RLRewards.DoorTitle(door));
+    card.SetTitleSize(44);
+    card.AddLine(RLRewards.DoorPromise(door, IsDefined(run) ? RLRewards.CardCount(run, door) : 3), n"MainColors.ActiveWhite", 30);
+    if door.hot {
+      card.AddLine("Double the trouble, double the take: an elite pack and a lieutenant, cards two steps up, +50% eddies.", n"MainColors.Red", 26);
+    }
+    if isPatron && IsDefined(run) {
+      let held = RLBoons.CountForPatron(run, door.patron);
+      if held > 0 {
+        card.AddLine(held >= 3 ? s"You hold \(held). Their favour is yours." : s"You hold \(held). Three earns their favour.", n"MainColors.Gold", 24);
+      }
     }
     if NotEquals(door.objective, RLObjectiveKind.None) {
-      card.AddLine(RLObjectives.Name(door.objective) + " - " + RLObjectives.Description(door.objective), n"MainColors.Yellow", 22);
+      card.AddLine(RLObjectives.Name(door.objective) + " - " + RLObjectives.Description(door.objective), n"MainColors.Yellow", 24);
     }
     let arena = RLArenas.Get(door.arena);
     if IsDefined(arena) {
       card.AddDivider();
-      card.AddLine(arena.name, n"MainColors.Red", 30);
-      if StrLen(arena.terrain) > 0 {
-        card.AddLine(arena.terrain, n"MainColors.Blue", 24);
-      }
+      card.AddLine(arena.name, n"MainColors.Grey", 26);
       if Equals(door.category, RLRewardCategory.Bounty) {
-        card.AddLine("vs a cyberpsycho", n"MainColors.Grey", 26);
+        card.AddLine("vs a cyberpsycho", n"MainColors.Grey", 24);
       } else if IsDefined(door.faction) {
-        card.AddIconLine(RLIcons.LogoAtlas(), RLIcons.FactionLogo(door.faction.faction), "vs " + RLEncounters.FactionName(door.faction.faction), n"MainColors.Grey", 26);
+        card.AddIconLine(RLIcons.LogoAtlas(), RLIcons.FactionLogo(door.faction.faction), "vs " + RLEncounters.FactionName(door.faction.faction), n"MainColors.Grey", 24);
       } else {
-        card.AddLine("vs " + RLTerminalPopup.FactionList(arena.factions), n"MainColors.Grey", 26);
+        card.AddLine("vs " + RLTerminalPopup.FactionList(arena.factions), n"MainColors.Grey", 24);
       }
     }
     this.Hook(card, parent);
     this.Intro(card, index);
+  }
+
+  // "MARK - FOCUS": a patron's two keywords.
+  public static func KeywordLine(patron: CName) -> String {
+    let text = "";
+    for keyword in RLPatrons.Keywords(patron) {
+      text += (StrLen(text) > 0 ? " - " : "") + NameToString(keyword);
+    }
+    return text;
   }
 
   private func Intro(card: ref<RLCard>, index: Int32) {
@@ -244,16 +262,15 @@ public class RLTerminalPopup extends InGamePopup {
     return text;
   }
 
-  // "Kenshin Protocol (RARE), Bushido (COMMON)" - the patron's boons V holds
-  // (duos under their first patron).
-  public static func PatronBoons(run: ref<RLRunState>, patron: CName) -> String {
+  // "Arc Flash+, Feedback Loop, Ghost Shot (DUO)" - the effects V holds from
+  // a patron (duos under their first patron).
+  public static func PatronEffects(run: ref<RLRunState>, patron: CName) -> String {
     let line = "";
     for state in run.boons {
       let def = RLBoons.Get(state.id);
       if IsDefined(def) && Equals(def.patron, patron) {
-        let tag = Equals(def.kind, RLBoonKind.Core) ? RLBoons.RarityName(state.rarity) : (Equals(def.kind, RLBoonKind.Duo) ? "DUO" : "LEGENDARY");
-        let shown = Equals(def.kind, RLBoonKind.Core) && RLBoons.HighestRarity(def) == 0 ? def.name : def.name + " (" + tag + ")";
-        line += (StrLen(line) > 0 ? ", " : "") + shown;
+        let kind = RLBoons.CountsForPatron(def) ? "" : " (" + RLBoons.KindName(def.kind) + ")";
+        line += (StrLen(line) > 0 ? ", " : "") + RLBoons.HeldName(state) + kind;
       }
     }
     return line;
@@ -296,18 +313,27 @@ public class RLTerminalPopup extends InGamePopup {
     main.Reparent(body);
 
     let kit = service.GetSelectedKit();
-    let start = RLCard.Create(n"start", 760.0, 600.0, n"MainColors.Red");
+    let start = RLCard.Create(n"start", 760.0, 740.0, n"MainColors.Red");
     start.SetCompact();
     start.SetBanner(RLArts.City());
     start.SetKicker("THREE ACTS - EIGHTEEN FIGHTS");
     start.SetTitle("START RUN");
     start.SetTitleSize(60);
+    if IsDefined(this.m_system) {
+      start.AddLine("IN TOWN THIS RUN", n"MainColors.Grey", 22);
+      for id in this.m_system.GetLineup() {
+        let patron = RLPatrons.Get(id);
+        if IsDefined(patron) {
+          start.AddIconLine(patron.isLogo ? RLIcons.LogoAtlas() : RLIcons.HubAtlas(), patron.iconPart, patron.name + "   " + RLTerminalPopup.KeywordLine(id), patron.accent, 24);
+        }
+      }
+    }
     this.Hook(start, main);
     this.Intro(start, 0);
 
     // Kits are picked at the armory stash; the card opens the same screen.
     let reachable = IsDefined(this.m_system) && this.m_system.IsArmoryReachable();
-    let kitCard = RLCard.Create(n"kit", 520.0, 600.0, n"MainColors.ActiveYellow");
+    let kitCard = RLCard.Create(n"kit", 520.0, 740.0, n"MainColors.ActiveYellow");
     kitCard.SetCompact();
     kitCard.SetBanner(RLArts.Kit(kit));
     kitCard.SetBadge(RLIcons.CommonAtlas(), RLIcons.KitPart(kit));

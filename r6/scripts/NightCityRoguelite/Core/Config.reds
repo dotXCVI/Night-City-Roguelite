@@ -115,6 +115,17 @@ public abstract class RLConfig {
   public static func BountyDoorChance() -> Float = 0.15
   // Chance that a fight comes with an objective (from floor 3).
   public static func ObjectiveChance() -> Float = 0.3
+  // Chance that one door pays Cred instead of a card (from floor 3).
+  public static func CredDoorChance() -> Float = 0.08
+
+  // --- Run rules -----------------------------------------------------------------
+
+  // Trauma Team covers a run starts with (the Platinum unlock adds one).
+  public static func CoverPerRun() -> Int32 = 1
+  // Health (percent) V gets back up with when a cover is spent.
+  public static func CoverHealth() -> Float = 50.0
+  // Drone Escort is a prototype: its card is only dealt when this is on.
+  public static func DroneEscort() -> Bool = false
 
   // --- Bosses and elites (Combat/Bosses.reds, Combat/Affixes.reds) --------------
 
@@ -122,27 +133,21 @@ public abstract class RLConfig {
   public static func BossReinforceAt() -> Float = 60.0
   public static func BossEnrageAt() -> Float = 30.0
 
-  // --- Difficulty curve (Run/Difficulty.reds) ------------------------------------
+  // --- Difficulty (Run/Difficulty.reds) ----------------------------------------
 
-  // Damage V takes, scaled from the first floor to the last (1.0 = the game's
-  // own Hard difficulty).
-  public static func IncomingDamageFirstFloor() -> Float = 0.55
-  public static func IncomingDamageLastFloor() -> Float = 1.0
-  // Enemy level relative to the floor number, per act (V gains a level with
-  // every reward, so V's level is about the floor number).
-  public static func EnemyLevelOffset(act: Int32) -> Int32 {
-    if act <= 1 { return -1; }
-    if act == 2 { return 0; }
-    return 1;
+  // V's level and the enemies' base level for each act. Inside an act they
+  // never move, so every pick is pure gain; beating the boss steps both.
+  public static func ActLevel(act: Int32) -> Int32 {
+    if act <= 1 { return 3; }
+    if act == 2 { return 10; }
+    return 17;
   }
-  // The act gates: damage arena enemies take from V (1.0 = full). Bosses
-  // from Act 2, everyone in Act 3.
-  public static func BossDamageTaken(act: Int32) -> Float {
-    if act >= 3 { return 0.75; }
-    if act == 2 { return 0.85; }
-    return 1.0;
+  // Damage V takes, per act (1.0 = the game's own Hard difficulty).
+  public static func ActIncomingDamage(act: Int32) -> Float {
+    if act <= 1 { return 0.6; }
+    if act == 2 { return 0.8; }
+    return 0.95;
   }
-  public static func EnemyDamageTaken(act: Int32) -> Float = act >= 3 ? 0.9 : 1.0
   // Share of each ammo type's carry limit refilled when a wave is cleared.
   public static func WaveAmmoRefill() -> Float = 0.4
 

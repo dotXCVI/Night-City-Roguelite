@@ -99,6 +99,9 @@ public abstract class RLUI {
     return tile;
   }
 
+  // Seconds of game time, for menu timing (menus don't slow time).
+  public static func Now() -> Float = EngineTime.ToFloat(GameInstance.GetTimeSystem(GetGameInstance()).GetSimTime())
+
   public static func Show(popup: ref<CustomPopup>) {
     GameInstance.GetUISystem(GetGameInstance()).QueueEvent(ShowCustomPopupEvent.Create(popup));
   }

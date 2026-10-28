@@ -20,52 +20,57 @@ short version; [TESTING.md](../TESTING.md) is the tester guide.
    or press **F7** anywhere else for the terminal: buy upgrades, toggle
    **ASSIST**, then **START RUN**. If the apartment didn't load and home is
    the hallway, the terminal's kit card opens the armory instead.
-4. A run opens with a choice of three **gigs** (see Gigs). The first fight is
-   a light fight in a random arena. Every trip fades to
+4. The terminal shows the run's **line-up** before it starts: the four patrons
+   working the city this time (see Patrons). A run opens with a choice of
+   three **gigs** (see Gigs), and the first door is always a patron door, so
+   the first pick starts a build. Every trip fades to
    black with the destination on screen and fades back in once the area has
    loaded; the first wave comes after a 5-second countdown. The arena is
    ringed by a solid wall that lights up as red NCPD holo-tape as you walk up
    to it.
 5. Clearing a wave refills part of your ammo and one health charge. Clear the
-   last one and the reward screen opens right there: pick one of four rewards
-   of that fight's type, then a **level-up** (see Level-ups).
+   last one and the reward screen opens right there: pick one of three cards
+   (four with Wide Net). That's the only pick a floor - there are no
+   level-ups.
 6. Then pick your next fight by its reward, Hades-style, and travel straight
-   there (V patches up on the way). Each door shows the reward type, the
-   threat, the arena and the gang you'll face:
+   there. Every fight starts at full health. Each door leads with what it
+   pays, then the arena and the gang you'll face:
 
-   | Reward | What you choose from | Threat |
-   | --- | --- | --- |
-   | TRAINING | Perks, granted outright | Light |
-   | ARMORY | A better weapon, an upgrade or mod for yours, grenades | Standard |
-   | PATRON | Boons from one of Night City's powers (see Patrons) | Standard |
-   | DAEMONS | Quickhacks | Standard |
-   | WORKSHOP | Evolve or upgrade a weapon, a weapon mod, your MaxDoc or grenade (floors 4, 10, 16) | Standard |
-   | CHROME | Cyberware, installed on the spot (from floor 3) | Heavy |
-   | BOUNTY | A lone cyberpsycho; pays eddies and a patron's boons (Act 2+) | Heavy |
-   | ? | An event instead of a fight (from floor 2) | - |
+   | Door | What you choose from |
+   | --- | --- |
+   | PATRON (by name) | That patron's effects (see Patrons) |
+   | ARMORY | Your main weapon: a Tune-Up, weapon effects, a trade, grenades |
+   | TUNE-UP | The evolution, a big Tune-Up, your MaxDoc or grenade (floors 4, 10, 16) |
+   | CHROME | Cyberware, installed on the spot (from floor 3) |
+   | DAEMONS | Quickhacks (from floor 3, likelier for netrunners) |
+   | TRAINING | Perks - the only place they come from |
+   | BOUNTY | A lone cyberpsycho; eddies and a patron pick (Act 2+) |
+   | CRED | No fight reward card: Cred for the meta, now and then (from floor 3) |
+   | ? | An event instead of a fight (from floor 2) |
 
-   Light fights have smaller waves of weaker enemies; heavy fights have bigger
-   waves (an extra wave in Act 3) and roll better rewards. From floor 3 some
-   fights come with an **objective** (see Objectives). Before a boss floor
-   there is a single boss door; the Act 1 boss pays out an Operating System
-   (see Overdrive).
+   Regular doors are all the same fight; the danger lives on **HOT** doors
+   (see Hot doors). From floor 3 some fights come with an **objective** (see
+   Objectives). Before a boss floor there is a single boss door; the Act 1
+   boss pays out an Operating System (see Overdrive).
 7. After each elite floor, before the boss door, the **Fixer** is in: spend
    the eddies you've earned.
-8. When health hits zero V dies - for real, the game's own death - and comes
-   to back home, ready for the next run. Quitting or crashing mid-run counts as
+8. When health hits zero, a **Trauma Team cover** gets V back up (see
+   Health). With none left, V dies - for real, the game's own death - and
+   comes to back home, ready for the next run. Quitting or crashing mid-run counts as
    a flatline too. A run won ends with the trip home as well.
 
 Cred is earned for every arena you clear (never for a lost one), plus a bonus
-for completing a run. Experience comes only from level-ups: kills and skill
-use give none, and levels bring no attribute or perk points (see Character).
+for completing a run. Levels are set per act (see Difficulty): kills and
+skill use give no experience, and levels bring no attribute or perk points
+(see Character).
 
 | F7 in the armory | Computer or F7 elsewhere at home | F7 during a fight | F7 between fights |
 | --- | --- | --- | --- |
 | Kit picker | Terminal (run start, upgrades) | Run status, abandon | Reward, Fixer or next fight |
 
 **Test runs:** the terminal's FLOOR card picks a floor (1, 5, 6, 7, 11, 12, 13,
-17 or 18) and TEST RUN starts there, with the levels, eddies and three Rare
-boons a run would have by then. Every door screen offers an event and (from Act
+17 or 18) and TEST RUN starts there, with the level, eddies, weapon
+quality and three patron effects a run would have by then. Every door screen offers an event and (from Act
 2) a bounty, and fights roll objectives more often. Test runs pay no Cred and
 don't count in the stats - they're for trying bosses and new content quickly.
 
@@ -80,23 +85,95 @@ incoming calls are declined before they ring, message and quest pop-ups are
 hidden, and the journal is kept empty (`SilenceStory()` in `Config.reds`). The
 Phantom Liberty opening is skipped by the quest patch in the archive.
 
-### Rewards and the director
+### Patrons and effects
 
-Reward quality follows the run - weaker items are likelier early, and the
-expected quality climbs from Common on floor 1 to Legendary+ on floor 18.
-Each card rolls a step around that expectation (most at it, some a step above,
-rarely two); heavy and elite fights roll higher, light ones lower, and bosses
-always pay out well. Smart weapons appear from floor 7, Tech from floor 4.
+The heart of a build. Six of Night City's powers sponsor runs, Hades-style,
+and four of them work the city in any one run - the line-up is on the
+terminal before you start, so every run is a different web. A patron door's
+reward is a pick of that patron's **effects**: rules that change how a fight
+plays, not stat bumps.
 
-A director keeps the rolls interesting without choosing for you:
+Every effect speaks in **keywords**. Each patron owns one or two; an effect
+makes a keyword, uses one, or both - and effects that use a keyword fire
+whatever applied it, so effects from different patrons feed each other:
+
+| Patron | Keywords | Plays like |
+| --- | --- | --- |
+| ARASAKA | MARK, FOCUS | Tag them, slow time, finish them |
+| MILITECH | BLAST | Everything ends in an explosion |
+| VOODOO BOYS | SHOCK, GLITCH | Current through crowds, chrome shut down |
+| MAELSTROM | BURN, BLEED | Fire, blood, trophies |
+| ALDECALDOS | MOMENTUM, SHIELD | Keep moving, stay standing |
+| THE AFTERLIFE | LUCK, DEAL | Chances, and prices |
+
+| Keyword | What it is |
+| --- | --- |
+| MARK | The game's ping outline on an enemy; MARK effects pay off on it |
+| FOCUS | Time slows for a moment |
+| BLAST | An explosion; grenades count |
+| SHOCK | Electrocuted: sparks, damage, a stagger |
+| GLITCH | The enemy's chrome shuts down: no dodging, Sandevistan or healing |
+| BURN / BLEED | Burning, bleeding (BLEED stacks) |
+| MOMENTUM | Stacks on V from sprinting, sliding and dashing |
+| SHIELD | One absorbed hit |
+| LUCK | Chance effects rolling your way |
+| DEAL | A price now for a payoff later |
+
+A keyword landing flashes a one-word tag on the HUD in its colour. Chains
+that spread from enemy to enemy play out a beat apart, so you can watch them
+go.
+
+What a patron offers:
+
+- **Effects** - four or five per patron (Deadeye Tag, Kill Switch, Arc Flash, Pyre,
+  Slipstream, Loaded Dice...). Once you hold one, it can come back as its
+  **overclock**, a stronger version (shown as "Arc Flash+").
+- **Weapon effects** - one per patron, bound to your main weapon (Tracer
+  Rounds, Payload, Thunder Rounds, Hot Barrel, Kinetic Rounds, Lucky Round).
+  They work on blades too and stay through a trade. Two slots, three on an
+  iconic.
+- **Legendaries** - seven, offered once you hold two of the patron's effects
+  (Death Sentence, Fire Mission, Blackwall Gate, Cyberpsychosis, Nomad Run,
+  Glass Chrome, Lucky Break).
+- **Duos** - fifteen, one for every pair of patrons, offered once you hold an
+  effect from each (Ghost Shot, Smart Link, Hemorrhage, Napalm, Short
+  Circuit...).
+- **Favours** - not a card: hold three effects from one patron and its favour
+  is yours for free (Arasaka marks the toughest enemy of every wave, the
+  Afterlife gives a free reroll on every screen...).
+
+Patron screens are dealt, not drawn: one card builds on what you hold (an
+overclock, a duo, or an effect that uses a keyword yours make), one you
+haven't seen this run, one open. Cards show their keywords as chips, a NEW
+tag, and BUILDS ON with the effects they link to; the YOUR BUILD strip under
+the cards lights up those effects when you hover one. The HUD's build row
+shows each patron's count (with a "+" for a favour), your cover, SHIELD and
+MOMENTUM. Everything is removed when the run ends.
+
+### Hot doors
+
+One door in Act 1 and two in Acts 2 and 3 burn **HOT**: an elite in every wave
+and a lieutenant (an elite with two affixes) in the last, for a reward two
+quality steps up, one card more, a big card on patron screens, and half again
+the eddies. The Director places them when you need a spike most - your main
+weapon behind the floor, a run of flat screens, a cover spent - never on a
+run's first floor, never two floors running, never on the elite floor or
+before a boss.
+
+### The Director
+
+Item quality follows the run - from Common on floor 1 to Legendary+ on floor
+18. Each card rolls a step around that expectation (most at it, some a step
+above, rarely two); elite floors roll higher, and bosses and hot doors always
+pay two steps up. Smart weapons appear from floor 7, Tech from floor 4.
 
 - **Pity.** A screen of flat offers makes the next one better; after two flat
-  screens in a row one card is guaranteed to stand out. Taking a big upgrade
-  resets it, and every big upgrade you take makes the next one a bit rarer.
+  screens in a row one card is guaranteed to stand out. Every big upgrade you
+  take makes the next one a bit rarer.
 - **Build nudges.** The director reads your build (weapons, cyberware, perks,
-  attributes) and gives matching rewards up to 40% more weight - up to 150%
-  once you've taken an Operating System at the Act 1 boss. At least one card
-  on every screen is something off-build, so you can always pivot.
+  attributes) and gives matching rewards more weight - much more once you've
+  taken an Operating System at the Act 1 boss. At least one card on every
+  screen is something off-build, so you can always pivot.
 - **Signature perks.** Master perks only show up once your build uses their
   style and their attribute is at 15, and a perk is only offered once its
   tree prerequisites are owned.
@@ -105,68 +182,50 @@ A director keeps the rolls interesting without choosing for you:
 Spire's skip). Once per act you can **banish** a card: click BANISH, then the
 card - it's replaced and never offered again this run.
 
-A screen never offers the same item twice (in any quality), shows at most one
-grenade, and never offers a weapon or grenade you already carry - the Workshop
-is where owned gear gets better. Cards carry a bar in the item's quality
-colour.
+A screen never offers the same item twice (in any quality) and shows at most
+one grenade.
 
 ### Rerolls
 
-Reward screens and door picks can be rerolled (Hades' Fated Authority,
-Balatro's shop). Every act gives one free reroll (Fixer Contacts I/II add one
-more each, and the Fixer sells two). Out of free ones, a reroll costs eddies:
-the price grows with the run and by half again for each paid reroll on the
-same screen.
-
-### Level-ups
-
-Every floor pays twice: the door's reward (the big pick), then a **level-up**
-(the small pick) - one of three cards that deepen what you already have:
-
-- **+1 to an attribute**, usually one of your two best.
-- **A perk from a tree you're already in.**
-- **One more:** an evolution when a weapon is ready for one, otherwise a
-  weapon mod, a quality step for an equipped weapon, a boon one rarity up, or
-  +4 cyberware capacity.
-
-The level-up is the only way V gains levels. Event doors are followed by one
-too.
+Reward screens and door picks can be rerolled with charges: one every act,
+one more each from Fixer Contacts I and II, and two from a Fixer contact.
+The Afterlife's favour adds a free reroll on every reward screen. Rerolls
+never cost eddies.
 
 ### Character
 
 There are no points to spend. Each kit sets two attributes (+4 to its main
 one, +3 to the second; the Edge unlocks add to the main one); every perk you
-take raises its attribute by 1, and level-ups add more, up to 20. Signature
-perks need their attribute at 15. The Character menu can't buy, sell or reset
-anything for roguelite characters.
+take raises its attribute by 1, up to 20. Signature perks need their
+attribute at 15. The Character menu can't buy, sell or reset anything for
+roguelite characters.
 
 ### Weapons
 
-- **Weapon cards say what you're getting:** the class and the attribute it
-  leans on ("Revolver · COOL"), its DPS against the best weapon you have
-  equipped ("DPS 312 +38% vs Lexington"), and a line on how it plays.
-- **New weapons never step down:** an Armory weapon is at least the quality of
-  your best equipped one. Every Armory screen also has one card that improves a
-  weapon you carry (two quality steps, or a mod).
-- **Weapon mods** (the mod's own, Hades' hammers): two slots per weapon, three
-  on iconics. Each weapon family has its own (pistols: Quickdraw, Deadshot,
-  Double Tap; rifles: Sustained Fire, Hollow Point, Tracer; heavy: Point Blank,
-  Shrapnel, Slug; precision: Long Shot, Pierce, Spotter; blades: Momentum,
-  Bloodletting, Vampiric Edge; blunt: Haymaker, Concussive, Rebound), plus four
-  for any weapon (Executioner, Incendiary, Shock, Toxic).
-- **Iconics are earned.** A Legendary weapon with both mod slots filled can
-  **evolve** into an iconic of its type (Workshop or level-up), keeping its
-  mods and gaining a third slot. There's no ICONIC door any more; the
-  stranger's iconic (Act 2 on) is the only other way to one.
-- **Keep your main gun up:** a weapon well below the floor's expected quality
-  deals up to 30% less damage (a little more when it's ahead).
+You play one gun, so the run builds one gun:
+
+- **Main weapon** - your kit's weapon. It takes every weapon reward: a
+  **Tune-Up** (a quality step - the card shows DPS before and after),
+  **weapon effects** (see Patrons) and the **evolution**.
+- **Sidearm** - your kit's backup. It never takes a card; it steps up with
+  every act.
+- **Trades.** An Armory screen can offer a TRADE: a different gun that takes
+  the main slot at the slot's quality, keeping its weapon effects - swapping
+  is about how a gun plays, never a step down. Trade cards show the class and
+  the attribute it leans on ("Revolver · COOL"), its DPS against your main
+  gun, and a line on how it plays.
+- **Evolution.** A Legendary main weapon with two weapon effects can evolve
+  into an iconic of its type (at a TUNE-UP door), effects and all, and gains
+  a third effect slot. The stranger's iconic (Act 2 on) is the only other
+  way to one.
+- **Act step.** Beating a boss steps both weapons up one quality.
 
 ### Styles
 
 Every reward feeds a **style**: BLADES, BRAWLER, MONOWIRE, GUNSLINGER, HEAVY,
 RIFLES, MARKSMAN, NETRUNNER, SMART, TECH, DEMOLITIONS or NINJA. An equipped
-weapon or arm cyberware counts 2 points; every perk, boon and weapon mod with
-the style counts 1 (a cyberdeck 2 for Netrunner, quickhacks 1 each up to 3, a
+weapon or arm cyberware counts 2 points; every perk and effect with the
+style counts 1 (weapon effects count for the main weapon's style) (a cyberdeck 2 for Netrunner, quickhacks 1 each up to 3, a
 grenade 1 for Demolitions). Cards show which styles they feed, in gold when
 you already have a rank.
 
@@ -218,34 +277,44 @@ of the run. Its progress is on the HUD.
 Chrome that doesn't fit your capacity can be installed anyway: the card says
 how far over it goes. Every point over capacity raises the odds of a
 **cyberpsychosis episode** in a fight - 6 seconds of 30% more damage dealt and
-taken. Capacity level-ups pay the overclock down.
+taken. Capacity cards at a TUNE-UP door pay the overclock down.
 
-### Workshop
+### Tune-Up doors
 
-Workshop doors show up on floors 4, 10 and 16 (if you pass one over, it comes
-back on the next screen once). They work on what you already have: an
-evolution when a weapon is ready, a weapon two quality steps up, a weapon mod,
-your MaxDoc, or your grenade.
+TUNE-UP doors show up on floors 4, 10 and 16 (if you pass one over, it comes
+back on the next screen once). They work on what you already have: the
+evolution when your main weapon is ready, a Tune-Up two steps up, your MaxDoc,
+your grenade, or capacity when you're over it.
 
 ### The Fixer
 
 Clearing arenas also pays eddies (more on heavy fights and bosses). After each
 elite floor, before the boss, the Fixer sells a short stock - a MaxDoc upgrade,
-a grenade, a boon, a perk, a weapon upgrade, a weapon mod, or a contact (two
-free rerolls) - and buys back weapons and cyberware you carry but don't have
-equipped. Your balance is on top, and every card says what it costs (or how
+a grenade, an effect from one of the run's patrons, a perk, a Tune-Up, a
+weapon effect, or a contact (two free rerolls) - and buys back weapons and
+cyberware you carry but don't have equipped. Your balance is on top, and every card says what it costs (or how
 much you're short). Prices rise with the run; the Street Smart unlock takes
 20% off.
 
-### Health, grenades and movement
+### Health and Trauma Team
+
+Every fight starts at full health, so health is never something to bank or
+gamble. What carries over is **cover**: one Trauma Team cover a run (two with
+Trauma Platinum). Health hitting zero spends it instead of a flatline: V is
+back up at half health, everyone within 8 m is knocked down, and the run goes
+on. With no cover left, the next one is real. The Ripperdoc can restore a
+spent cover; the stranger buys one. Deals that cost max health (Glass Chrome, Loan Shark,
+Misty's cards) never take more than three quarters of it together - a deal
+that would go further isn't offered.
+
+### Grenades and movement
 
 V carries one MaxDoc. It never falls behind the run: on every trip its quality
 is raised automatically when the floor calls for it, and one upgrade can drop
 per arena - always from a boss, from one elite in four. Grenades are rewards
 (Armory cards and the Workshop), one type at a time. Every run starts with
 Dash, Slippery and Muscle Memory, so dashing and sliding work from floor 1 and
-sprinting or vaulting doesn't restart a reload. The Quick Fuse and Stim Rig
-boons speed up grenade and healing charges.
+sprinting or vaulting doesn't restart a reload.
 
 ### Pacing
 
@@ -264,10 +333,11 @@ more for every run lost while it's on (up to 80%). It never changes rewards.
 
 Cred buys kits (in the armory) and upgrades (at the terminal) that mostly
 widen choice rather than raw power:
-rerolls (Fixer Contacts I/II), a fifth reward card (Wide Net), a fourth door
-(Street Map), an Armory pick at the start of every run (Quartermaster), Fixer
-discounts (Street Smart), plus a few head starts (Med Kit, Head Start,
-Vitality, Edge). Kits: Solo and Blade from the start; Netrunner, Marksman,
+rerolls (Fixer Contacts I/II), a fourth reward card (Wide Net), a fourth door
+(Street Map), a free Armory pick at the start of every run (Quartermaster), a
+second Trauma Team cover (Trauma Platinum), Fixer discounts (Street Smart),
+plus a few head starts (Med Kit, Edge). Cred doors pay into the same
+balance. Kits: Solo and Blade from the start; Netrunner, Marksman,
 Brawler, Gunslinger, Demolitions, Juggernaut and Wireman (Monowire, a
 cyberdeck, a quickhack and Siphon) to unlock - each with its own starting
 perk.
@@ -283,16 +353,15 @@ hand out (one an enemy dropped) is taken away as well.
 
 ### Difficulty
 
-Enemy levels follow the floor, not V: Act 1 enemies are a level below the
-floor number, Act 3 a level above, and V gains a level with every level-up.
-From Act 2 bosses shrug off part of your damage (15%, 25% in Act 3), and in
-Act 3 every enemy does (10%): a run without a build behind it stalls there.
-Damage
-V takes scales from 55% on floor 1 to 100% on floor 18 (on top of the game's
-Hard difficulty), adjusted a little by the pacing director and cut by assist
-mode. Waves grow with depth: two waves per fight in Act 1, three later; the
-elite floor (5, 11, 17) has an elite in every wave. Curves are in `Config.reds`
-and `Run/Encounters.reds`.
+Levels are set per act, for V and the enemies alike: 3, 10 and 17. Inside an
+act nothing scales, so every pick is pure gain; beating the boss steps both
+(and V's weapons). Elites are a level up, bosses two. Damage V takes is set
+per act too - 60%, 80% and 95% (on top of the game's Hard difficulty) -
+adjusted a little by the pacing director and cut by assist mode. There are
+no hidden taxes: enemies never shrug off part of your damage. Waves grow with
+depth: two waves per fight in Act 1, three later; the elite floor (5, 11, 17)
+has an elite in every wave. Numbers are in `Config.reds` and
+`Run/Encounters.reds`.
 
 ### Music
 
@@ -305,9 +374,12 @@ on boss floors (Royce, the mall fight, Adam Smasher).
 
 ### Time and weather
 
-Each arena rolls its own time of day and weather on the way in: light fights
-are mostly daytime and clear, heavy and elite fights lean to night, rain, fog
-and smog (sandstorms in the Badlands), and boss fights get the full storm.
+Each arena gets a **look** on the way in - a time of day and weather picked
+to read together: HIGH NOON, GOLDEN HOUR, CLEAR NIGHT, FOG BANK, NEON RAIN,
+SMOG, TOXIC STORM and SANDSTORM (the Badlands only). Act 1 is calmer; hot
+doors, elite floors and bosses get the storms. The same look never comes
+twice in a row. A few seconds in, the mod checks what the game is actually
+showing and asks again if something overrode it (both go in the log).
 
 ### Enemies
 
@@ -330,10 +402,11 @@ reinforcements, and near death it enrages. The Act 1 boss pays out an
 Operating System (see Overdrive), the others chrome.
 
 Elites (and bosses from Act 2) roll **affixes**, announced when they appear:
-ARMORED (takes 35% less damage), BERSERK (hits harder, moves faster),
-REGENERATING (2% health a second), VOLATILE (explodes a moment after it dies -
+ARMORED (plating: 70% less damage until a quarter of its health is gone,
+then it shatters), BERSERK (hits harder, moves faster),
+REGENERATING (2% health a second, not while GLITCHED), VOLATILE (explodes a moment after it dies -
 step away) and VAMPIRIC (heals when it hits you). Elites get one from floor 3,
-sometimes two in Act 2, always two in Act 3.
+two in Act 3; a hot door's lieutenant always has two.
 
 ### Objectives
 
@@ -349,51 +422,28 @@ last one standing. A finished objective pays bonus eddies.
 
 ### Events
 
-A "?" door is a stop without a fight. It counts as a floor and is followed by a
-level-up:
+A "?" door is a stop without a fight. It counts as a floor:
 
-- **Back-Alley Ripperdoc** - a free MaxDoc patch-up, paid street chrome, or
-  bone lacing (+10% max health).
-- **The Bookie** - bet half your eddies at even odds, or bet a boon for an
-  Epic one.
-- **Misty's Reading** - three tarot cards, each a blessing with a price (more
-  eddies but more damage taken, upgraded boons for less health...).
-- **A Stranger's Offer** (Act 2 on) - an iconic weapon that makes you a target
-  (15% more damage taken for the run), or sell a boon for eddies.
-
-### Patrons
-
-Boons come from six of Night City's powers, Hades-style. A patron door is a
-fight whose reward is three of that patron's boons; a patron you already serve
-turns up more often.
-
-| Patron | Style |
-| --- | --- |
-| ARASAKA | Precision: crits, headshots, first strikes, slowed time |
-| MILITECH | Firepower: ranged and explosive damage, ammo, grenades |
-| VOODOO BOYS | The Net: RAM, quickhack damage and spread |
-| MAELSTROM | Brutality: melee, low-health fury, exploding bodies |
-| ALDECALDOS | Survival: health, speed, less damage, second winds |
-| THE AFTERLIFE | Fortune: eddies, lucky hits, a cheaper Fixer, more choice |
-
-- Each patron has five boons. A boon comes in a rarity - COMMON, RARE, EPIC
-  or HEROIC - and is offered again later as an upgrade to the next one. Deep
-  runs and lucky rolls give rarer boons.
-- Hold three of a patron's boons and its **legendary** can appear (Shogun's
-  Edge, Kill Count, Loa's Embrace, Cyberpsychosis, Family Ties, Afterlife
-  Legend).
-- Serve two patrons and their **duo** boon can appear (eight in all, e.g.
-  Smart Link for Arasaka + Militech).
-
-Every boon shows on the HUD buff bar; F7 during a fight lists them by patron.
-Everything is removed when the run ends.
+- **Back-Alley Ripperdoc** - a MaxDoc upgrade, paid street chrome, and a
+  Trauma Team policy that restores a spent cover (bone lacing when you
+  haven't spent one).
+- **The Bookie** - bet half your eddies at even odds, or bet an effect on an
+  overclocked one.
+- **Misty's Reading** - three tarot cards, each a blessing with a price (The
+  Tower overclocks two effects for max health, Death takes an effect for one
+  more card on every screen, The Hermit trades max health for a cover...).
+- **A Stranger's Offer** (Act 2 on) - an iconic for your main slot that makes
+  you a target (15% more damage taken for the run), sell an effect for
+  eddies, or sell your cover for a legendary (or every effect you hold overclocked).
 
 ### Menus
 
 The terminal, the armory, the door picker, the reward and event screens are
 built from cards in the game's own menu style, with pictures from the game's
-codex: door cards show the arena with the reward's badge on it, then threat,
-objective and the enemy gang's logo; boon cards show the patron's people,
+codex: door cards lead with the reward - the patron's art, what the screen
+deals, its keywords and how many of its effects you hold - then the
+objective and the arena with the gang's logo; HOT doors pulse. Effect cards
+show the patron's people,
 gig cards the fixer, kit cards the kit's weapon; events open with whoever
 you're dealing with (Misty deals real tarot cards). Hovering lifts a card and
 lights its frame - the text never sits on a colour fill.
@@ -486,22 +536,22 @@ The record format is documented in `Core/Telemetry.reds`.
 | `Combat/ArenaCleaner.reds` | No bystanders in arenas, no safe zones mid-fight |
 | `Combat/WaveSpawner.reds` | Wave spawning, level matching, chasing, kill tracking, boss phases |
 | `Combat/Affixes.reds` | Elite affixes and the explosion helper |
-| `Combat/DamageHooks.reds` | Boons and affixes in the damage pipeline; death hook |
+| `Combat/DamageHooks.reds` | Effects and affixes in the damage pipeline; death hook |
+| `Combat/CombatState.reds` | Per-fight state: enemies, keyword timers, MOMENTUM, SHIELD, the effect ledger |
+| `Combat/Keywords.reds` | The keywords: how each lands, looks and reacts; luck rolls; chain steps |
 | `Combat/Loot.reds` | Ammo refill, empty bodies, arena pickup filter |
 | `Audio/Music.reds` | Arena music: combat scores and radio stations |
-| `World/Atmosphere.reds` | Time of day and weather per arena |
+| `World/Atmosphere.reds` | The arena looks: time of day and weather, read back and re-asked |
 | `Rewards/RewardSystem.reds` | Reward doors, offer rolling and granting |
-| `Rewards/Director.reds` | Quality rolls, pity, magnificence, spikes |
+| `Rewards/Director.reds` | Quality rolls, pity, magnificence, spikes, hot doors |
 | `Rewards/BuildProfile.reds` | Reads V's build into style tags |
 | `Rewards/PerkCatalog.reds` | Perk cards: prerequisites, signature perks, weighting |
 | `Rewards/PerkCatalogData.reds` | The perk list (generated from `source/perks/catalog.tsv`) |
-| `Rewards/Patrons.reds` | The six patrons |
-| `Rewards/Boons.reds` | The boon catalogue, rarities, upgrades |
-| `Rewards/BoonEffects.reds` | What boons do in fights (hits, kills, saves); the hit and kill hooks |
+| `Rewards/Patrons.reds` | The six patrons, their keywords, the run's line-up |
+| `Rewards/Boons.reds` | The effect catalogue (effects, weapon effects, duos, legendaries, favours), what V holds |
+| `Rewards/BoonEffects.reds` | What effects do in fights (hits, kills, dashes, ticks) |
 | `Rewards/Styles.reds` | Styles: points, ranks, damage bonuses, signatures |
-| `Rewards/Weapons.reds` | Weapon families, DPS previews, evolution, the quality curve |
-| `Rewards/WeaponMods.reds` | Weapon mods and their effects |
-| `Rewards/LevelUp.reds` | The level-up after every floor |
+| `Rewards/Weapons.reds` | Main weapon and sidearm slots, Tune-Ups, trades, evolution, DPS previews |
 | `Meta/MetaProgression.reds` | Unlocks, kits, Cred payout |
 | `UI/Card.reds` | The card used by every menu, icon helpers |
 | `UI/Art.reds` | Codex pictures for arenas, patrons, kits, fixers, events |
@@ -509,7 +559,7 @@ The record format is documented in `Core/Telemetry.reds`.
 | `UI/GuidePopup.reds` | The six-page how-it-works guide |
 | `UI/Transition.reds` | Fade to black with the destination (trips, death) |
 | `UI/*.reds` | HUD line and boss bar, terminal, reward, event and Fixer popups |
-| `r6/tweaks/NightCityRoguelite/*.yaml` | Enemy variants and loot, boon buffs, computer and armory prompts (TweakXL) |
+| `r6/tweaks/NightCityRoguelite/*.yaml` | Enemy variants and loot, the escort drone, computer and armory prompts (TweakXL) |
 | `archive/pc/mod/NightCityRoguelite.archive` | Quest patch (skips the Phantom Liberty opening for roguelite starts) and English text |
 | `source/quest-patch/` | How the archive is built (Python + WolvenKit) |
 | `source/perks/` | Perk catalogue (tsv) and the generator for `PerkCatalogData.reds` |

@@ -39,7 +39,7 @@ public class RLEventPopup extends InGamePopup {
     header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
-    footer.SetFluffText("COUNTS AS A FLOOR - LEVEL-UP AFTER");
+    footer.SetFluffText("COUNTS AS A FLOOR");
     footer.Reparent(this);
 
     this.m_content = InGamePopupContent.Create();
@@ -113,7 +113,7 @@ public class RLEventPopup extends InGamePopup {
     if !IsDefined(choice.offer) || !TDBID.IsValid(choice.offer.record) {
       return false;
     }
-    if Equals(choice.offer.kind, RLOfferKind.Iconic) || Equals(choice.offer.kind, RLOfferKind.Weapon) {
+    if Equals(choice.offer.kind, RLOfferKind.Iconic) || Equals(choice.offer.kind, RLOfferKind.Trade) {
       let iconWidth = MinF(width - 56.0, 400.0);
       return card.SetRecordIcon(RLIcons.ItemIcon(choice.offer.record), iconWidth, iconWidth / 2.0);
     }

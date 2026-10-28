@@ -55,8 +55,9 @@ files.
 **Replace**, then Enable and Deploy.
 
 **By hand:**
-1. In your game folder, delete the `r6/scripts/NightCityRoguelite` folder.
-   (Old files that a new version dropped can cause errors if they stay.)
+1. In your game folder, delete the `r6/scripts/NightCityRoguelite` and
+   `r6/tweaks/NightCityRoguelite` folders. (Old files that a new version
+   dropped can cause errors if they stay.)
 2. Copy the new ZIP's `r6` and `archive` folders into the game folder,
    letting it replace files when Windows asks.
 
@@ -77,9 +78,9 @@ last build.
    during a run.
 6. In a run:
    - Take a gig, then clear every wave in the arena.
-   - Pick a reward, then a level-up.
-   - Pick your next fight. Each door shows the place, what it pays, how hard
-     it is, and who's waiting.
+   - Pick a reward.
+   - Pick your next fight. Each door shows what it pays first, then the place
+     and who's waiting. **HOT** doors are harder and pay double.
    - **F7** reopens any screen you closed.
 7. Before each boss, the **Fixer** sells upgrades for the eddies you've earned.
    - Want to try a boss or a later act without playing up to it? Use the
@@ -122,37 +123,36 @@ The five framework mods are safe to keep, since lots of other mods use them.
 
 ## Things to keep an eye on in this build
 
-Big content patch plus a polish pass. Tell me how these feel:
+The patrons are rebuilt from the ground up: their rewards are now effects
+that change how a fight plays, and they're built to combine. Start a **new**
+roguelite character for this build. Tell me how these feel:
 
-**Home**
-- Did the guide show up the first time? Did the pictures load?
-- Is the armory door open? Is there a stash in there that says "Gear" and
-  opens the kit screen? (If there's no stash, the HUD should say ARMORY and
-  F7 opens it instead - tell me if that happens.)
-- Does the computer open the terminal? (F7 inside the armory opens the kit
-  screen instead - that's on purpose.)
+**Effects and combos**
+- Every effect speaks in keywords (MARK, SHOCK, BURN, BLAST, MOMENTUM...).
+  When one lands, a word flashes on the HUD. Do you see them? Do the enemies
+  show it (outline for MARK, sparks for SHOCK, fire for BURN)?
+- Did two effects from different patrons ever set each other off? Which
+  combo felt best, and which effect did nothing you could notice?
+- Hover a card on a patron screen: the effects it BUILDS ON light up in the
+  YOUR BUILD strip. Does that help you plan?
+- Did you get a duo, a legendary or a favour (three effects from one patron)?
+- Dash-based effects (Kinetic Dash, Convoy, Burnout, Slipstream): do they
+  fire on every dash?
 
-**Menus**
-- Door, reward, kit and event cards now have pictures. Do they load, and do
-  they look right (not stretched, not blank)?
-- Hovering a card should lift it and light the frame - no color wash behind
-  the text. Easy to read now?
-- Anything that reads wrong, sounds off or is just too long? Screenshot it.
-- Does every menu fit on your screen? Tell me your resolution if one doesn't.
+**Weapons**
+- Your kit's gun is your **main weapon** - every Armory reward goes into it.
+  Did Tune-Ups feel worth it (the card shows DPS before and after)?
+- Did you trade guns, and did your weapon effects come along?
+- Does the sidearm stepping up after each boss feel like enough?
 
-**Builds**
-- **Level-ups:** after every reward there's a LEVEL UP screen. Too many
-  screens, or does it feel good?
-- **Weapon cards:** do they show a DPS line ("DPS 312 +38% vs ...")? Do new
-  weapons feel like upgrades now?
-- **Weapon mods and evolutions:** did a mod change how a gun played? Did you
-  get a weapon to evolve into an iconic, and did it equip properly?
-- **Styles:** do the style lines on cards and the footer make sense? Did you
-  hit a rank III signature?
-- **The Act 1 boss:** pick an Operating System. Fill the Overdrive meter (on
-  the HUD), then activate your OS. Did ZERO HOUR / RAMPAGE / BLACKWALL fire?
-- **Gigs:** take one at the start; does the counter on the HUD go up?
-- **Skip, banish, sell back:** do they work?
+**Run shape**
+- **HOT doors** (pulsing): one in Act 1, two later, harder, and they pay double. Did they
+  show up at good moments? Were they worth it?
+- **Trauma Team:** you start every fight at full health and have one cover a
+  run. Did it save a run? Did it make dying feel fair?
+- No level-ups any more - one pick a floor. Too few picks, or cleaner?
+- The **weather**: does each arena look different now (rain, fog, smog,
+  storms)? Tell me if one always looks the same.
 - **Overall:** did your build come together by the Act 2 boss? Was Act 3
   harder in a good way?
 

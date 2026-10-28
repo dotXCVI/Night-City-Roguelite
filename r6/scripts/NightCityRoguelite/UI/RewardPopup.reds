@@ -1,13 +1,25 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - reward popup
 // -----------------------------------------------------------------------------
-// The cleared fight's offers as cards (UI/Card.reds), centred, with the item's
-// own icon (the perk's tree icon; the patron's or fixer's picture for boons
-// and gigs) and a bar in the item's quality colour. Weapon cards add their DPS against V's best weapon;
-// every card names the styles it feeds (gold when V already has a rank in
-// one). Below them: reroll (free while charges last, then eddies), banish
-// (one per act: click it, then a card) and, on a door's reward, skip for
-// eddies. The footer shows V's styles. Closing (C / ESC) keeps the offers:
+// The cleared fight's cards (UI/Card.reds), read in one second, wanted in
+// two. Every card says the same things in the same order:
+//
+//   frame    the quality colour (an effect blue, an overclock or duo purple,
+//            a legendary gold)
+//   banner   the patron's people and logo (effects), the item (gear)
+//   kicker   what it is: EFFECT - VOODOO BOYS, OVERCLOCK, TUNE-UP...
+//   title    its name
+//   effect   one line, the whole decision
+//   numbers  the one that matters, before and after (DPS 212 > 268)
+//   chips    the keywords it makes and uses, in their colours; NEW when V
+//            has never taken it
+//   builds   BUILDS ON: the effects V holds it works with
+//
+// Under the cards, YOUR BUILD: every effect V holds, in its patron's colour.
+// Hovering a card lights up the ones it builds on. Below that: reroll,
+// banish, skip. A click in the first quarter second is ignored, so a held
+// trigger never picks; a pick goes in at once, the picked card swells, the
+// rest fall away, and the screen closes. Closing (C / ESC) keeps the cards:
 // F7 brings them back.
 // -----------------------------------------------------------------------------
 
@@ -20,9 +32,17 @@ public class RLRewardPopup extends InGamePopup {
   private let m_title: String;
   private let m_fluff: String;
   private let m_content: ref<InGamePopupContent>;
+  private let m_cards: array<wref<RLCard>>;
+  // The YOUR BUILD chips and the effect each stands for.
+  private let m_buildChips: array<wref<inkWidget>>;
+  private let m_buildIDs: array<CName>;
   // Banish mode: the next card clicked is banished instead of taken.
   private let m_banishing: Bool;
   private let m_banishCard: wref<RLCard>;
+  private let m_openedAt: Float;
+  // The card being picked while its animation plays.
+  private let m_picking: Int32;
+  private let m_pickProxy: ref<inkAnimProxy>;
 
   // `fluff`: the header's right-hand line (a patron's tagline); "CHOOSE ONE"
   // when empty.
@@ -32,6 +52,7 @@ public class RLRewardPopup extends InGamePopup {
     popup.m_offers = offers;
     popup.m_title = title;
     popup.m_fluff = fluff;
+    popup.m_picking = -1;
     RLUI.Show(popup);
     return popup;
   }
@@ -50,7 +71,8 @@ public class RLRewardPopup extends InGamePopup {
 
   protected cb func OnCreate() {
     super.OnCreate();
-    this.m_container.SetSize(Vector2(2200.0, 1150.0));
+    this.m_container.SetSize(Vector2(2200.0, 1240.0));
+    this.m_openedAt = RLUI.Now();
 
     let header = InGamePopupHeader.Create();
     header.SetFluffLeft("");
@@ -72,30 +94,35 @@ public class RLRewardPopup extends InGamePopup {
   }
 
   private func Build() {
-    let column = RLUI.VPanel(12.0);
+    let column = RLUI.VPanel(10.0);
     column.SetAnchor(inkEAnchor.Fill);
     column.SetMargin(RLUI.ContentMargin());
     column.Reparent(this.m_content.GetRootCompoundWidget());
 
     let cards = RLUI.HPanel(18.0);
     cards.SetHAlign(inkEHorizontalAlign.Center);
-    cards.SetMargin(inkMargin(0.0, 16.0, 0.0, 0.0));
+    cards.SetMargin(inkMargin(0.0, 12.0, 0.0, 0.0));
     cards.Reparent(column);
 
     let count = ArraySize(this.m_offers);
-    let cardWidth = count > 4 ? 370.0 : (count > 3 ? 470.0 : 540.0);
+    let cardWidth = count > 4 ? 380.0 : (count > 3 ? 470.0 : 560.0);
     let i = 0;
     while i < count {
       this.BuildCard(cards, this.m_offers[i], i, cardWidth);
       i += 1;
     }
 
+    let run = IsDefined(this.m_system) ? this.m_system.GetRun() : null;
+    if IsDefined(run) {
+      this.BuildStrip(column, run);
+    }
+
     if IsDefined(this.m_system) {
       let actions = RLUI.HPanel(18.0);
       actions.SetHAlign(inkEHorizontalAlign.Center);
-      actions.SetMargin(inkMargin(0.0, 28.0, 0.0, 0.0));
+      actions.SetMargin(inkMargin(0.0, 14.0, 0.0, 0.0));
       actions.Reparent(column);
-      let reroll = RLRewardPopup.RerollCard(this.m_system);
+      let reroll = RLRewardPopup.RerollCard(this.m_system, true);
       reroll.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
       reroll.Reparent(actions);
       reroll.PlayIntro(0.08 * Cast<Float>(count));
@@ -125,6 +152,45 @@ public class RLRewardPopup extends InGamePopup {
     }
   }
 
+  // YOUR BUILD: every effect V holds, in its patron's colour, overclocks
+  // marked +, favours last.
+  private func BuildStrip(parent: ref<inkCompoundWidget>, run: ref<RLRunState>) {
+    if ArraySize(run.boons) == 0 {
+      return;
+    }
+    let box = RLUI.VPanel(4.0);
+    box.SetHAlign(inkEHorizontalAlign.Center);
+    box.SetMargin(inkMargin(0.0, 8.0, 0.0, 0.0));
+    box.Reparent(parent);
+    let label = RLUI.Text("YOUR BUILD", 24, n"MainColors.Grey", true);
+    label.SetHAlign(inkEHorizontalAlign.Center);
+    label.Reparent(box);
+    let row = RLUI.HPanel(0.0);
+    row.SetChildMargin(inkMargin(0.0, 0.0, 10.0, 0.0));
+    row.SetHAlign(inkEHorizontalAlign.Center);
+    row.Reparent(box);
+    for state in run.boons {
+      let def = RLBoons.Get(state.id);
+      if IsDefined(def) && NotEquals(def.kind, RLBoonKind.Favour) {
+        this.AddStripChip(row, state.id, RLBoons.HeldName(state), RLPatrons.Accent(def.patron));
+      }
+    }
+    for state in run.boons {
+      let def = RLBoons.Get(state.id);
+      if IsDefined(def) && Equals(def.kind, RLBoonKind.Favour) {
+        this.AddStripChip(row, state.id, def.name, RLPatrons.Accent(def.patron));
+      }
+    }
+  }
+
+  private func AddStripChip(row: ref<inkCompoundWidget>, id: CName, const name: String, color: CName) {
+    let chip = RLCard.Chip(name, color, 22);
+    chip.SetOpacity(0.8);
+    chip.Reparent(row);
+    ArrayPush(this.m_buildChips, chip);
+    ArrayPush(this.m_buildIDs, id);
+  }
+
   private func HasBanishable() -> Bool {
     for offer in this.m_offers {
       if RLRewards.CanBanish(offer) {
@@ -135,73 +201,106 @@ public class RLRewardPopup extends InGamePopup {
   }
 
   // The reroll button used by the reward screen and the door picker.
-  public static func RerollCard(system: ref<RogueliteSystem>) -> ref<RLCard> {
+  public static func RerollCard(system: ref<RogueliteSystem>, rewardScreen: Bool) -> ref<RLCard> {
     let charges = system.GetRerollCharges();
-    let price = system.GetRerollPrice();
-    let affordable = charges > 0 || system.GetEddies() >= price;
-    let card = RLCard.Create(n"reroll", 420.0, 120.0, charges > 0 ? n"MainColors.Blue" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
+    let favour = rewardScreen && system.HasFavourReroll();
+    let card = RLCard.Create(n"reroll", 420.0, 120.0, favour || charges > 0 ? n"MainColors.Blue" : n"MainColors.Grey");
     card.SetCompact();
-    card.SetKicker(charges > 0 ? s"FREE - \(charges) LEFT" : s"\(price) EDDIES");
+    card.SetKicker(favour ? "FREE - THE AFTERLIFE'S FAVOUR" : (charges > 0 ? s"\(charges) LEFT" : "NONE LEFT THIS ACT"));
     card.SetTitle("REROLL");
     card.SetTitleSize(36);
-    card.SetDisabled(!affordable);
+    card.SetDisabled(!favour && charges <= 0);
     return card;
   }
 
   private func BuildCard(parent: ref<inkCompoundWidget>, offer: ref<RLOffer>, index: Int32, width: Float) {
-    let accent = Equals(offer.kind, RLOfferKind.Boon) && IsNameValid(offer.patron) ? RLPatrons.Accent(offer.patron) : RLRewardPopup.KindAccent(offer.kind);
-    let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 700.0, accent);
-    RLRewardPopup.SetOfferIcon(card, offer, width);
-    if RLRewardPopup.HasQuality(offer.kind) {
+    let isEffect = Equals(offer.kind, RLOfferKind.Boon);
+    let accent = isEffect && IsNameValid(offer.patron) ? RLPatrons.Accent(offer.patron) : RLRewardPopup.KindAccent(offer.kind);
+    let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 760.0, accent);
+    card.SetCompact();
+    RLRewardPopup.SetOfferArt(card, offer, width);
+    if NotEquals(offer.kind, RLOfferKind.Perk) {
       card.SetQuality(offer.step);
     }
-    card.SetKicker(RLRewardPopup.KindLabel(offer));
+    card.SetKicker(offer.subtitle);
     card.SetTitle(offer.title);
-    card.SetTitleSize(40);
-    if StrLen(offer.dpsLine) > 0 {
-      card.AddLine(offer.dpsLine, n"MainColors.Yellow", 28);
+    card.SetTitleSize(42);
+    if offer.isNew {
+      card.SetNew();
     }
-    if RLItemText.Wants(offer.kind) {
-      RLItemText.AddTo(card, offer.record, n"MainColors.ActiveWhite", 24, 3);
-    }
+    // The effect, in one line.
     if StrLen(offer.description) > 0 {
       let warning = offer.disabled || (Equals(offer.kind, RLOfferKind.Cyberware) && offer.amount > 0);
-      card.AddLine(offer.description, warning ? n"MainColors.Red" : n"MainColors.Grey", 26);
+      card.AddLine(offer.description, warning ? n"MainColors.Red" : n"MainColors.ActiveWhite", 30);
+    }
+    if RLItemText.Wants(offer.kind) {
+      RLItemText.AddTo(card, offer.record, n"MainColors.ActiveWhite", 28, 2);
+    }
+    if StrLen(offer.dpsLine) > 0 {
+      card.AddLine(offer.dpsLine, n"MainColors.Yellow", 30);
     }
     let run = IsDefined(this.m_system) ? this.m_system.GetRun() : null;
-    let styles = RLStyles.OfferLine(run, offer.tags);
-    if StrLen(styles) > 0 {
-      card.AddLine(styles, RLStyles.IsSynergy(run, offer.tags) ? n"MainColors.Gold" : n"MainColors.Blue", 24);
+    if isEffect {
+      RLRewardPopup.AddKeywordChips(card, offer);
+      if ArraySize(offer.links) > 0 && IsDefined(run) {
+        card.AddLine("BUILDS ON: " + RLRewardPopup.LinkNames(run, offer), n"MainColors.Gold", 26);
+      }
+    } else {
+      let styles = RLStyles.OfferLine(run, offer.tags);
+      if StrLen(styles) > 0 {
+        card.AddLine(styles, RLStyles.IsSynergy(run, offer.tags) ? n"MainColors.Gold" : n"MainColors.Blue", 24);
+      }
     }
     card.SetDisabled(offer.disabled);
     card.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
+    card.RegisterToCallback(n"OnCardHoverOn", this, n"OnCardHoverOn");
+    card.RegisterToCallback(n"OnCardHoverOff", this, n"OnCardHoverOff");
     card.Reparent(parent);
     card.PlayIntro(0.08 * Cast<Float>(index));
+    card.PlayReveal(offer.step, 0.08 * Cast<Float>(index));
+    ArrayPush(this.m_cards, card);
   }
 
-  private static func HasQuality(kind: RLOfferKind) -> Bool {
-    return NotEquals(kind, RLOfferKind.Perk);
-  }
-
-  // The card's kicker: what it is, and its quality (or upgrade step).
-  private static func KindLabel(offer: ref<RLOffer>) -> String {
-    switch offer.kind {
-      case RLOfferKind.WeaponUpgrade:
-      case RLOfferKind.HealthUpgrade:
-      case RLOfferKind.BoonUpgrade:
-        return "UPGRADE - " + offer.subtitle;
+  // MAKES / USES chips for an effect card, each keyword in its colour.
+  private static func AddKeywordChips(card: ref<RLCard>, offer: ref<RLOffer>) {
+    let def = RLBoons.Get(offer.boon);
+    if !IsDefined(def) {
+      return;
     }
-    return offer.subtitle;
+    let labels: array<String>;
+    let colors: array<CName>;
+    for keyword in def.makes {
+      ArrayPush(labels, "MAKES " + NameToString(keyword));
+      ArrayPush(colors, RLKeywords.Color(keyword));
+    }
+    for keyword in def.uses {
+      if !ArrayContains(def.makes, keyword) && ArraySize(labels) < 4 {
+        ArrayPush(labels, "USES " + NameToString(keyword));
+        ArrayPush(colors, RLKeywords.Color(keyword));
+      }
+    }
+    card.AddChips(labels, colors);
   }
 
-  // Item icons for gear (weapons are wide), the buff icon for boons, the
-  // perk's tree icon for perks, a menu icon for the rest.
-  private static func SetOfferIcon(card: ref<RLCard>, offer: ref<RLOffer>, width: Float) {
+  // "Arc Flash, Pyre"
+  private static func LinkNames(run: ref<RLRunState>, offer: ref<RLOffer>) -> String {
+    let text = "";
+    for id in offer.links {
+      let state = RLBoons.Owned(run, id);
+      if IsDefined(state) {
+        text += (StrLen(text) > 0 ? ", " : "") + RLBoons.HeldName(state);
+      }
+    }
+    return text;
+  }
+
+  // Effects show their patron's people and logo; gear its own picture; gigs
+  // the fixer; perks their tree.
+  private static func SetOfferArt(card: ref<RLCard>, offer: ref<RLOffer>, width: Float) {
     switch offer.kind {
-      case RLOfferKind.Weapon:
+      case RLOfferKind.Trade:
       case RLOfferKind.Iconic:
-      case RLOfferKind.WeaponUpgrade:
-      case RLOfferKind.WeaponMod:
+      case RLOfferKind.TuneUp:
       case RLOfferKind.Evolve:
         let iconWidth = MinF(width - 56.0, 400.0);
         if card.SetRecordIcon(RLIcons.ItemIcon(offer.record), iconWidth, iconWidth / 2.0) {
@@ -218,14 +317,11 @@ public class RLRewardPopup extends InGamePopup {
         }
         break;
       case RLOfferKind.Boon:
-      case RLOfferKind.BoonUpgrade:
-        // The patron's people, with their logo on it.
         card.SetBanner(RLArts.Patron(offer.patron));
         let patron = RLPatrons.Get(offer.patron);
         card.SetBadge(IsDefined(patron) && patron.isLogo ? RLIcons.LogoAtlas() : RLIcons.HubAtlas(), IsDefined(patron) ? patron.iconPart : n"ico_tarot");
         return;
       case RLOfferKind.Gig:
-        // The fixer offering it.
         card.SetBanner(RLArts.Fixer(offer.amount));
         card.SetBadge(RLIcons.HubAtlas(), n"ico_journal");
         return;
@@ -242,19 +338,16 @@ public class RLRewardPopup extends InGamePopup {
 
   public static func KindAccent(kind: RLOfferKind) -> CName {
     switch kind {
-      case RLOfferKind.Weapon: return n"MainColors.Red";
+      case RLOfferKind.Trade: return n"MainColors.Red";
       case RLOfferKind.Iconic: return n"MainColors.Gold";
       case RLOfferKind.Cyberware: return n"MainColors.Blue";
       case RLOfferKind.Quickhack: return n"MainColors.Green";
       case RLOfferKind.Boon: return n"MainColors.Purple";
       case RLOfferKind.Grenade: return n"MainColors.Yellow";
       case RLOfferKind.Perk: return n"MainColors.ActiveWhite";
-      case RLOfferKind.WeaponUpgrade:
-      case RLOfferKind.HealthUpgrade:
-      case RLOfferKind.BoonUpgrade: return n"MainColors.Gold";
-      case RLOfferKind.WeaponMod: return n"MainColors.Yellow";
+      case RLOfferKind.TuneUp:
+      case RLOfferKind.HealthUpgrade: return n"MainColors.Gold";
       case RLOfferKind.Evolve: return n"MainColors.Gold";
-      case RLOfferKind.Attribute: return n"MainColors.ActiveWhite";
       case RLOfferKind.Capacity: return n"MainColors.Blue";
       case RLOfferKind.OperatingSystem: return n"MainColors.Blue";
       case RLOfferKind.Gig: return n"MainColors.Gold";
@@ -264,18 +357,16 @@ public class RLRewardPopup extends InGamePopup {
 
   public static func KindPart(kind: RLOfferKind) -> CName {
     switch kind {
-      case RLOfferKind.Weapon: return n"ico_inventory";
+      case RLOfferKind.Trade: return n"ico_inventory";
       case RLOfferKind.Iconic: return n"ico_inventory";
       case RLOfferKind.Cyberware: return n"ico_cyberware";
       case RLOfferKind.Quickhack: return n"ico_deck";
       case RLOfferKind.Boon: return n"ico_tarot";
       case RLOfferKind.Perk: return n"ico_stats";
-      case RLOfferKind.WeaponUpgrade: return n"ico_cafting_upgrading";
+      case RLOfferKind.TuneUp: return n"ico_cafting_upgrading";
       case RLOfferKind.HealthUpgrade: return n"ico_cafting_upgrading";
       case RLOfferKind.Grenade: return n"ico_backpack";
-      case RLOfferKind.WeaponMod: return n"ico_cafting_upgrading";
       case RLOfferKind.Evolve: return n"ico_cafting_upgrading";
-      case RLOfferKind.Attribute: return n"ico_stats";
       case RLOfferKind.Capacity: return n"ico_cyberware";
       case RLOfferKind.OperatingSystem: return n"ico_cyberware";
       case RLOfferKind.Gig: return n"ico_journal";
@@ -283,9 +374,55 @@ public class RLRewardPopup extends InGamePopup {
     return n"ico_map";
   }
 
+  // --- Hover: light up what the card builds on ----------------------------------------------
+
+  protected cb func OnCardHoverOn(widget: wref<inkWidget>) -> Bool {
+    let index = this.CardIndex(widget);
+    if index < 0 {
+      return false;
+    }
+    let links = this.m_offers[index].links;
+    let i = 0;
+    while i < ArraySize(this.m_buildChips) {
+      if IsDefined(this.m_buildChips[i]) {
+        this.m_buildChips[i].SetOpacity(ArrayContains(links, this.m_buildIDs[i]) ? 1.0 : 0.3);
+      }
+      i += 1;
+    }
+    return true;
+  }
+
+  protected cb func OnCardHoverOff(widget: wref<inkWidget>) -> Bool {
+    for chip in this.m_buildChips {
+      if IsDefined(chip) {
+        chip.SetOpacity(0.8);
+      }
+    }
+    return true;
+  }
+
+  private func CardIndex(widget: wref<inkWidget>) -> Int32 {
+    let button = widget.GetController() as CustomButton;
+    if !IsDefined(button) {
+      return -1;
+    }
+    let name = NameToString(button.GetName());
+    if !StrBeginsWith(name, "offer_") {
+      return -1;
+    }
+    let index = StringToInt(StrAfterFirst(name, "_"));
+    return index >= 0 && index < ArraySize(this.m_offers) ? index : -1;
+  }
+
+  // --- Input -----------------------------------------------------------------------------
+
   protected cb func OnButtonClick(widget: wref<inkWidget>) -> Bool {
     let button = widget.GetController() as CustomButton;
-    if !IsDefined(button) || button.IsDisabled() || !IsDefined(this.m_system) {
+    if !IsDefined(button) || button.IsDisabled() || !IsDefined(this.m_system) || this.m_picking >= 0 {
+      return false;
+    }
+    // A held trigger from the fight doesn't pick for V.
+    if RLUI.Now() - this.m_openedAt < 0.25 {
       return false;
     }
     let name = NameToString(button.GetName());
@@ -307,20 +444,47 @@ public class RLRewardPopup extends InGamePopup {
       }
       return true;
     }
-    if StrBeginsWith(name, "offer_") {
-      let index = StringToInt(StrAfterFirst(name, "_"));
-      if this.m_banishing {
-        if index >= 0 && index < ArraySize(this.m_offers) && RLRewards.CanBanish(this.m_offers[index]) {
-          this.Close();
-          this.m_system.OnRewardBanish(index);
-        }
-        return true;
+    let index = this.CardIndex(widget);
+    if index < 0 {
+      return false;
+    }
+    if this.m_banishing {
+      if RLRewards.CanBanish(this.m_offers[index]) {
+        this.Close();
+        this.m_system.OnRewardBanish(index);
       }
-      this.Close();
-      this.m_system.OnRewardChosen(index);
       return true;
     }
-    return false;
+    this.Pick(index);
+    return true;
+  }
+
+  // The pick goes in at once; the picked card swells, the others fall away,
+  // and the screen closes when that's done.
+  private func Pick(index: Int32) {
+    this.m_picking = index;
+    this.m_system.OnRewardChosen(index);
+    let i = 0;
+    while i < ArraySize(this.m_cards) {
+      if IsDefined(this.m_cards[i]) {
+        if i == index {
+          this.m_pickProxy = this.m_cards[i].PlayPick();
+        } else {
+          this.m_cards[i].PlayDismiss();
+        }
+      }
+      i += 1;
+    }
+    if IsDefined(this.m_pickProxy) {
+      this.m_pickProxy.RegisterToCallback(inkanimEventType.OnFinish, this, n"OnPickShown");
+    } else {
+      this.OnPickShown(null);
+    }
+  }
+
+  protected cb func OnPickShown(proxy: ref<inkAnimProxy>) -> Bool {
+    this.Close();
+    return true;
   }
 
   protected cb func OnHide() {

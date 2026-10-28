@@ -1,32 +1,27 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - weapons
 // -----------------------------------------------------------------------------
-// What makes a weapon pick an upgrade instead of a sidegrade:
+// You play one gun, so the run builds one gun (Hades' one weapon a run,
+// Returnal's power that a new gun never resets):
 //
-//   families   every weapon belongs to one (pistol, rifle, heavy, precision,
-//              blade, blunt), which sets its style, the attribute it leans on
-//              and a one-line description of how it plays.
-//   DPS        cards show the weapon's DPS at the offered quality next to the
-//              best weapon V has equipped ("DPS 312  +38%").
-//   mods       our own weapon mods (Hades' hammers): two slots per weapon,
-//              three on iconics, each one a rule for that family's hits
-//              (Rewards/WeaponMods.reds).
-//   evolution  a Legendary weapon with its mod slots full can evolve into an
-//              iconic of its type, mods included. It is the only way to an
-//              iconic besides the stranger's deal.
-//   curve      a weapon far below the floor's expected quality deals less
-//              damage (UnderCurveFactor), so the main gun has to keep up.
+//   MAIN      the kit's weapon. It takes every weapon reward: Tune-Ups (the
+//             slot's quality step), weapon effects (Rewards/Boons.reds - they
+//             live on the slot, so they work on blades too and stay through
+//             a trade) and the evolution into an iconic.
+//   SIDEARM   the kit's backup. It never takes a reward card; it steps up
+//             with every act.
 //
-// The run keeps one RLWeaponState per weapon that has mods (by item ID).
+//   tier      the slot holds the quality step, not the gun: a gun traded in
+//             (a TRADE card on an Armory screen) arrives at the slot's step,
+//             so swapping is about how a gun plays, never a step down.
+//   evolution a Legendary main weapon with two weapon effects can become an
+//             iconic of its type, effects and all.
+//
+// Families (pistol, rifle, heavy, precision, blade, blunt) set a weapon's
+// style, the attribute it leans on and a line on how it plays.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
-
-public class RLWeaponState {
-  public let itemID: ItemID;
-  public let record: TweakDBID;
-  public let mods: array<CName>;
-}
 
 public abstract class RLWeaponFamily {
   public static func None() -> Int32 = 0
@@ -39,6 +34,122 @@ public abstract class RLWeaponFamily {
 }
 
 public abstract class RLWeapons {
+  // --- The slots ------------------------------------------------------------------------------
+
+  public static func IsMain(run: ref<RLRunState>, itemID: ItemID) -> Bool {
+    return ItemID.IsValid(run.mainWeapon) && run.mainWeapon == itemID;
+  }
+
+  // Weapon effects the main weapon can hold: two, three on an iconic.
+  public static func EffectSlots(run: ref<RLRunState>) -> Int32 {
+    return ItemID.IsValid(run.mainWeapon) && RLWeapons.IsIconic(run.mainWeapon) ? 3 : 2;
+  }
+
+  public static func MainItem(player: ref<PlayerPuppet>, run: ref<RLRunState>) -> wref<gameItemData> {
+    if !IsDefined(player) || !ItemID.IsValid(run.mainWeapon) {
+      return null;
+    }
+    return GameInstance.GetTransactionSystem(player.GetGame()).GetItemData(player, run.mainWeapon);
+  }
+
+  public static func MainRecord(run: ref<RLRunState>) -> TweakDBID {
+    return ItemID.IsValid(run.mainWeapon) ? ItemID.GetTDBID(run.mainWeapon) : TDBID.None();
+  }
+
+  // The kit's weapons, in the order it gave them: the first is the main.
+  public static func AssignSlots(run: ref<RLRunState>, weapons: array<ItemID>) {
+    run.mainWeapon = ArraySize(weapons) > 0 ? weapons[0] : ItemID.None();
+    run.sidearm = ArraySize(weapons) > 1 ? weapons[1] : ItemID.None();
+    run.mainStep = 0;
+    run.sidearmStep = 0;
+  }
+
+  // Puts both slots' guns at their steps.
+  public static func ApplySteps(player: ref<PlayerPuppet>, run: ref<RLRunState>) {
+    let transactions = GameInstance.GetTransactionSystem(player.GetGame());
+    if ItemID.IsValid(run.mainWeapon) {
+      let main = transactions.GetItemData(player, run.mainWeapon);
+      if IsDefined(main) {
+        RPGManager.ForceItemTier(player, main, RLQuality.TierName(run.mainStep));
+      }
+    }
+    if ItemID.IsValid(run.sidearm) {
+      let side = transactions.GetItemData(player, run.sidearm);
+      if IsDefined(side) {
+        RPGManager.ForceItemTier(player, side, RLQuality.TierName(run.sidearmStep));
+      }
+    }
+  }
+
+  // A Tune-Up: the main weapon's slot `steps` quality steps up.
+  public static func TuneUp(player: ref<PlayerPuppet>, run: ref<RLRunState>, steps: Int32) {
+    run.mainStep = Min(RLQuality.MaxStep(), run.mainStep + steps);
+    RLWeapons.ApplySteps(player, run);
+  }
+
+  // A boss beaten: both slots a step up.
+  public static func ActStep(player: ref<PlayerPuppet>, run: ref<RLRunState>) {
+    run.mainStep = Min(RLQuality.MaxStep(), run.mainStep + 1);
+    run.sidearmStep = Min(RLQuality.MaxStep(), run.sidearmStep + 1);
+    RLWeapons.ApplySteps(player, run);
+  }
+
+  // A trade (or an evolution): the new gun takes the main slot at the slot's
+  // step, and the old one goes. The weapon effects stay: they belong to the
+  // slot.
+  public static func ReplaceMain(player: ref<PlayerPuppet>, run: ref<RLRunState>, record: TweakDBID) -> Bool {
+    let given = RLGear.GiveWeaponItem(player, record, RLQuality.TierName(run.mainStep), false);
+    if !ItemID.IsValid(given) {
+      return false;
+    }
+    let old = run.mainWeapon;
+    run.mainWeapon = given;
+    if ItemID.IsValid(old) {
+      GameInstance.GetTransactionSystem(player.GetGame()).RemoveItem(player, old, 1);
+    }
+    let equip = new GameplayEquipRequest();
+    equip.owner = player;
+    equip.itemID = given;
+    equip.blockUpdateWeaponActiveSlots = true;
+    EquipmentSystem.GetInstance(player).QueueRequest(equip);
+    RLLog("Main weapon: " + RLRewards.ItemName(record) + " at " + RLQuality.DisplayName(run.mainStep) + ".");
+    return true;
+  }
+
+  // The main weapon can evolve now: Legendary, two weapon effects, not
+  // already an iconic.
+  public static func CanEvolve(run: ref<RLRunState>) -> Bool {
+    return ItemID.IsValid(run.mainWeapon) && !RLWeapons.IsIconic(run.mainWeapon)
+      && run.mainStep >= 8 && RLBoons.WeaponEffectCount(run) >= 2;
+  }
+
+  // What evolving still needs, for the Armory's cards ("" once it can, or
+  // when it never will).
+  public static func EvolveRecipe(run: ref<RLRunState>) -> String {
+    if !ItemID.IsValid(run.mainWeapon) || RLWeapons.IsIconic(run.mainWeapon) || RLWeapons.CanEvolve(run) {
+      return "";
+    }
+    return s"Evolves at Legendary with 2 weapon effects (now \(RLQuality.DisplayName(run.mainStep)), \(RLBoons.WeaponEffectCount(run))/2).";
+  }
+
+  // DPS of a record at a quality step, from a throwaway copy of the item
+  // (the way the crafting screen previews items); 0 when unknown.
+  public static func PreviewDPS(player: ref<PlayerPuppet>, record: TweakDBID, step: Int32) -> Float {
+    if !IsDefined(player) || !TDBID.IsValid(record) {
+      return 0.0;
+    }
+    let params: ItemModParams;
+    params.itemID = ItemID.FromTDBID(record);
+    params.quantity = 1;
+    let itemData = Inventory.CreateItemData(params, player);
+    if !IsDefined(itemData) {
+      return 0.0;
+    }
+    CraftingSystem.SetItemLevel(player, itemData);
+    RPGManager.ForceItemTier(player, itemData, RLQuality.TierName(step));
+    return itemData.GetStatValueByType(gamedataStatType.EffectiveDPS);
+  }
+
   // --- Families ------------------------------------------------------------------------------
 
   public static func FamilyOf(itemType: gamedataItemType) -> Int32 {
@@ -106,18 +217,6 @@ public abstract class RLWeapons {
       case 6: return n"blunt";
     }
     return n"";
-  }
-
-  public static func FamilyName(family: Int32) -> String {
-    switch family {
-      case 1: return "PISTOL";
-      case 2: return "RIFLE";
-      case 3: return "HEAVY";
-      case 4: return "PRECISION";
-      case 5: return "BLADE";
-      case 6: return "BLUNT";
-    }
-    return "WEAPON";
   }
 
   // The attribute a weapon class leans on in 2.x (its perk tree).
@@ -192,59 +291,6 @@ public abstract class RLWeapons {
     return RLRewards.ItemTypeName(record) + " · " + RLWeapons.AttributeName(item.ItemType().Type());
   }
 
-  // --- DPS -------------------------------------------------------------------------------------
-
-  // DPS of a record at a quality step, from a throwaway copy of the item
-  // (the way the crafting screen previews items).
-  public static func PreviewDPS(player: ref<PlayerPuppet>, record: TweakDBID, step: Int32) -> Float {
-    if !IsDefined(player) || !TDBID.IsValid(record) {
-      return 0.0;
-    }
-    let params: ItemModParams;
-    params.itemID = ItemID.FromTDBID(record);
-    params.quantity = 1;
-    let itemData = Inventory.CreateItemData(params, player);
-    if !IsDefined(itemData) {
-      return 0.0;
-    }
-    CraftingSystem.SetItemLevel(player, itemData);
-    RPGManager.ForceItemTier(player, itemData, RLQuality.TierName(step));
-    return itemData.GetStatValueByType(gamedataStatType.EffectiveDPS);
-  }
-
-  // The best DPS among V's equipped weapons (fists and the default handgun
-  // don't count), and its name.
-  public static func BestEquippedDPS(player: ref<PlayerPuppet>, out name: String) -> Float {
-    let best = 0.0;
-    let equipment = EquipmentSystem.GetData(player);
-    let items: array<wref<gameItemData>>;
-    GameInstance.GetTransactionSystem(player.GetGame()).GetItemList(player, items);
-    for item in items {
-      if IsDefined(item) && IsDefined(equipment) && RLWeapons.IsRealWeapon(item.GetID()) && equipment.IsEquipped(item.GetID()) {
-        let dps = item.GetStatValueByType(gamedataStatType.EffectiveDPS);
-        if dps > best {
-          best = dps;
-          name = RLRewards.ItemName(ItemID.GetTDBID(item.GetID()));
-        }
-      }
-    }
-    return best;
-  }
-
-  // The highest quality step among V's equipped weapons (-1 when none).
-  public static func BestEquippedStep(player: ref<PlayerPuppet>) -> Int32 {
-    let best = -1;
-    let equipment = EquipmentSystem.GetData(player);
-    let items: array<wref<gameItemData>>;
-    GameInstance.GetTransactionSystem(player.GetGame()).GetItemList(player, items);
-    for item in items {
-      if IsDefined(item) && IsDefined(equipment) && RLWeapons.IsRealWeapon(item.GetID()) && equipment.IsEquipped(item.GetID()) {
-        best = Max(best, RLRewards.ItemStep(item));
-      }
-    }
-    return best;
-  }
-
   public static func IsRealWeapon(itemID: ItemID) -> Bool {
     if !Equals(RPGManager.GetItemCategory(itemID), gamedataItemCategory.Weapon) {
       return false;
@@ -253,129 +299,8 @@ public abstract class RLWeapons {
     return NotEquals(area, gamedataEquipmentArea.BaseFists) && NotEquals(area, gamedataEquipmentArea.VDefaultHandgun);
   }
 
-  // "DPS 312  +38% vs Lexington", or "" when either side is unknown.
-  public static func CompareLine(player: ref<PlayerPuppet>, dps: Float) -> String {
-    if dps <= 0.0 {
-      return "";
-    }
-    let name: String;
-    let current = RLWeapons.BestEquippedDPS(player, name);
-    let line = s"DPS \(RoundF(dps))";
-    if current > 0.0 {
-      let delta = RoundF(100.0 * (dps / current - 1.0));
-      line += (delta >= 0 ? s"  +\(delta)%" : s"  \(delta)%") + " vs " + name;
-    }
-    return line;
-  }
-
-  // --- Run state ---------------------------------------------------------------------------------
-
-  public static func State(run: ref<RLRunState>, itemID: ItemID) -> ref<RLWeaponState> {
-    if IsDefined(run) {
-      for state in run.weapons {
-        if state.itemID == itemID {
-          return state;
-        }
-      }
-    }
-    return null;
-  }
-
-  // Forgets a weapon V no longer has (sold, evolved).
-  public static func Forget(run: ref<RLRunState>, itemID: ItemID) {
-    let state = RLWeapons.State(run, itemID);
-    if IsDefined(state) {
-      ArrayRemove(run.weapons, state);
-    }
-  }
-
-  public static func StateOrNew(run: ref<RLRunState>, itemID: ItemID) -> ref<RLWeaponState> {
-    let state = RLWeapons.State(run, itemID);
-    if !IsDefined(state) {
-      state = new RLWeaponState();
-      state.itemID = itemID;
-      state.record = ItemID.GetTDBID(itemID);
-      ArrayPush(run.weapons, state);
-    }
-    return state;
-  }
-
-  public static func ModCount(run: ref<RLRunState>, itemID: ItemID) -> Int32 {
-    let state = RLWeapons.State(run, itemID);
-    return IsDefined(state) ? ArraySize(state.mods) : 0;
-  }
-
   public static func IsIconic(itemID: ItemID) -> Bool {
     let item = TweakDBInterface.GetItemRecord(ItemID.GetTDBID(itemID));
     return IsDefined(item) && item.TagsContains(n"IconicWeapon");
-  }
-
-  public static func ModSlots(itemID: ItemID) -> Int32 = RLWeapons.IsIconic(itemID) ? 3 : 2
-
-  public static func HasMod(run: ref<RLRunState>, itemID: ItemID, mod: CName) -> Bool {
-    let state = RLWeapons.State(run, itemID);
-    return IsDefined(state) && ArrayContains(state.mods, mod);
-  }
-
-  // --- Quality curve -----------------------------------------------------------------------------
-
-  // A weapon hit's multiplier for how the weapon's quality compares with the
-  // floor's: -5% per step below (down to -30%), +4% per step above (up to +8%).
-  public static func CurveFactor(run: ref<RLRunState>, weapon: wref<WeaponObject>) -> Float {
-    if !IsDefined(weapon) || !IsDefined(run) || !RLWeapons.IsRealWeapon(weapon.GetItemID()) {
-      return 1.0;
-    }
-    let item = weapon.GetItemData();
-    if !IsDefined(item) {
-      return 1.0;
-    }
-    let gap = RLRewards.ItemStep(item) - RLQuality.ExpectedStep(run.Depth(), run.TotalFloors());
-    if gap < 0 {
-      return MaxF(0.7, 1.0 + 0.05 * Cast<Float>(gap));
-    }
-    return 1.0 + 0.04 * Cast<Float>(Min(gap, 2));
-  }
-
-  // --- Evolution ---------------------------------------------------------------------------------
-
-  // Equipped weapons that can evolve now: Legendary or better, both mod slots
-  // filled, not already iconic.
-  public static func Evolvable(player: ref<PlayerPuppet>, run: ref<RLRunState>) -> array<ItemID> {
-    let result: array<ItemID>;
-    let equipment = EquipmentSystem.GetData(player);
-    let items: array<wref<gameItemData>>;
-    GameInstance.GetTransactionSystem(player.GetGame()).GetItemList(player, items);
-    for item in items {
-      if IsDefined(item) && IsDefined(equipment) && RLWeapons.IsRealWeapon(item.GetID()) && equipment.IsEquipped(item.GetID())
-        && !RLWeapons.IsIconic(item.GetID()) && RLRewards.ItemStep(item) >= 8 && RLWeapons.ModCount(run, item.GetID()) >= 2 {
-        ArrayPush(result, item.GetID());
-      }
-    }
-    return result;
-  }
-
-  // Swaps a weapon for an iconic at the same quality, moving its mods over,
-  // and equips it.
-  public static func Evolve(player: ref<PlayerPuppet>, run: ref<RLRunState>, from: ItemID, iconic: TweakDBID, step: Int32) {
-    // The old weapon goes only once the iconic is in hand.
-    let given = RLGear.GiveWeaponItem(player, iconic, RLQuality.TierName(step), false);
-    if !ItemID.IsValid(given) {
-      return;
-    }
-    let old = RLWeapons.State(run, from);
-    let mods: array<CName>;
-    if IsDefined(old) {
-      mods = old.mods;
-      ArrayRemove(run.weapons, old);
-    }
-    GameInstance.GetTransactionSystem(player.GetGame()).RemoveItem(player, from, 1);
-    let equip = new GameplayEquipRequest();
-    equip.owner = player;
-    equip.itemID = given;
-    equip.blockUpdateWeaponActiveSlots = true;
-    EquipmentSystem.GetInstance(player).QueueRequest(equip);
-    let state = RLWeapons.StateOrNew(run, given);
-    state.mods = mods;
-    RLLog("Evolved " + RLRewards.ItemName(ItemID.GetTDBID(from)) + " into " + RLRewards.ItemName(iconic) + ".");
   }
 }

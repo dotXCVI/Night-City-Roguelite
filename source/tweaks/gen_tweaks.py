@@ -2,7 +2,7 @@
 """Generates the mod's TweakXL files and English strings.
 
   r6/tweaks/NightCityRoguelite/enemies.yaml   roguelite variants of every roster NPC
-  r6/tweaks/NightCityRoguelite/boons.yaml     one HUD buff per boon (read from Rewards/Boons.reds)
+  r6/tweaks/NightCityRoguelite/effects.yaml   the Drone Escort's drone
   r6/tweaks/NightCityRoguelite/terminal.yaml  the apartment computer's prompt
   source/localization/en-us.tsv               strings for the ArchiveXL localization
 
@@ -77,68 +77,25 @@ for n in all_names:
 """)
 open(os.path.join(OUT, 'enemies.yaml'), 'w').write(''.join(y).rstrip() + '\n')
 
-# --- Boons ------------------------------------------------------------------------
-# Names, texts and values come from the catalogue in Rewards/Boons.reds; the
-# buff tooltip shows the value range ("+5-14% crit chance.").
-ICONS = {
-    'Kenshin': 'perks_aim', 'Saburo': 'increased_stats_icon', 'Hanako': 'buff_ranged',
-    'Bushido': 'rested_icon', 'Sandevistan': 'sandevistan_buff_icon', 'ShogunsEdge': 'kerenzikov_buff',
-    'HardenedRounds': 'buff_ranged', 'KillChain': 'refreshed_icon', 'Ordnance': 'burning_icon',
-    'QuickFuse': 'combat_booster_icon', 'Suppressive': 'discharge_connector_icon', 'KillCount': 'berserk_buff',
-    'SynapticOverclock': 'memory_booster_icon', 'GhostProtocol': 'cw_frontalcortex_memoryboost',
-    'BlackIce': 'discharge_connector_icon', 'ContagionSeed': 'generic_buff_icon', 'DataLeech': 'memory_booster_icon',
-    'LoasEmbrace': 'cw_frontalcortex_memoryboost',
-    'Bloodlust': 'regeneration_icon', 'ChromeFist': 'buff_melee', 'RedMist': 'berserk_buff',
-    'SubdermalPlating': 'armor_boost', 'VolatileKills': 'burning_icon', 'Cyberpsychosis': 'berserk_buff',
-    'ReinforcedFrame': 'health_booster_icon', 'FastFeet': 'energized_icon', 'RoadEndurance': 'stamina_booster_icon',
-    'ThickSkin': 'armor_boost', 'SecondWind': 'second_wind', 'FamilyTies': 'regeneration_icon',
-    'BountyHunter': 'casino_chip', 'LuckyShot': 'casino_chip', 'FixersCut': 'casino_chip',
-    'StimRig': 'inhaler_buff_icon', 'IronWill': 'immunity_icon', 'AfterlifeLegend': 'generic_buff_icon',
-    'SmartLink': 'perks_aim', 'DaemonPrecision': 'discharge_connector_icon', 'CorporateBounty': 'casino_chip',
-    'ShrapnelFrenzy': 'burning_icon', 'ConvoyArsenal': 'combat_booster_icon', 'ShortCircuit': 'discharge_connector_icon',
-    'DataBroker': 'casino_chip', 'DesertFury': 'rested_icon',
-}
+# --- Effects -----------------------------------------------------------------------
+# Drone Escort (a prototype, off unless RLConfig.DroneEscort): a Militech drone
+# in the player's attitude group, so it fights the arena's enemies. Effects
+# themselves need no records: they show on the run HUD, not the buff bar.
+e = [HEADER.format(title='effects')]
+e.append("""# The Drone Escort effect's drone (Rewards/BoonEffects.reds, RLDrone): a
+# Militech Wyvern on V's side, without loot.
 
-def fmt(v):
-    return str(int(v)) if float(v).is_integer() else str(v)
-
-boons_src = open(os.path.join(ROOT, 'r6/scripts/NightCityRoguelite/Rewards/Boons.reds')).read()
-BOONS = []
-for kind, args in re.findall(r'RLBoons\.(Core|Single|Legendary|Duo)\(list, (.*)\);', boons_src):
-    bid = re.match(r'n"(\w+)"', args).group(1)
-    name, text = re.findall(r'"((?:[^"\\]|\\.)*)"', args.split(', ', 2 if kind != 'Duo' else 3)[-1])[:2]
-    values = re.search(r'\[([0-9., ]+)\]', args)
-    if kind == 'Core' and values:
-        vals = [float(v) for v in values.group(1).split(',')]
-        shown = fmt(vals[0]) if vals[0] == vals[-1] else f'{fmt(min(vals))}-{fmt(max(vals))}'
-        text = text.replace('{v}', shown)
-    BOONS.append((bid, name, text, ICONS[bid]))
-assert len(BOONS) == 44, len(BOONS)
-
-b = [HEADER.format(title='boon buffs')]
-b.append("""# Each boon shows on the HUD buff bar while the run lasts. The effects carry
-# no stats themselves: the scripts apply the bonuses and remove the buffs when
-# the run ends.
-
+NCRoguelite.EscortDrone:
+  $base: Character.bls_se_militech_drone_wyvern_easy
+  baseAttitudeGroup: player
+  sensePreset: Senses.Combat
+  lootDrop: NCRoguelite.EnemyLoot
+  dropsMoneyOnDeath: false
 """)
-for bid, name, desc, icon in BOONS:
-    strings.append((f'NCRoguelite-Boon-{bid}', name))
-    strings.append((f'NCRoguelite-Boon-{bid}-Desc', desc))
-    b.append(f"""NCRoguelite.Boon_{bid}:
-  $base: BaseStatusEffect.BuffStatusEffect
-  gameplayTags: [ Buff, NCRogueliteBoon ]
-  duration: BaseStats.InfiniteDuration
-  maxStacks: BaseStats.InfiniteStacks
-  savable: false
-  isAffectedByTimeDilationPlayer: false
-  uiData:
-    $type: StatusEffectUIData
-    displayName: LocKey#NCRoguelite-Boon-{bid}
-    description: LocKey#NCRoguelite-Boon-{bid}-Desc
-    iconPath: {icon}
-
-""")
-open(os.path.join(OUT, 'boons.yaml'), 'w').write(''.join(b).rstrip() + '\n')
+open(os.path.join(OUT, 'effects.yaml'), 'w').write(''.join(e))
+stale = os.path.join(OUT, 'boons.yaml')
+if os.path.exists(stale):
+    os.remove(stale)
 
 # --- Terminal prompt ---------------------------------------------------------------
 strings.append(('NCRoguelite-Interaction-Terminal', 'Roguelite Terminal'))
@@ -163,4 +120,4 @@ open(os.path.join(OUT, 'terminal.yaml'), 'w').write(''.join(t))
 with open(os.path.join(LOC, 'en-us.tsv'), 'w') as f:
     for k, v in strings:
         f.write(f'{k}\t{v}\n')
-print(f'{len(all_names)} enemy variants, {len(BOONS)} boons, {len(strings)} strings')
+print(f'{len(all_names)} enemy variants, {len(strings)} strings')

@@ -18,7 +18,7 @@ public class RLUnlockDef {
 
 public abstract class RLMeta {
   // Meta unlocks lean towards more choice (Roboquest's basecamp): rerolls,
-  // more options, more doors, a starting pick - with a few small head starts.
+  // more cards, more doors, a starting pick, a second life - not raw power.
   public static func Unlocks() -> array<ref<RLUnlockDef>> {
     let list: array<ref<RLUnlockDef>>;
     ArrayPush(list, RLMeta.Def(n"kit.Netrunner", "Kit: Netrunner", "Cyberdeck, two quickhacks, pistol, Optimization.", 150, n""));
@@ -30,14 +30,12 @@ public abstract class RLMeta {
     ArrayPush(list, RLMeta.Def(n"kit.Wireman", "Kit: Wireman", "Monowire, cyberdeck, a quickhack, pistol, Siphon.", 300, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts I", "Know a guy. +1 free reroll every act.", 200, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Reroll2", "Fixer Contacts II", "Know a better guy. Another free reroll every act.", 450, n"perk.Reroll"));
-    ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Five cards on every reward screen, not four.", 400, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Four cards on every reward screen, not three.", 400, n""));
     ArrayPush(list, RLMeta.Def(n"perk.FourthDoor", "Street Map", "Four doors to pick from, not three.", 350, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.StarterPick", "Quartermaster", "Every run opens with a free gun pick.", 300, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.StarterPick", "Quartermaster", "Every run opens with a free Armory pick.", 300, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.Platinum", "Trauma Platinum", "A second Trauma Team cover every run.", 450, n""));
     ArrayPush(list, RLMeta.Def(n"perk.StreetSmart", "Street Smart", "The Fixer knocks 20% off.", 200, n""));
     ArrayPush(list, RLMeta.Def(n"perk.MedKit", "Med Kit", "Start every run with an Uncommon MaxDoc.", 150, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.HeadStart", "Head Start", "Start every run at level 3.", 300, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Vitality1", "Vitality I", "Start every run with Reinforced Frame.", 120, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Vitality2", "Vitality II", "Reinforced Frame, twice over.", 240, n"perk.Vitality1"));
     ArrayPush(list, RLMeta.Def(n"perk.Attribute1", "Edge I", "+1 to your kit's main attribute.", 100, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Attribute2", "Edge II", "Another +1 to it.", 200, n"perk.Attribute1"));
     ArrayPush(list, RLMeta.Def(n"perk.Attribute3", "Edge III", "Another +1 to it.", 350, n"perk.Attribute2"));
@@ -61,6 +59,25 @@ public abstract class RLMeta {
       }
     }
     return null;
+  }
+
+  // Unlocks that no longer exist (levels and flat health went with the
+  // level-ups): whoever bought one gets the Cred back. Returns the refund.
+  public static func RefundRetired(service: ref<RogueliteService>) -> Int32 {
+    let ids = [n"perk.HeadStart", n"perk.Vitality1", n"perk.Vitality2"];
+    let costs = [300, 120, 240];
+    let refund = 0;
+    let i = 0;
+    while i < ArraySize(ids) {
+      if service.RefundUnlock(ids[i], costs[i]) {
+        refund += costs[i];
+      }
+      i += 1;
+    }
+    if refund > 0 {
+      RLLog(s"Refunded \(refund) Cred for retired unlocks.");
+    }
+    return refund;
   }
 
   public static func CanBuy(service: ref<RogueliteService>, def: ref<RLUnlockDef>) -> Bool {
@@ -97,8 +114,8 @@ public abstract class RLMeta {
     return bonus;
   }
 
-  // Free reroll charges per act (Rewards and doors): one for everyone, more
-  // with the Fixer Contacts unlocks. Out of charges, rerolls cost eddies.
+  // Free reroll charges per act (rewards and doors): one for everyone, more
+  // with the Fixer Contacts unlocks.
   public static func RerollsPerAct(service: ref<RogueliteService>) -> Int32 {
     let charges = 1;
     if RLMeta.PerkActive(service, n"perk.Reroll") { charges += 1; }

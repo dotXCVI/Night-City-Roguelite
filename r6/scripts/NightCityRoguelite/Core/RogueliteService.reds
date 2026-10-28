@@ -23,6 +23,8 @@ public class RogueliteService extends ScriptableService {
   private persistent let m_assistLevel: Int32;
   // The how-it-works guide has been shown (UI/GuidePopup.reds).
   private persistent let m_guideSeen: Bool;
+  // Effects taken in any run: a card for one that isn't here says NEW.
+  private persistent let m_takenBoons: array<CName>;
 
   // Lifetime stats
   private persistent let m_runsStarted: Int32;
@@ -239,6 +241,23 @@ public class RogueliteService extends ScriptableService {
     }
   }
 
+  // Takes an unlock back (one that no longer exists) and refunds it.
+  public func RefundUnlock(id: CName, cost: Int32) -> Bool {
+    if !ArrayRemove(this.m_unlocks, id) {
+      return false;
+    }
+    this.m_cred += cost;
+    return true;
+  }
+
+  public func HasTakenBoon(id: CName) -> Bool = ArrayContains(this.m_takenBoons, id)
+
+  public func MarkBoonTaken(id: CName) {
+    if !ArrayContains(this.m_takenBoons, id) {
+      ArrayPush(this.m_takenBoons, id);
+    }
+  }
+
   // --- Assist mode ------------------------------------------------------------------
 
   public func IsAssistOn() -> Bool = this.m_assistOn
@@ -345,7 +364,7 @@ public class RogueliteService extends ScriptableService {
   public func GetBoonCatalog() -> array<ref<RLBoonDef>> {
     if ArraySize(this.m_boonCatalog) == 0 {
       this.m_boonCatalog = RLBoons.Build();
-      RLLog(s"Boons: \(ArraySize(this.m_boonCatalog)).");
+      RLLog(s"Effects: \(ArraySize(this.m_boonCatalog)).");
     }
     return this.m_boonCatalog;
   }

@@ -122,9 +122,49 @@ The five framework mods are safe to keep, since lots of other mods use them.
 
 ## Things to keep an eye on in this build
 
-The patrons are rebuilt from the ground up: their rewards are now effects
-that change how a fight plays, and they're built to combine. Start a **new**
-roguelite character for this build. Tell me how these feel:
+A big one: the patrons are rebuilt around effects that combine, every kit now
+fights with its main weapon (chrome and decks included), kits cost favors,
+and the terminal is new. Start a **new** roguelite character for this build.
+Tell me how these feel:
+
+**Kits and their main weapon**
+- Try the **Brawler** (Gorilla Arms), **Wireman** (Monowire),
+  **Demolitions** (Projectile Launcher) and **Netrunner** (cyberdeck). Is the
+  chrome installed from the first arena? Send the log if a line says "Chrome
+  refused".
+- **Chrome mods** come from TUNE-UP doors (floors 4, 10, 16). Do they change
+  how the weapon fights? Take Mantis Blades from a Chrome door on a gun kit -
+  they have their own mods now.
+- **Weapon effects read your weapon:** on a launcher they count shells, on a
+  deck they count quickhacks. Do Payload, Hot Barrel, Lucky Round and the
+  rest fire about as often as their cards say?
+- **Evolution:** chrome that evolves (Legendary with two weapon effects)
+  learns a trick - SHOCKWAVE, BLOOD RUSH, LIVE WIRE, BELT FEED, CASCADE.
+  Can you see it happen? The stranger (a ? door from Act 2) sells it early.
+
+**Netrunner**
+- Do you start with one hack that kills and one that controls?
+- After a Tune-Up or a boss, are your hacks still slotted, and a quality
+  higher?
+- Pick a quickhack with a full deck: does it ask which one to swap out, and
+  does BACK work?
+- Do your hacks set off your effects (Overheat BURNS, Ping MARKS, Short
+  Circuit SHOCKS)?
+- Does a Netrunner run keep up with a gun run by Act 2? Do you run out of RAM
+  a lot? (The log counts both, so send it.)
+
+**The terminal**
+- **DATABASE** (home, the door picker, and F7 in a fight): can you find what
+  any word on a card means? Does it look like the cards do in a run?
+- **UPGRADES:** switch a row's take and buy a rank. Does it read well? Did
+  your old unlocks carry over?
+- **Favors:** beat a boss and a fixer owes you one - spend it on a kit at the
+  armory.
+
+**Trips**
+- Going to a fight, the world should glitch, then the screen goes black with
+  the arena's name tearing in red and blue, then the arena glitches back in.
+  Do you see all three? Does the black hide the loading pop-in?
 
 **Effects and combos**
 - Every effect speaks in keywords (MARK, SHOCK, BURN, BLAST, MOMENTUM...).
@@ -135,49 +175,18 @@ roguelite character for this build. Tell me how these feel:
 - Hover a card on a patron screen: the effects it BUILDS ON light up in the
   YOUR BUILD strip. Does that help you plan?
 - Did you get a duo, a legendary or a favour (three effects from one patron)?
-- Dash-based effects (Kinetic Dash, Convoy, Burnout, Slipstream): do they
-  fire on every dash?
-
-**Kits and chrome**
-- Try the **Brawler**, **Wireman**, **Demolitions** and **Netrunner**: their
-  main weapon is chrome (Gorilla Arms, Monowire, the Projectile Launcher, the
-  cyberdeck). Is it installed from the first arena? Do TUNE-UP doors offer
-  its mods (KNUCKLES, CABLE, ROUND, ICEBREAKER...) and do they change how it
-  fights? Send the log if a line says "Chrome refused".
-- **Netrunner:** do you start with one hack that kills and one that controls?
-  After a Tune-Up, are your hacks still slotted, and a quality higher? Pick a
-  quickhack with a full deck: does it ask which one to swap out, and does
-  BACK work? Does the run feel as strong as a gun run by Act 2 - and do you
-  run out of RAM a lot? (The log counts both.)
-- **Weapon effects on chrome:** on a launcher or a deck, do Payload, Hot
-  Barrel and the rest fire about as often as their cards say?
-- **Evolution:** if you evolve chrome (or buy the stranger's PROTOTYPE), does
-  its trick show - SHOCKWAVE, BLOOD RUSH, LIVE WIRE, BELT FEED, CASCADE?
-- **Favors:** beat a boss and the fixers owe you one - check the armory.
-- **Terminal UPGRADES:** switch a row's take and buy a rank. Does it read
-  well? Did your old unlocks carry over?
-
-**Weapons**
-- Your kit's main weapon takes every Armory reward.
-  Did Tune-Ups feel worth it (the card shows DPS before and after)?
-- Did you trade guns, and did your weapon effects come along?
-- Does the sidearm stepping up after each boss feel like enough?
 
 **Run shape**
-- **HOT doors** (pulsing): one in Act 1, two later, harder, and they pay double. Did they
-  show up at good moments? Were they worth it?
+- **HOT doors** (pulsing): one in Act 1, two later, harder, and they pay
+  double. Did they show up at good moments? Were they worth it?
 - **Trauma Team:** you start every fight at full health and have one cover a
   run. Did it save a run? Did it make dying feel fair?
-- No level-ups any more - one pick a floor. Too few picks, or cleaner?
-- The **weather**: does each arena look different now (rain, fog, smog,
-  storms)? Tell me if one always looks the same.
+- Did Tune-Ups feel worth it (the card shows DPS before and after)? Did you
+  trade guns, and did your weapon effects come along?
 - **Overall:** did your build come together by the Act 2 boss? Was Act 3
   harder in a good way?
 
 **The basics**
 - Does dying play out properly: V goes down, the screen fades, and you come to
   at home?
-- Do trips between arenas glitch out and back in, and does the black hide
-  all the loading pop-in?
-- Open the terminal's **DATABASE**: can you find what any card's words mean?
 - Did any story phone call (for example from Judy) get through during a run?

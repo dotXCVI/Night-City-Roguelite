@@ -207,6 +207,8 @@ public class RogueliteSystem extends ScriptableSystem {
 
   public func GetCombat() -> ref<RLCombatState> = this.m_combat
 
+  public func GetMusic() -> ref<RLMusic> = this.m_music
+
   // A fight is on: effects and keywords act.
   public func IsFighting() -> Bool = IsDefined(this.m_run) && Equals(this.m_state, RLState.InEncounter)
 
@@ -1264,6 +1266,7 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(player) || !IsDefined(this.m_run) || !IsDefined(arena) || !Equals(this.m_state, RLState.Traveling) {
       return;
     }
+    this.m_music.Silence();
     this.m_arenas.StopWalls();
     this.m_spawner.DeleteAll();
     this.m_apartment.StopLeash();
@@ -2352,7 +2355,7 @@ public class RogueliteSystem extends ScriptableSystem {
 
   private func ArriveHome() {
     let player = GetPlayer(this.GetGameInstance());
-    this.m_music.StopEverything(player);
+    this.m_music.Release(player);
     this.m_spawner.Abort();
     this.m_spawner.DeleteAll();
     this.m_arenas.StopWalls();

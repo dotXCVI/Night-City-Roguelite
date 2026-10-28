@@ -80,7 +80,8 @@ roguelite character for this build.
 - **Music doubling after the Act 1 boss:** Royce's boss loop is now ended with its own outro.
 - **The Junkyard's locked garage:** enemies no longer spawn in it, and an enemy that can't be moved out of somewhere is removed (and counts as killed) right away instead of after two minutes.
 - **Logs:** reward kinds and the run state are named properly in the telemetry and bug marks; every fight logs how much damage each effect did, and with a deck how many quickhacks you uploaded and how long you sat short of RAM.
-- **Music left playing after a run** is stopped when V gets home, along with every score and the pocket radio.
+- **Music stacking between arenas:** every trip ends every score the mod can play, not just the last one, and cuts any outro still ringing once the screen goes black, so each arena starts in silence.
+- **Your own pocket radio** no longer plays on top of the score. It's switched off for the run and comes back when you get home. Turn it on mid-run and your station replaces the score until you turn it off.
 - **Stuck in the floor on arrival:** V is placed again once the arena's ground has loaded, before the fade-in.
 - **Glitch transitions actually show:** the game's glitch played under the black, where nobody could see it. Trips now glitch the world first, then the black comes down with the destination's name tearing in red and blue, and the arena glitches back in as it lifts.
 - **Enemies that wouldn't move** are now moved with the AI's own teleport as well.

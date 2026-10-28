@@ -165,6 +165,8 @@ Tell me how these feel:
 - Going to a fight, the world should glitch, then the screen goes black with
   the arena's name tearing in red and blue, then the arena glitches back in.
   Do you see all three? Does the black hide the loading pop-in?
+- Music: one track per arena, never two at once. Start a run with your pocket
+  radio on - it should go quiet for the run and come back when you get home.
 
 **Effects and combos**
 - Every effect speaks in keywords (MARK, SHOCK, BURN, BLAST, MOMENTUM...).

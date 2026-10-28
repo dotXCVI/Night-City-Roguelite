@@ -509,6 +509,11 @@ set for regular fights (tense until the last wave in light fights), the
 Konpeki heist or Kang Tao sets for heavy and elite fights, and story boss music
 on boss floors (Royce, the mall fight, Adam Smasher).
 
+Nothing carries into the next arena: every trip ends the music over the
+glitch and cuts anything still ringing once the screen is black. V's own
+pocket radio is switched off for the run and comes back at home; turn it on
+mid-run and your station plays instead of the score until you turn it off.
+
 ### Time and weather
 
 Each arena gets a **look** on the way in - a time of day and weather picked

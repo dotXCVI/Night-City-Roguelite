@@ -47,6 +47,10 @@ public class RLTrackedEnemy {
   public let done: Bool;
   public let dead: Bool;
   public let corpsePasses: Int32;
+  // A recall is checked a few seconds later: an enemy that didn't move (the
+  // teleport doesn't take behind some doors) is removed.
+  public let recallFrom: Vector4;
+  public let recallCheckAt: Float;
 }
 
 public class RLEncounterPlan {
@@ -89,6 +93,7 @@ public class RLWaveSpawner extends RLDelayTarget {
   private let m_plan: ref<RLEncounterPlan>;
   private let m_center: Vector4;
   private let m_radius: Float;
+  private let m_avoid: array<Vector4>;
   private let m_wave: Int32;
   private let m_tracked: array<ref<RLTrackedEnemy>>;
   private let m_time: Float;
@@ -125,6 +130,7 @@ public class RLWaveSpawner extends RLDelayTarget {
     this.m_finishing = false;
     this.m_center = arena.position;
     this.m_radius = arena.radius;
+    this.m_avoid = arena.avoid;
     this.m_plan = plan;
     this.m_wave = -1;
     this.m_time = 0.0;
@@ -352,6 +358,15 @@ public class RLWaveSpawner extends RLDelayTarget {
     return false;
   }
 
+  private func IsAvoided(point: Vector4) -> Bool {
+    for spot in this.m_avoid {
+      if Vector4.Distance(point, Vector4(spot.X, spot.Y, spot.Z, 1.0)) < spot.W {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private func TryPoint(reference: Vector4, hasPlayer: Bool, strict: Bool, out result: Vector4) -> Bool {
     let navigation = GameInstance.GetNavigationSystem(GetGameInstance());
     let usable = MaxF(8.0, this.m_radius - 4.0);
@@ -368,7 +383,7 @@ public class RLWaveSpawner extends RLDelayTarget {
       return false;
     }
     let point = found.point;
-    if Vector4.Distance2D(point, this.m_center) > usable + 1.0 {
+    if Vector4.Distance2D(point, this.m_center) > usable + 1.0 || this.IsAvoided(point) {
       return false;
     }
     if AbsF(point.Z - reference.Z) > (strict ? 4.0 : 8.0) {
@@ -559,6 +574,24 @@ public class RLWaveSpawner extends RLDelayTarget {
     }
     let distance = Vector4.Distance(position, player.GetWorldPosition());
 
+    // A recall that didn't take: the enemy can't be reached, so it goes (and
+    // counts as killed).
+    if enemy.recallCheckAt > 0.0 && this.m_time >= enemy.recallCheckAt {
+      enemy.recallCheckAt = 0.0;
+      if Vector4.Distance(position, enemy.recallFrom) < 2.0 {
+        RLLog(s"An enemy couldn't be moved from (\(position.X), \(position.Y), \(position.Z)) - removed.");
+        enemy.done = true;
+        enemy.dead = true;
+        enemy.corpsePasses = 2;
+        entities.DeleteEntity(enemy.id);
+        this.m_lastProgress = this.m_time;
+        if IsDefined(this.m_system) {
+          this.m_system.OnEnemyKilled(enemy, null, true);
+        }
+        return true;
+      }
+    }
+
     // Back inside if it wandered out of the arena.
     if Vector4.Distance2D(position, this.m_center) > this.m_radius + 2.0 {
       enemy.outsideTime += 1.0;
@@ -709,6 +742,8 @@ public class RLWaveSpawner extends RLDelayTarget {
     }
     GameInstance.GetTeleportationFacility(puppet.GetGame()).Teleport(puppet, point, Vector4.ToRotation(player.GetWorldPosition() - point));
     enemy.bestDistance = Vector4.Distance(point, player.GetWorldPosition());
+    enemy.recallFrom = from;
+    enemy.recallCheckAt = this.m_time + 3.0;
     RLLog(s"Brought an enemy back (\(reason)): (\(from.X), \(from.Y), \(from.Z)) -> (\(point.X), \(point.Y), \(point.Z)).");
     RLWaveSpawner.ChargeAt(puppet, player);
   }

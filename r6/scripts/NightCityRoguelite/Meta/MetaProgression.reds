@@ -30,7 +30,7 @@ public abstract class RLMeta {
     ArrayPush(list, RLMeta.Def(n"kit.Wireman", "Kit: Wireman", "Monowire, cyberdeck, a quickhack, pistol, Siphon.", 300, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts I", "Know a guy. +1 free reroll every act.", 200, n""));
     ArrayPush(list, RLMeta.Def(n"perk.Reroll2", "Fixer Contacts II", "Know a better guy. Another free reroll every act.", 450, n"perk.Reroll"));
-    ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Four cards on every reward screen.", 400, n""));
+    ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Five cards on every reward screen, not four.", 400, n""));
     ArrayPush(list, RLMeta.Def(n"perk.FourthDoor", "Street Map", "Four doors to pick from, not three.", 350, n""));
     ArrayPush(list, RLMeta.Def(n"perk.StarterPick", "Quartermaster", "Every run opens with a free gun pick.", 300, n""));
     ArrayPush(list, RLMeta.Def(n"perk.StreetSmart", "Street Smart", "The Fixer knocks 20% off.", 200, n""));

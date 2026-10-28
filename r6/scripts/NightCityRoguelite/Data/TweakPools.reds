@@ -187,6 +187,11 @@ public class RLTweakPools {
     if !IsDefined(item.ItemType()) || !IsDefined(item.ItemCategory()) {
       return;
     }
+    // Vendors also sell crafting specs that carry the item's type and name
+    // ("Bait" the recipe, not the quickhack): giving one adds nothing.
+    if IsDefined(item as ItemRecipe_Record) || IsDefined(item as RecipeItem_Record) {
+      return;
+    }
     let itemType = item.ItemType().Type();
     let category = item.ItemCategory().Type();
     let entry = new RLItemEntry();

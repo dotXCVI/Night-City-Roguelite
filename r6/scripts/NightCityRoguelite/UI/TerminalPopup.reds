@@ -71,7 +71,7 @@ public class RLTerminalPopup extends InGamePopup {
     let header = InGamePopupHeader.Create();
     switch this.m_view {
       case RLTerminalView.DoorPicker:
-        this.m_container.SetSize(Vector2(2200.0, 1180.0));
+        this.m_container.SetSize(Vector2(2200.0, 1200.0));
         header.SetTitle(ArraySize(this.m_doors) == 1 ? "NEXT FIGHT" : "PICK YOUR FIGHT");
         header.SetFluffRight(this.m_summary);
         break;
@@ -88,6 +88,9 @@ public class RLTerminalPopup extends InGamePopup {
     header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
+    if Equals(this.m_view, RLTerminalView.DoorPicker) {
+      footer.SetFluffText("EVERY WIN ALSO PAYS EDDIES AND A LEVEL-UP");
+    }
     footer.Reparent(this);
 
     this.m_content = InGamePopupContent.Create();
@@ -179,7 +182,7 @@ public class RLTerminalPopup extends InGamePopup {
   private func AddDoorCard(parent: ref<inkCompoundWidget>, door: ref<RLDoor>, index: Int32, width: Float) {
     let isPatron = Equals(door.category, RLRewardCategory.Boons) && IsNameValid(door.patron);
     let accent = door.boss ? n"MainColors.Red" : (isPatron ? RLPatrons.Accent(door.patron) : RLIcons.CategoryAccent(door.category));
-    let card = RLCard.Create(StringToName(s"door_\(index)"), width, 700.0, accent);
+    let card = RLCard.Create(StringToName(s"door_\(index)"), width, 740.0, accent);
     // The art is where the fight is; the badge is what it pays.
     card.SetCompact();
     card.SetBanner(IsDefined(RLArenas.Get(door.arena)) && NotEquals(door.category, RLRewardCategory.Event) ? RLArts.Arena(door.arena) : RLArts.Category(door.category));
@@ -192,17 +195,17 @@ public class RLTerminalPopup extends InGamePopup {
     card.SetKicker(door.boss ? "BOSS" : RLRewards.ThreatName(door.threat));
     card.SetPips(door.threat, 3, RLIcons.ThreatAccent(door.threat));
     card.SetTitle(RLRewards.DoorTitle(door));
+    // What it pays, plainly; then the flavour.
+    let run = IsDefined(this.m_system) ? this.m_system.GetRun() : null;
+    card.AddLine(RLRewards.DoorPromise(door, IsDefined(run) ? run.offerCount : 3), n"MainColors.ActiveWhite", 26);
     if isPatron {
       let patron = RLPatrons.Get(door.patron);
-      card.AddLine(IsDefined(patron) ? patron.tagline : "", n"MainColors.Blue", 28);
+      card.AddLine(IsDefined(patron) ? patron.tagline : "", n"MainColors.Blue", 24);
     } else {
-      card.AddLine(RLRewards.CategoryDescription(door.category), n"MainColors.Blue", 28);
-    }
-    if Equals(door.category, RLRewardCategory.Bounty) {
-      card.AddLine("Pays in " + RLPatrons.Name(door.patron) + " boons", n"MainColors.Grey", 26);
+      card.AddLine(RLRewards.CategoryDescription(door.category), n"MainColors.Blue", 24);
     }
     if NotEquals(door.objective, RLObjectiveKind.None) {
-      card.AddLine(RLObjectives.Name(door.objective), n"MainColors.Yellow", 28);
+      card.AddLine(RLObjectives.Name(door.objective) + " - " + RLObjectives.Description(door.objective), n"MainColors.Yellow", 22);
     }
     let arena = RLArenas.Get(door.arena);
     if IsDefined(arena) {

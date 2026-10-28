@@ -760,7 +760,7 @@ public class RogueliteSystem extends ScriptableSystem {
     let player = GetPlayer(game);
     this.m_bugMarks += 1;
     RLLog(s"===== BUG MARK #\(this.m_bugMarks) =====");
-    let state = EnumValueToString("RLState", Cast<Int64>(EnumInt(this.m_state)));
+    let state = RLTelemetry.StateName(this.m_state);
     let arena = this.m_arenas.GetArena();
     RLLog(s"State \(state), popup open \(this.m_popupOpen), countdown \(this.m_countdown) (\(NameToString(this.m_countdownAction))), dying \(this.m_dying).");
     if IsDefined(player) {
@@ -996,7 +996,7 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_pacing.ResetRun();
     this.m_run.rerollsPerAct = RLMeta.RerollsPerAct(service);
     this.m_run.rerolls = this.m_run.rerollsPerAct;
-    this.m_run.offerCount = RLMeta.PerkActive(service, n"perk.FourthChoice") ? 4 : 3;
+    this.m_run.offerCount = RLMeta.PerkActive(service, n"perk.FourthChoice") ? 5 : 4;
     ArrayClear(this.m_offers);
     ArrayClear(this.m_doors);
     this.m_lastArena = n"";

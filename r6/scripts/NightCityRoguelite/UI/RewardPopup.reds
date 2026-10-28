@@ -82,7 +82,7 @@ public class RLRewardPopup extends InGamePopup {
     cards.Reparent(column);
 
     let count = ArraySize(this.m_offers);
-    let cardWidth = count > 4 ? 400.0 : (count > 3 ? 470.0 : 540.0);
+    let cardWidth = count > 4 ? 370.0 : (count > 3 ? 470.0 : 540.0);
     let i = 0;
     while i < count {
       this.BuildCard(cards, this.m_offers[i], i, cardWidth);
@@ -159,6 +159,9 @@ public class RLRewardPopup extends InGamePopup {
     card.SetTitleSize(40);
     if StrLen(offer.dpsLine) > 0 {
       card.AddLine(offer.dpsLine, n"MainColors.Yellow", 28);
+    }
+    if RLItemText.Wants(offer.kind) {
+      RLItemText.AddTo(card, offer.record, n"MainColors.ActiveWhite", 24, 3);
     }
     if StrLen(offer.description) > 0 {
       let warning = offer.disabled || (Equals(offer.kind, RLOfferKind.Cyberware) && offer.amount > 0);

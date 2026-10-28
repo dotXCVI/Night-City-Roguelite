@@ -374,6 +374,22 @@ public class RLCard extends CustomButton {
     return line;
   }
 
+  // A line of the game's own text with {float_0}-style values filled in from
+  // a localization data package (item effects, like the inventory tooltip).
+  public func AddParamLine(const text: String, data: ref<UILocalizationDataPackage>, color: CName, size: Int32) -> ref<inkText> {
+    let line = RLUI.WrappedText(text, size, color, this.m_width - 56.0);
+    if IsDefined(data) {
+      data.EnableNotReplacedWorkaround();
+      if data.GetParamsCount() > 0 {
+        // As the game's perk screen does it.
+        line.SetText(text + "{__empty__}");
+        line.SetTextParameters(data.GetTextParams());
+      }
+    }
+    line.Reparent(this.m_lines);
+    return line;
+  }
+
   // A line led by a small icon from an atlas (a faction logo).
   public func AddIconLine(atlas: ResRef, part: CName, const text: String, color: CName, size: Int32) {
     let row = RLUI.HPanel(0.0);

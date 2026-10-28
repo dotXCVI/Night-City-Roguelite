@@ -88,7 +88,7 @@ public class RLRunState {
     run.kit = kit;
     run.act = 1;
     run.floor = 1;
-    run.offerCount = 3;
+    run.offerCount = 4;
     run.banishes = 1;
     run.gigStyle = -1;
     return run;

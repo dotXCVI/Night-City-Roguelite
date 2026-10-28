@@ -28,6 +28,9 @@ public class RLArenaDef {
   // What the ground is like, shown on the door: OPEN GROUND favours long
   // guns, CLOSE QUARTERS shotguns and blades.
   public let terrain: String;
+  // Spots enemies must never spawn in or be brought to (x, y, z, radius in
+  // w): rooms the navmesh reaches through a locked door.
+  public let avoid: array<Vector4>;
 }
 
 public abstract class RLArenas {
@@ -51,6 +54,8 @@ public abstract class RLArenas {
     ArrayPush(list, RLArenas.Def(n"junkyard", "Junkyard", "Badlands",
       Vector4(1374.8585, -1674.9177, 49.2959, 1.0), -173.32, 40.0,
       [gamedataAffiliation.Wraiths, gamedataAffiliation.Scavengers], "MIXED"));
+    // The locked garage on the west side.
+    ArrayPush(list[ArraySize(list) - 1].avoid, Vector4(1360.0, -1682.1, 49.3, 7.0));
     ArrayPush(list, RLArenas.Def(n"windfarm", "Wind Farm", "Badlands",
       Vector4(3810.4736, -1560.9727, 130.1068, 1.0), -11.6, 45.0,
       [gamedataAffiliation.Wraiths, gamedataAffiliation.Militech], "OPEN GROUND"));

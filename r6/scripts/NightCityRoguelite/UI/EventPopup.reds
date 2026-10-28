@@ -94,6 +94,9 @@ public class RLEventPopup extends InGamePopup {
     if StrLen(choice.text) > 0 {
       card.AddLine(choice.text, n"MainColors.Grey", 28);
     }
+    if IsDefined(choice.offer) && RLItemText.Wants(choice.offer.kind) {
+      RLItemText.AddTo(card, choice.offer.record, n"MainColors.ActiveWhite", 24, 2);
+    }
     let affordable = !IsDefined(this.m_system) || this.m_system.GetEventChoiceAffordable(choice);
     if !affordable && !choice.disabled && choice.price > 0 {
       card.AddLine(s"Need \(choice.price) eddies", n"MainColors.Red", 26);

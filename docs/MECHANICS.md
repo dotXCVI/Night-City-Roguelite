@@ -27,7 +27,7 @@ short version; [TESTING.md](../TESTING.md) is the tester guide.
    ringed by a solid wall that lights up as red NCPD holo-tape as you walk up
    to it.
 5. Clearing a wave refills part of your ammo and one health charge. Clear the
-   last one and the reward screen opens right there: pick one of three rewards
+   last one and the reward screen opens right there: pick one of four rewards
    of that fight's type, then a **level-up** (see Level-ups).
 6. Then pick your next fight by its reward, Hades-style, and travel straight
    there (V patches up on the way). Each door shows the reward type, the
@@ -264,7 +264,7 @@ more for every run lost while it's on (up to 80%). It never changes rewards.
 
 Cred buys kits (in the armory) and upgrades (at the terminal) that mostly
 widen choice rather than raw power:
-rerolls (Fixer Contacts I/II), a fourth reward card (Wide Net), a fourth door
+rerolls (Fixer Contacts I/II), a fifth reward card (Wide Net), a fourth door
 (Street Map), an Armory pick at the start of every run (Quartermaster), Fixer
 discounts (Street Smart), plus a few head starts (Med Kit, Head Start,
 Vitality, Edge). Kits: Solo and Blade from the start; Netrunner, Marksman,

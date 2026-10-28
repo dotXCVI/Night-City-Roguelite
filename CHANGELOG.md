@@ -3,6 +3,19 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## Unreleased (dev branch)
+
+Fixes from the first v0.0.18 run.
+
+- **Eddies:** NCPD bounties no longer pay out for roguelite characters. Most gang members carry one, which flooded runs with eddies - enough to buy out the Fixer by floor 5.
+- **Four cards on every reward screen** (five with Wide Net, which now adds the fifth). Level-ups stay at three.
+- **Doors say what they pay:** "Pick 1 of 4 quickhacks", "Pick 1 of 4 Militech boons", "No fight - MISTY'S READING", and the objective spelled out.
+- **Cyberware, quickhack, grenade and OS cards show what the item does,** in the game's own tooltip words and numbers. MaxDoc and grenade upgrades say what they change.
+- **Quickhacks that didn't install:** vendors also list crafting specs, and one of those ("Bait") could be offered and given instead of the quickhack. Specs are out of the pools.
+- **Music doubling after the Act 1 boss:** Royce's boss loop is now ended with its own outro.
+- **The Junkyard's locked garage:** enemies no longer spawn in it, and an enemy that can't be moved out of somewhere is removed (and counts as killed) right away instead of after two minutes.
+- **Logs:** reward kinds and the run state are named properly in the telemetry and bug marks.
+
 ## v0.0.18 - Runs that build, the armory (2026-10-27)
 
 A big content patch - runs that build - plus a polish pass on home and the menus. Start a new roguelite character for this build.

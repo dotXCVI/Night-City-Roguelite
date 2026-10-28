@@ -34,6 +34,9 @@ public class RLMusicSet {
   public let combat: CName;
   public let cooldown: CName;
   public let boss: CName;
+  // Ends the boss cue when it comes from another combo than the set (Royce's
+  // boss loop isn't stopped by the Maelstrom set's stop event).
+  public let bossStop: CName;
 
   public static func Make(start: CName, stop: CName, alerted: CName, combat: CName, cooldown: CName, boss: CName) -> ref<RLMusicSet> {
     let set = new RLMusicSet();
@@ -100,6 +103,8 @@ public class RLMusic extends IScriptable {
   // Stop events of every set started this session: stopping sends them all,
   // so a set can never be left playing under the next one.
   private let m_stops: array<CName>;
+  // A boss cue from another combo that the next stop must end.
+  private let m_pendingBossStop: CName;
 
   // --- Sets ------------------------------------------------------------------------------
 
@@ -134,8 +139,11 @@ public class RLMusic extends IScriptable {
 
   public static func BossSet(act: Int32) -> ref<RLMusicSet> {
     if act <= 1 {
-      // Every state from the one Maelstrom combo, so its stop event ends it all.
-      return RLMusicSet.Make(n"mus_q003_maelstrom_START_silent", n"mus_q003_maelstrom_STOP_silent", n"mus_q003_maelstrom_alerted", n"mus_q003_maelstrom_combat", n"mus_q003_maelstrom_combat_cooldown", n"mus_q003_royce_boss_loop");
+      // The Maelstrom combo, with Royce's boss loop for the boss wave (ended by
+      // its own outro).
+      let royce = RLMusicSet.Make(n"mus_q003_maelstrom_START_silent", n"mus_q003_maelstrom_STOP_silent", n"mus_q003_maelstrom_alerted", n"mus_q003_maelstrom_combat", n"mus_q003_maelstrom_combat_cooldown", n"mus_q003_royce_boss_loop");
+      royce.bossStop = n"mus_q003_royce_boss_outro";
+      return royce;
     }
     if act == 2 {
       return RLMusicSet.Make(n"mus_q110_mall_START_silent", n"mus_q110_mall_STOP_silent", n"mus_q110_mall_alerted", n"mus_q110_mall_combat", n"mus_q110_mall_cooldown", n"mus_q110_mall_02_boss_combat");
@@ -179,6 +187,7 @@ public class RLMusic extends IScriptable {
     }
     if isBossWave && IsNameValid(this.m_set.boss) {
       this.Play(this.m_set.boss);
+      this.m_pendingBossStop = this.m_set.bossStop;
     } else if this.m_lightUntilLastWave && wave < waves {
       this.Play(this.m_set.alerted);
     } else {
@@ -205,6 +214,8 @@ public class RLMusic extends IScriptable {
       for stop in this.m_stops {
         this.Play(stop);
       }
+      this.Play(this.m_pendingBossStop);
+      this.m_pendingBossStop = n"";
     }
     this.m_playing = false;
   }

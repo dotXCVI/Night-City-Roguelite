@@ -6,7 +6,9 @@
 //   - clearing a wave refills part of every ammo type and one health charge;
 //   - bodies are emptied (only clothes stay), so there is nothing to search;
 //   - anything V picks up in an arena anyway (junk, weapons, consumables) is
-//     taken away again right after.
+//     taken away again right after;
+//   - NCPD bounties on gang members don't pay: eddies come from the run alone
+//     (Run/Fixer.reds), or the Fixer's prices mean nothing.
 // Health items and grenades are gear upgrades instead (Player/Consumables.reds,
 // Rewards/RewardSystem.reds).
 // -----------------------------------------------------------------------------
@@ -187,4 +189,18 @@ protected cb func OnItemAddedToInventory(evt: ref<ItemAddedEvent>) -> Bool {
     }
   }
   return result;
+}
+
+// Roguelite characters collect no NCPD bounties (the game pays them for most
+// gang kills, which flooded runs with eddies).
+@wrapMethod(BountyManager)
+public final static func CompleteBounty(target: wref<NPCPuppet>) {
+  if IsDefined(target) {
+    let system = RogueliteSystem.Get(target.GetGame());
+    if IsDefined(system) && system.IsRoguelitePlaythrough() {
+      target.SetBountyAwarded(true);
+      return;
+    }
+  }
+  wrappedMethod(target);
 }

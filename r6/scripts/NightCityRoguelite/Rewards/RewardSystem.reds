@@ -139,6 +139,24 @@ public abstract class RLRewards {
     return RLRewards.CategoryName(door.category);
   }
 
+  // What a door pays, in plain words ("Pick 1 of 4 quickhacks").
+  public static func DoorPromise(door: ref<RLDoor>, count: Int32) -> String {
+    let pick = s"Pick 1 of \(count) ";
+    switch door.category {
+      case RLRewardCategory.Armory: return pick + "guns, upgrades and mods for yours, or grenades.";
+      case RLRewardCategory.Chrome: return pick + "cyberware, installed on the spot.";
+      case RLRewardCategory.Daemons: return pick + "quickhacks.";
+      case RLRewardCategory.Training: return pick + "perks.";
+      case RLRewardCategory.Iconic: return pick + "iconic weapons.";
+      case RLRewardCategory.Workshop: return "Evolve or upgrade a weapon, mod it, or upgrade your MaxDoc.";
+      case RLRewardCategory.Boons: return pick + RLPatrons.Name(door.patron) + " boons.";
+      case RLRewardCategory.Bounty: return "One cyberpsycho. Pays big in eddies, plus a " + RLPatrons.Name(door.patron) + " boon pick.";
+      case RLRewardCategory.Event: return "No fight - " + RLEvents.Title(door.event);
+      case RLRewardCategory.System: return "Pick your operating system. It unlocks Overdrive, your ultimate.";
+    }
+    return "";
+  }
+
   // What a door's reward is, where the name alone doesn't say.
   public static func CategoryDescription(category: RLRewardCategory) -> String {
     switch category {
@@ -916,6 +934,7 @@ public abstract class RLRewards {
     offer.step = RLQuality.StepOfRecord(offer.record);
     offer.title = RLRewards.ItemName(offer.record);
     offer.subtitle = RLQuality.DisplayName(RLQuality.StepOfRecord(ladder[current])) + " > " + RLQuality.DisplayName(offer.step);
+    offer.description = "Your MaxDoc heals more.";
     offer.excitement = 1;
     return offer;
   }
@@ -938,6 +957,7 @@ public abstract class RLRewards {
     offer.step = RLQuality.StepOfRecord(record);
     offer.title = RLRewards.ItemName(record);
     offer.subtitle = RLQuality.DisplayName(step) + " > " + RLQuality.DisplayName(offer.step);
+    offer.description = "Replaces your grenade.";
     offer.excitement = 1;
     ArrayPush(offer.tags, n"explosive");
     return offer;

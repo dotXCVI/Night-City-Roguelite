@@ -128,6 +128,9 @@ public class RLFixerPopup extends InGamePopup {
     if StrLen(description) > 0 {
       card.AddLine(description, n"MainColors.Grey", 22);
     }
+    if !item.contact && !item.sell && IsDefined(item.offer) && RLItemText.Wants(item.offer.kind) {
+      RLItemText.AddTo(card, item.offer.record, n"MainColors.ActiveWhite", 22, 1);
+    }
     if !item.contact && !item.sell && IsDefined(item.offer) && item.offer.step > 0 {
       card.SetQuality(item.offer.step);
     }

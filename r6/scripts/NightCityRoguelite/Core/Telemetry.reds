@@ -27,6 +27,47 @@
 module NightCityRoguelite
 
 public abstract class RLTelemetry {
+  // Script enums have no names at runtime (EnumValueToString returns "").
+  public static func StateName(state: RLState) -> String {
+    switch state {
+      case RLState.Inactive: return "Inactive";
+      case RLState.AwaitingTakeover: return "AwaitingTakeover";
+      case RLState.Hub: return "Hub";
+      case RLState.Preparing: return "Preparing";
+      case RLState.RunHome: return "RunHome";
+      case RLState.Traveling: return "Traveling";
+      case RLState.Deploying: return "Deploying";
+      case RLState.InEncounter: return "InEncounter";
+      case RLState.Cleared: return "Cleared";
+      case RLState.Flatlined: return "Flatlined";
+      case RLState.Ending: return "Ending";
+    }
+    return IntToString(EnumInt(state));
+  }
+
+  // Script enums have no names at runtime (EnumValueToString returns "").
+  public static func KindName(kind: RLOfferKind) -> String {
+    switch kind {
+      case RLOfferKind.Weapon: return "Weapon";
+      case RLOfferKind.Iconic: return "Iconic";
+      case RLOfferKind.Cyberware: return "Cyberware";
+      case RLOfferKind.Quickhack: return "Quickhack";
+      case RLOfferKind.Boon: return "Boon";
+      case RLOfferKind.Perk: return "Perk";
+      case RLOfferKind.Grenade: return "Grenade";
+      case RLOfferKind.WeaponUpgrade: return "WeaponUpgrade";
+      case RLOfferKind.HealthUpgrade: return "HealthUpgrade";
+      case RLOfferKind.WeaponMod: return "WeaponMod";
+      case RLOfferKind.Evolve: return "Evolve";
+      case RLOfferKind.Attribute: return "Attribute";
+      case RLOfferKind.Capacity: return "Capacity";
+      case RLOfferKind.BoonUpgrade: return "BoonUpgrade";
+      case RLOfferKind.OperatingSystem: return "OperatingSystem";
+      case RLOfferKind.Gig: return "Gig";
+    }
+    return IntToString(EnumInt(kind));
+  }
+
   public static func Version() -> String = "T1"
 
   public static func Record(run: ref<RLRunState>, const kind: String, const fields: String) {
@@ -53,7 +94,7 @@ public abstract class RLTelemetry {
     if !IsDefined(offer) {
       return "";
     }
-    let kind = EnumValueToString("RLOfferKind", Cast<Int64>(EnumInt(offer.kind)));
+    let kind = RLTelemetry.KindName(offer.kind);
     return RLTelemetry.Clean(kind + ":" + offer.title + ":" + IntToString(offer.step));
   }
 

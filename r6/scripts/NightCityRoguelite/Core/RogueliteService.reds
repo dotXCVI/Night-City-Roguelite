@@ -105,6 +105,10 @@ public class RogueliteService extends ScriptableService {
     // Bystanders streaming into an arena are moved out (Combat/ArenaCleaner.reds).
     callbacks.RegisterCallback(n"Entity/AfterAttach", this, n"OnNPCAttached")
       .AddTarget(EntityTarget.Type(n"NPCPuppet"));
+    // Doors V couldn't open are opened, dropped weapons emptied.
+    callbacks.RegisterCallback(n"Entity/AfterAttach", this, n"OnArenaPropAttached")
+      .AddTarget(EntityTarget.Type(n"Door"))
+      .AddTarget(EntityTarget.Type(n"gameItemDropObject"));
     // 2.5's native InputTarget.Key has no press/release filter; OnKeyInput
     // filters for release itself so each key press fires once.
     callbacks.RegisterCallback(n"Input/Key", this, n"OnKeyInput")
@@ -136,6 +140,24 @@ public class RogueliteService extends ScriptableService {
     let system = RogueliteSystem.Get(npc.GetGame());
     if IsDefined(system) && system.IsInArenaFight() {
       system.GetArenaCleaner().OnNPCAttached(npc);
+    }
+  }
+
+  private cb func OnArenaPropAttached(event: ref<EntityLifecycleEvent>) {
+    let entity = event.GetEntity() as GameObject;
+    if !IsDefined(entity) {
+      return;
+    }
+    let system = RogueliteSystem.Get(entity.GetGame());
+    if !IsDefined(system) {
+      return;
+    }
+    let cleaner = system.GetArenaCleaner();
+    let door = entity as Door;
+    if IsDefined(door) {
+      cleaner.OnDoorAttached(door);
+    } else {
+      cleaner.OnDropAttached(entity as gameItemDropObject);
     }
   }
 

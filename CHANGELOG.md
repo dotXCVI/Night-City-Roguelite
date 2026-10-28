@@ -8,6 +8,8 @@ release on GitHub with its ZIP attached.
 **Fixes**
 
 - **Objective markers you can't reach:** a sabotage charge spot could land somewhere V can't get to, like a shop behind a locked door in the Grand Imperial Mall. Markers now need a full walking path to V on V's floor, and one you get stuck near (close, not getting closer) moves to you after a few seconds. Thanks to Jon for the report.
+- **Locked rooms in arenas open up:** locked, sealed and keypad doors inside an arena are opened when you arrive, so you never need a campaign code or a skill check to reach an enemy or a marker. Thanks to Jon.
+- **The legendary hammer (and any weapon knocked out of an enemy's hands)** no longer lands on the floor - disarms, finishers and bosses losing their weapon used to leave one lying in the arena.
 
 ## v0.0.19 - Runs that hit different (2026-10-28)
 

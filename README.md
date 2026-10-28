@@ -36,8 +36,9 @@ perks, real gangs. No custom models.
   cyberpsycho for NCPD, gamble with a bookie, let Misty read your cards.
 - **Your apartment is the hub.** Pick your kit in the armory, start runs from
   your computer, save between runs. The front door stays shut.
-- **Meta progression.** Cred unlocks new kits and upgrades that stick across
-  runs and characters.
+- **Meta progression.** Put bosses down and the fixers owe you favors - call
+  them in for new kits. Cred buys the terminal's upgrades: ten rows, two ways
+  to play each.
 - **Assist mode** if you just want the power fantasy.
 
 ## Get it

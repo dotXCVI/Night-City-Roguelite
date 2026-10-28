@@ -120,8 +120,9 @@ public abstract class RLStyle {
 }
 
 public abstract class RLStyles {
+  // Signature (the terminal) brings rank III a point sooner.
   public static func RankFor(points: Int32) -> Int32 {
-    if points >= 9 {
+    if points >= (RLTerminal.Has(n"Specialist", 2) ? 8 : 9) {
       return 3;
     }
     if points >= 6 {
@@ -226,10 +227,11 @@ public abstract class RLStyles {
         }
       }
     }
-    // Weapon effects count for the main weapon's style.
+    // Weapon effects count for the main weapon's style, and Specialist (the
+    // terminal) starts it two points up.
     let mainStyle = RLWeapons.MainStyle(run);
     if mainStyle >= 0 {
-      points[mainStyle] += RLBoons.WeaponEffectCount(run);
+      points[mainStyle] += RLBoons.WeaponEffectCount(run) + (RLTerminal.Has(n"Specialist", 1) ? 2 : 0);
     }
     if run.gigDone && run.gigStyle >= 0 {
       points[run.gigStyle] += 2;

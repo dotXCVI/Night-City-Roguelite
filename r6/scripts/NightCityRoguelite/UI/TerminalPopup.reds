@@ -1,10 +1,14 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - terminal
 // -----------------------------------------------------------------------------
-// One popup, three views:
+// One popup, four views:
 //   Hub         (home, no run): stats, START RUN, the kit (picked in the
 //               armory, UI/ArmoryPopup.reds), assist, test runs, the guide,
-//               upgrades.
+//               the way into the upgrades.
+//   Upgrades    (home): the ten rows of Meta/Terminal.reds, one strip each -
+//               the row and its rank, its two takes (the one on is lit; the
+//               other switches on for free), and the next rank's price. A
+//               rank out of reach shakes instead of greying out.
 //   DoorPicker  (between fights): one card per door - pick the next fight
 //               by what it pays (the reward leads, the arena is a strip at
 //               the bottom); HOT doors are marked and pulse. Reroll the
@@ -20,6 +24,7 @@ public enum RLTerminalView {
   Hub = 0,
   DoorPicker = 1,
   InArena = 2,
+  Upgrades = 3,
 }
 
 public class RLTerminalPopup extends InGamePopup {
@@ -29,6 +34,7 @@ public class RLTerminalPopup extends InGamePopup {
   private let m_doors: array<ref<RLDoor>>;
   private let m_introPlayed: Bool;
   private let m_content: ref<InGamePopupContent>;
+  private let m_header: ref<InGamePopupHeader>;
   private let m_confirmAbandon: Bool;
 
   public static func OpenHub(system: ref<RogueliteSystem>) -> ref<RLTerminalPopup> {
@@ -70,25 +76,10 @@ public class RLTerminalPopup extends InGamePopup {
 
   protected cb func OnCreate() {
     super.OnCreate();
-    let header = InGamePopupHeader.Create();
-    header.SetFluffLeft("");
-    switch this.m_view {
-      case RLTerminalView.DoorPicker:
-        this.m_container.SetSize(Vector2(2200.0, 1200.0));
-        header.SetTitle(ArraySize(this.m_doors) == 1 ? "NEXT FIGHT" : "PICK YOUR FIGHT");
-        header.SetFluffRight(this.m_summary);
-        break;
-      case RLTerminalView.InArena:
-        this.m_container.SetSize(Vector2(1800.0, 960.0));
-        header.SetTitle("RUN IN PROGRESS");
-        header.SetFluffRight("NIGHT CITY ROGUELITE");
-        break;
-      default:
-        this.m_container.SetSize(Vector2(2200.0, 1640.0));
-        header.SetTitle("ROGUELITE TERMINAL");
-        header.SetFluffRight("NIGHT CITY ROGUELITE");
-    }
-    header.Reparent(this);
+    this.m_header = InGamePopupHeader.Create();
+    this.m_header.SetFluffLeft("");
+    this.m_header.Reparent(this);
+    this.FitView();
 
     let footer = InGamePopupFooter.Create();
     if Equals(this.m_view, RLTerminalView.DoorPicker) {
@@ -104,6 +95,40 @@ public class RLTerminalPopup extends InGamePopup {
     RLLog("Terminal menu: built.");
   }
 
+  // The container and the header for the current view.
+  private func FitView() {
+    switch this.m_view {
+      case RLTerminalView.DoorPicker:
+        this.m_container.SetSize(Vector2(2200.0, 1200.0));
+        this.m_header.SetTitle(ArraySize(this.m_doors) == 1 ? "NEXT FIGHT" : "PICK YOUR FIGHT");
+        this.m_header.SetFluffRight(this.m_summary);
+        break;
+      case RLTerminalView.InArena:
+        this.m_container.SetSize(Vector2(1800.0, 960.0));
+        this.m_header.SetTitle("RUN IN PROGRESS");
+        this.m_header.SetFluffRight("NIGHT CITY ROGUELITE");
+        break;
+      case RLTerminalView.Upgrades:
+        this.m_container.SetSize(Vector2(2200.0, 1860.0));
+        this.m_header.SetTitle("UPGRADES");
+        this.m_header.SetFluffRight(s"\(RogueliteService.Get().GetCred()) CRED");
+        break;
+      default:
+        this.m_container.SetSize(Vector2(2200.0, 1120.0));
+        this.m_header.SetTitle("ROGUELITE TERMINAL");
+        this.m_header.SetFluffRight("NIGHT CITY ROGUELITE");
+    }
+  }
+
+  // Hub and Upgrades swap in place; the new view plays its intro.
+  private func SwitchView(view: RLTerminalView) {
+    this.m_view = view;
+    this.m_introPlayed = false;
+    this.FitView();
+    this.Rebuild();
+    this.m_introPlayed = true;
+  }
+
   private func Rebuild() {
     let root = this.m_content.GetRootCompoundWidget();
     root.RemoveAllChildren();
@@ -117,6 +142,9 @@ public class RLTerminalPopup extends InGamePopup {
         break;
       case RLTerminalView.InArena:
         this.BuildInArena(body);
+        break;
+      case RLTerminalView.Upgrades:
+        this.BuildUpgrades(body);
         break;
       default:
         this.BuildHub(body);
@@ -140,6 +168,10 @@ public class RLTerminalPopup extends InGamePopup {
     if IsDefined(run) {
       RLUI.SectionLabel("YOUR RUN").Reparent(body);
       RLUI.WrappedText(s"MAIN: \(RLRewards.ItemName(RLWeapons.MainRecord(run))) (\(RLQuality.DisplayName(run.mainStep)))   COVER: \(run.cover)/\(run.coverMax)", 28, n"MainColors.Blue", 1600.0).Reparent(body);
+      let mods = RLArmMods.Summary(run);
+      if StrLen(mods) > 0 || StrLen(run.mainElement) > 0 {
+        RLUI.WrappedText((StrLen(run.mainElement) > 0 ? RLArms.ElementName(run.mainElement) + "   " : "") + mods, 28, n"MainColors.ActiveYellow", 1600.0).Reparent(body);
+      }
     }
     if IsDefined(run) && ArraySize(run.boons) > 0 {
       RLUI.SectionLabel("EFFECTS").Reparent(body);
@@ -207,7 +239,7 @@ public class RLTerminalPopup extends InGamePopup {
     card.SetKicker(door.boss ? "BOSS" : (isPatron ? RLTerminalPopup.KeywordLine(door.patron) : RLRewards.CategoryDescription(door.category)));
     card.SetTitle(RLRewards.DoorTitle(door));
     card.SetTitleSize(44);
-    card.AddLine(RLRewards.DoorPromise(door, IsDefined(run) ? RLRewards.CardCount(run, door) : 3), n"MainColors.ActiveWhite", 30);
+    card.AddLine(RLRewards.DoorPromise(door, IsDefined(run) ? RLRewards.DoorCardCount(run, door) : 3), n"MainColors.ActiveWhite", 30);
     if door.hot {
       card.AddLine("Double the trouble, double the take: an elite pack and a lieutenant, cards two steps up, +50% eddies.", n"MainColors.Red", 26);
     }
@@ -302,6 +334,7 @@ public class RLTerminalPopup extends InGamePopup {
     let stats = RLUI.HPanel(10.0);
     stats.Reparent(body);
     RLUI.StatTile("CRED", IntToString(service.GetCred()), n"MainColors.Gold").Reparent(stats);
+    RLUI.StatTile("FAVORS", IntToString(service.GetFavors()), n"MainColors.ActiveYellow").Reparent(stats);
     RLUI.StatTile("RUNS", IntToString(service.GetRunsStarted()), n"MainColors.Blue").Reparent(stats);
     RLUI.StatTile("WINS", IntToString(service.GetVictories()), n"MainColors.Blue").Reparent(stats);
     RLUI.StatTile("BEST FLOOR", IntToString(service.GetBestDepth()), n"MainColors.Blue").Reparent(stats);
@@ -361,32 +394,92 @@ public class RLTerminalPopup extends InGamePopup {
     this.AddActionCard(side, n"test_floor", s"FLOOR \(service.GetTestFloor())", "TEST RUN STARTS ON", n"MainColors.Grey");
     this.AddActionCard(side, n"test_start", "TEST RUN", "NO CRED, NO STATS", n"MainColors.Grey");
     this.AddActionCard(side, n"guide", "HOW IT WORKS", "THE BASICS", n"MainColors.Blue");
+    RLTerminal.Migrate(service);
+    this.AddActionCard(side, n"upgrades", "UPGRADES", s"\(service.GetCred()) CRED TO SPEND", n"MainColors.Gold");
+  }
 
-    // Unlocks (kits are bought in the armory): a 5-column grid.
-    RLUI.SectionLabel("UPGRADES - PAID IN CRED, KEPT FOREVER").Reparent(body);
-    let grid = RLUI.VPanel(5.0);
-    grid.Reparent(body);
-    let row: ref<inkHorizontalPanel>;
+  // --- Upgrades view ---------------------------------------------------------------------------
+
+  private func BuildUpgrades(body: ref<inkCompoundWidget>) {
+    let service = RogueliteService.Get();
+    let top = RLUI.HPanel(10.0);
+    top.Reparent(body);
+    this.AddActionCard(top, n"back", "BACK", "TO THE TERMINAL", n"MainColors.Blue");
+    let note = RLUI.Text("Ranks are bought once per row and serve either take. Switching takes is free.", 24, n"MainColors.Grey");
+    note.SetVAlign(inkEVerticalAlign.Center);
+    note.SetMargin(inkMargin(20.0, 0.0, 0.0, 0.0));
+    note.Reparent(top);
+    let list = RLUI.VPanel(6.0);
+    list.SetMargin(inkMargin(0.0, 12.0, 0.0, 0.0));
+    list.Reparent(body);
     let i = 0;
-    for def in RLMeta.Unlocks() {
-      if !StrBeginsWith(NameToString(def.id), "kit.") {
-        if i % 5 == 0 {
-          row = RLUI.HPanel(8.0);
-          row.Reparent(grid);
-        }
-        let owned = service.HasUnlock(def.id);
-        let affordable = RLMeta.CanBuy(service, def);
-        let card = RLCard.Create(StringToName("buy_" + NameToString(def.id)), 392.0, 124.0, owned ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
-        card.SetCompact();
-        card.SetKicker(owned ? "OWNED" : s"\(def.cost) CRED");
-        card.SetTitle(def.name);
-        card.SetTitleSize(28);
-        card.AddLine(def.description, n"MainColors.Grey", 20);
-        card.SetDisabled(owned || !affordable);
-        this.Hook(card, row);
-        i += 1;
-      }
+    for row in RLTerminal.Rows() {
+      this.AddUpgradeRow(list, service, row, i);
+      i += 1;
     }
+  }
+
+  // One strip: the row and its rank, both takes, the next rank.
+  private func AddUpgradeRow(parent: ref<inkCompoundWidget>, service: ref<RogueliteService>, row: ref<RLRow>, index: Int32) {
+    let strip = RLUI.HPanel(10.0);
+    strip.Reparent(parent);
+    let rank = RLTerminal.Rank(service, row.id);
+    let max = ArraySize(row.costs);
+
+    let label = RLCard.Create(StringToName("rowlabel_" + NameToString(row.id)), 250.0, 136.0, n"MainColors.Grey");
+    label.SetCompact();
+    label.SetKicker(s"RANK \(rank)/\(max)");
+    label.SetPips(rank, max, n"MainColors.Gold");
+    label.SetTitle(row.label);
+    label.SetTitleSize(30);
+    label.SetStatic();
+    label.Reparent(strip);
+    this.Intro(label, index);
+
+    let second = RLTerminal.SecondTakeOn(service, row.id);
+    let t = 0;
+    while t < ArraySize(row.takes) {
+      let take = row.takes[t];
+      let on = Equals(second, t == 1);
+      // Name and both rank lines need the whole card: no kicker, and the
+      // take that's on says so in the corner.
+      let card = RLCard.Create(StringToName(s"take_\(t)_" + NameToString(row.id)), 750.0, 136.0, on ? n"MainColors.Blue" : n"MainColors.Grey");
+      card.SetCompact();
+      card.HideKicker();
+      if on {
+        card.SetTag("ON", n"MainColors.Blue");
+      }
+      card.SetTitle(take.name);
+      card.SetTitleSize(26);
+      let r = 0;
+      while r < ArraySize(take.rankNames) {
+        let owned = r < rank;
+        let line = RLTerminal.Numeral(r + 1) + "   " + take.rankNames[r] + ". " + take.rankLines[r];
+        card.AddLine(line, owned && on ? n"MainColors.ActiveWhite" : n"MainColors.Grey", 20);
+        r += 1;
+      }
+      card.SetSelected(on);
+      this.Hook(card, strip);
+      this.Intro(card, index);
+      t += 1;
+    }
+
+    let cost = RLTerminal.NextCost(service, row);
+    let affordable = cost > 0 && service.GetCred() >= cost;
+    let buy = RLCard.Create(StringToName("rank_" + NameToString(row.id)), 270.0, 136.0, cost <= 0 ? n"MainColors.Green" : (affordable ? n"MainColors.Gold" : n"MainColors.Grey"));
+    buy.SetCompact();
+    if cost <= 0 {
+      buy.SetKicker("ALL RANKS");
+      buy.SetTitle("MAXED");
+      buy.SetStatic();
+    } else {
+      buy.SetKicker("RANK " + RLTerminal.Numeral(rank + 1));
+      buy.SetTitle(s"\(cost) CRED");
+    }
+    buy.SetTitleSize(30);
+    this.Hook(buy, strip);
+    this.Intro(buy, index);
+
   }
 
   private func Hook(card: ref<RLCard>, parent: ref<inkCompoundWidget>) {
@@ -441,11 +534,30 @@ public class RLTerminalPopup extends InGamePopup {
     } else if Equals(name, "guide") {
       this.Close();
       this.m_system.OpenGuideLater();
-    } else if StrBeginsWith(name, "buy_") {
-      if RLMeta.TryBuy(service, StringToName(StrAfterFirst(name, "_"))) {
+    } else if Equals(name, "upgrades") {
+      this.SwitchView(RLTerminalView.Upgrades);
+    } else if Equals(name, "back") {
+      this.SwitchView(RLTerminalView.Hub);
+    } else if StrBeginsWith(name, "rank_") {
+      if RLTerminal.TryBuy(service, StringToName(StrAfterFirst(name, "_"))) {
         this.PlaySound(n"Item", n"OnBuy");
+        this.m_header.SetFluffRight(s"\(service.GetCred()) CRED");
+        this.Rebuild();
+      } else {
+        let card = button as RLCard;
+        if IsDefined(card) {
+          card.Shake();
+        }
       }
-      this.Rebuild();
+    } else if StrBeginsWith(name, "take_") {
+      let rest = StrAfterFirst(name, "_");
+      let row = StringToName(StrAfterFirst(rest, "_"));
+      let wantSecond = StrBeginsWith(rest, "1");
+      if NotEquals(RLTerminal.SecondTakeOn(service, row), wantSecond) {
+        RLTerminal.SwitchTake(service, row);
+        this.PlaySound(n"Button", n"OnPress");
+        this.Rebuild();
+      }
     } else {
       return false;
     }

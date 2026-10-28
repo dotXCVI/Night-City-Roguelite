@@ -15,7 +15,7 @@ short version; [TESTING.md](../TESTING.md) is the tester guide.
    terminal's HOW IT WORKS card brings it back).
 3. Walk into the **armory** - the weapon room at the back, opened up by the
    mod - and use its stash (prompt "Gear") to pick one of 9 kits; locked kits
-   are bought there with Cred. (No stash on a character? F7 in the room
+   are called in there with favors (see Favors and the terminal). (No stash on a character? F7 in the room
    does the same.) Then use **V's computer** (prompt: "Roguelite Terminal")
    or press **F7** anywhere else for the terminal: buy upgrades, toggle
    **ASSIST**, then **START RUN**. If the apartment didn't load and home is
@@ -179,8 +179,9 @@ pay two steps up. Smart weapons appear from floor 7, Tech from floor 4.
   tree prerequisites are owned.
 
 **Saying no.** A door's reward screen can be skipped for eddies (Slay the
-Spire's skip). Once per act you can **banish** a card: click BANISH, then the
-card - it's replaced and never offered again this run.
+Spire's skip). Once per act (twice with Burn Notice) you can **banish** a
+card: click BANISH, then the card - it's replaced and never offered again
+this run.
 
 A screen never offers the same item twice (in any quality) and shows at most
 one grenade.
@@ -188,14 +189,14 @@ one grenade.
 ### Rerolls
 
 Reward screens and door picks can be rerolled with charges: one every act,
-one more each from Fixer Contacts I and II, and two from a Fixer contact.
-The Afterlife's favour adds a free reroll on every reward screen. Rerolls
-never cost eddies.
+one more with Know a Guy, and two from a Fixer contact. The Afterlife's
+favour adds a free reroll on every reward screen, and Inner Circle makes the
+first door reroll on each floor free. Rerolls never cost eddies.
 
 ### Character
 
 There are no points to spend. Each kit sets two attributes (+4 to its main
-one, +3 to the second; the Edge unlocks add to the main one); every perk you
+one, +3 to the second; the terminal's Edge row adds to both); every perk you
 take raises its attribute by 1, up to 20. Signature perks need their
 attribute at 15. The Character menu can't buy, sell or reset anything for
 roguelite characters.
@@ -219,16 +220,50 @@ You play one gun, so the run builds one gun:
   a third effect slot. The stranger's iconic (Act 2 on) is the only other
   way to one.
 - **Act step.** Beating a boss steps both weapons up one quality.
-- **Arm chrome as the main weapon.** The Brawler's Gorilla Arms and the
-  Wireman's Monowire are their main weapons (the gun is the sidearm), and
-  weapon effects work on them like on any gun. Their rewards follow the
-  game's own upgrade path: a Tune-Up swaps in the next quality of the same
-  arms (arm chrome starts at Uncommon), the Armory offers a **REWIRE**
-  instead of a trade - the same arms in another element, where Thermal hits
-  BURN, Electric hits SHOCK and Chemical hits make them BLEED - and the
-  evolution takes them to Legendary++ with a third weapon effect slot. The
-  arms bring their own capacity, Chrome doors don't offer other arms while
-  they're in the slot, and the stranger doesn't deal in them.
+
+### Chrome as the main weapon
+
+Every kit's identity lives in its main slot, so some mains are chrome:
+
+| Kit | Main | Sidearm |
+| --- | --- | --- |
+| Brawler | Gorilla Arms | Pistol |
+| Wireman | Monowire | Pistol |
+| Demolitions | Projectile Launcher | SMG |
+| Netrunner | Cyberdeck (its quickhacks are its hits) | Pistol |
+
+Weapon effects work on chrome like on any gun (Thunder Rounds isn't dealt to
+a deck: quickhacks never headshot). Its rewards follow the game's own upgrade
+path:
+
+- **Tune-Ups** swap in the next quality of the same chrome. Arm chrome
+  starts at Uncommon.
+- **REWIRE** takes the place of a trade for arms: the same arms in another
+  element. Thermal hits BURN, Electric hits SHOCK, Chemical hits make them
+  BLEED. A deck is never traded.
+- **Evolution** takes chrome to the top of its line with a third weapon
+  effect slot.
+- **Arm mods:** two slots of the chrome's own, three mods each, every mod
+  with an overclock. They're dealt on Armory and Tune-Up screens while the
+  chrome is the main:
+
+| Chrome | Slot | Mods |
+| --- | --- | --- |
+| Gorilla Arms | KNUCKLES | Breaker (strong punches knock down; downed enemies take +40%), Detonator (strong punches BLAST), Rending (punches BLEED) |
+| Gorilla Arms | BATTERY | Combo (five punches without a break trigger FOCUS), Capacitor (every 8th punch SHOCKS everything near), Adrenal (punch kills build MOMENTUM and heal) |
+| Monowire | CABLE | Arc (lashes jump to the next enemy for half damage), Garrote (lashes kill MARKED enemies under 30%), Barbed (lashes BLEED; +25% to BLEEDING enemies) |
+| Monowire | BATTERY | Uplink (strong lashes GLITCH; wire kills give RAM), Capacitor (every 10th lash SHOCKS everything near), Feedback (+40% to enemies you quickhacked) |
+| Launcher | ROUND | Cluster (bomblets), Sticky (shells BLAST again), Seeker (a micro-missile at the nearest MARKED enemy) |
+| Launcher | WIRING | Autoloader (+1 charge), Recoil (every shot counts as a dash), Overpressure (shells knock down) |
+| Cyberdeck | ICEBREAKER | Breach (first hack on each enemy MARKS it and gives RAM), Spike (+60% to GLITCHED enemies), Logic Bomb (hacked enemies BLAST when they die) |
+| Cyberdeck | FIRMWARE | Cache (every 4th hack gives RAM), Overvolt (hacks SHOCK), Ghost (hack kills make you untouchable) |
+
+Chrome brings its own capacity, goes back in on the next trip if anything
+takes it, and isn't replaced by other arms or an Operating System from a
+Chrome door. At the Act 1 boss a deck goes into Overdrive itself (BLACKWALL)
+and steps up twice. The stranger doesn't deal in chrome. Arm chrome a Chrome
+door offers to a gun build can become **your new main**: the gun steps down
+to sidearm, the weapon effects stay with the slot.
 
 ### Styles
 
@@ -303,15 +338,15 @@ elite floor, before the boss, the Fixer sells a short stock - a MaxDoc upgrade,
 a grenade, an effect from one of the run's patrons, a perk, a Tune-Up, a
 weapon effect, or a contact (two free rerolls) - and buys back weapons and
 cyberware you carry but don't have equipped. Your balance is on top, and every card says what it costs (or how
-much you're short). Prices rise with the run; the Street Smart unlock takes
-20% off.
+much you're short). Prices rise with the run; Street Smart takes 15% off
+(30% with Made Man, which also shelves a second effect).
 
 ### Health and Trauma Team
 
 Every fight starts at full health, so health is never something to bank or
 gamble. What carries over is **cover**: one Trauma Team cover a run (two with
-Trauma Platinum). Health hitting zero spends it instead of a flatline: V is
-back up at half health, everyone within 8 m is knocked down, and the run goes
+Platinum Plan). Health hitting zero spends it instead of a flatline: V is
+back up at half health (three quarters with Gold Plan), everyone within 8 m is knocked down, and the run goes
 on. With no cover left, the next one is real. The Ripperdoc can restore a
 spent cover; the stranger buys one. Deals that cost max health (Glass Chrome, Loan Shark,
 Misty's cards) never take more than three quarters of it together - a deal
@@ -339,18 +374,45 @@ arena goes in the log for tuning.
 The ASSIST toggle on the terminal cuts the damage V takes by 20%, and by 2%
 more for every run lost while it's on (up to 80%). It never changes rewards.
 
-### Unlocks
+### Favors and the terminal
 
-Cred buys kits (in the armory) and upgrades (at the terminal) that mostly
-widen choice rather than raw power:
-rerolls (Fixer Contacts I/II), a fourth reward card (Wide Net), a fourth door
-(Street Map), a free Armory pick at the start of every run (Quartermaster), a
-second Trauma Team cover (Trauma Platinum), Fixer discounts (Street Smart),
-plus a few head starts (Med Kit, Edge). Cred doors pay into the same
-balance. Kits: Solo and Blade from the start; Netrunner, Marksman,
-Brawler, Gunslinger, Demolitions, Juggernaut and Wireman (Monowire, a
-cyberdeck, a quickhack and Siphon) to unlock - each with its own starting
-perk.
+Two currencies carry over between runs:
+
+- **Favors** call in kits at the armory. A fixer owes V one for every boss put
+  down, one more for winning, and one the first time V reaches Act 2, Act 3
+  and the end. Solo and Blade are free; Netrunner and Marksman cost 2,
+  Gunslinger 3, Juggernaut 4, Demolitions 5, Brawler 6 and Wireman 8 (30 for
+  all, around 20 runs). A kit out of reach shakes when clicked.
+- **Cred** (every cleared arena, Cred doors, a won run) buys the terminal's
+  **UPGRADES**: ten rows, each one idea with two takes. A row's ranks are
+  bought once (rank I 250 Cred, rank II 600; Choice is one rank at 400) and
+  serve whichever take is on; switching takes is free at home.
+
+| Row | Take | Rank I | Rank II |
+| --- | --- | --- | --- |
+| Cover | Trauma Team | Gold Plan: cover gets you up at 75% | Platinum Plan: two covers a run |
+| Cover | Back-Alley Doc | House Call: an Uncommon MaxDoc | Repeat Customer: one more MaxDoc charge |
+| Choice | Wide Net | Four cards on every reward screen | |
+| Choice | Street Map | Four doors to pick from | |
+| Rerolls | Fixer Contacts | Know a Guy: one more reroll an act | Inner Circle: the first door reroll on each floor is free |
+| Rerolls | Burn Notice | Two banishes an act | Blacklist: a banished card comes back as a standout |
+| Head Start | Quartermaster | Requisition: a free Armory pick | Priority Requisition: that pick two steps up |
+| Head Start | Patron's Ear | Open Line: the first patron screen deals a card more | Standing Offer: your most-backed patron always works the run |
+| Eddies | Street Smart | Haggler: the Fixer takes 15% off | Made Man: 30% off and a second effect on the shelf |
+| Eddies | Skim | Arenas pay 20% more eddies | Off the Books: a skipped screen pays double |
+| Body | Edge | +1 main attribute | Honed: +1 second attribute |
+| Body | Tolerance | +10 capacity | Neural Dampers: overclock episodes half as often |
+| Overdrive | Primed | Overdrive comes online full | Hair Trigger: the meter fills 25% faster |
+| Overdrive | Meltdown | Afterburn: Overdrive refills the MaxDoc | Meltdown: Overdrive goes off with a BLAST |
+| Heat | Hot Streak | Hot doors deal a card more | Marked Man: a second hot door in Act 1 |
+| Heat | Bounty Board | Bounties from Act 1 | Wanted: bounties pay double eddies |
+| Style | Specialist | The main weapon's style starts 2 points up | Signature: rank III at 8 points |
+| Style | Gig Economy | Repeat Client: gigs pay 1,500 | Long Contract: gigs run to the Act 3 boss |
+| Fortune | Lucky Star | Runs start with the Director's pity built up | Sure Thing: every act's first reward screen has a standout |
+| Fortune | Inside Man | Tip-Off: ? doors twice as often | Inside Man: Acts 2 and 3 open with a door from your lead patron |
+
+The old one-off unlocks carried over as the nearest ranks (Edge III, and
+Street Map when bought alongside Wide Net, were refunded).
 
 ### No looting
 
@@ -562,7 +624,10 @@ The record format is documented in `Core/Telemetry.reds`.
 | `Rewards/BoonEffects.reds` | What effects do in fights (hits, kills, dashes, ticks) |
 | `Rewards/Styles.reds` | Styles: points, ranks, damage bonuses, signatures |
 | `Rewards/Weapons.reds` | Main weapon and sidearm slots, Tune-Ups, trades, evolution, DPS previews |
-| `Meta/MetaProgression.reds` | Unlocks, kits, Cred payout |
+| `Rewards/ArmChrome.reds` | Arm chrome and decks as the main weapon: records, REWIRE, evolution, taking over the slot |
+| `Rewards/ArmMods.reds` | The main chrome's mod slots and their rules |
+| `Meta/MetaProgression.reds` | Kits and their favor prices, favors, Cred payout |
+| `Meta/Terminal.reds` | The terminal's ten upgrade rows, ranks, takes, the migration of old unlocks |
 | `UI/Card.reds` | The card used by every menu, icon helpers |
 | `UI/Art.reds` | Codex pictures for arenas, patrons, kits, fixers, events |
 | `UI/ArmoryPopup.reds` | The kit picker |

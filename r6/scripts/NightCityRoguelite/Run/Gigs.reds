@@ -11,10 +11,12 @@
 module NightCityRoguelite
 
 public abstract class RLGigs {
-  // The gig must be done by the end of this floor (the Act 2 boss).
-  public static func Deadline() -> Int32 = 2 * RLConfig.FloorsPerAct()
+  // The gig must be done by the end of this floor: the Act 2 boss, or the
+  // Act 3 boss with Long Contract (the terminal).
+  public static func Deadline() -> Int32 = (RLTerminal.Has(n"GigEconomy", 2) ? 3 : 2) * RLConfig.FloorsPerAct()
 
-  public static func Payout() -> Int32 = 1000
+  // 1,500 with Repeat Client (the terminal).
+  public static func Payout() -> Int32 = RLTerminal.Has(n"GigEconomy", 1) ? 1500 : 1000
 
   public static func Target(style: Int32) -> Int32 {
     switch style {
@@ -56,20 +58,23 @@ public abstract class RLGigs {
     return "A FIXER";
   }
 
-  // Three gigs: one in the build's leading style, two others.
+  // Three gigs: one in the main weapon's style (the build's leading style
+  // when the main has none), two others.
   public static func Offers(run: ref<RLRunState>) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
     if run.Depth() > RLGigs.Deadline() - 3 {
       return offers;
     }
     let styles: array<Int32>;
-    let lead = -1;
-    let i = 0;
-    while i < ArraySize(run.stylePoints) {
-      if lead < 0 || run.stylePoints[i] > run.stylePoints[lead] {
-        lead = i;
+    let lead = RLWeapons.MainStyle(run);
+    if lead < 0 {
+      let i = 0;
+      while i < ArraySize(run.stylePoints) {
+        if lead < 0 || run.stylePoints[i] > run.stylePoints[lead] {
+          lead = i;
+        }
+        i += 1;
       }
-      i += 1;
     }
     if lead >= 0 {
       ArrayPush(styles, lead);
@@ -85,7 +90,7 @@ public abstract class RLGigs {
       offer.amount = style;
       offer.title = RLStyle.Name(style) + " GIG";
       offer.subtitle = "GIG FROM " + RLGigs.Fixer(style);
-      offer.description = s"\(RLGigs.Target(style)) \(RLGigs.KillWords(style)) before the Act 2 boss drops. Pays \(RLGigs.Payout()) eddies, plus +2 \(RLStyle.Name(style)) for the rest of the run.";
+      offer.description = s"\(RLGigs.Target(style)) \(RLGigs.KillWords(style)) before the Act \(RLGigs.Deadline() / RLConfig.FloorsPerAct()) boss drops. Pays \(RLGigs.Payout()) eddies, plus +2 \(RLStyle.Name(style)) for the rest of the run.";
       offer.step = 4;
       ArrayPush(offers, offer);
     }

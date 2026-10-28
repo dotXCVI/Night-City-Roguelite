@@ -55,19 +55,52 @@ public abstract class RLPatrons {
     return IsDefined(patron) ? patron.name : "PATRON";
   }
 
-  // Four patrons for a run, at random.
+  // Four patrons for a run, at random - with Standing Offer (the terminal),
+  // the one V has backed most across runs always among them.
   public static func RollLineup() -> array<CName> {
     let pool: array<CName>;
     for patron in RLPatrons.All() {
       ArrayPush(pool, patron.id);
     }
     let lineup: array<CName>;
+    if RLTerminal.Has(n"PatronsEar", 2) {
+      let favourite = RLPatrons.MostBacked();
+      if IsNameValid(favourite) {
+        ArrayPush(lineup, favourite);
+        ArrayRemove(pool, favourite);
+      }
+    }
     while ArraySize(lineup) < 4 && ArraySize(pool) > 0 {
       let i = RandRange(0, ArraySize(pool));
       ArrayPush(lineup, pool[i]);
       ArrayErase(pool, i);
     }
     return lineup;
+  }
+
+  // The patron with the most different effects V has ever taken.
+  public static func MostBacked() -> CName {
+    let service = RogueliteService.Get();
+    if !IsDefined(service) {
+      return n"";
+    }
+    let taken = service.GetTakenBoons();
+    let best: CName;
+    let bestCount = 0;
+    for patron in RLPatrons.All() {
+      let count = 0;
+      for id in taken {
+        let def = RLBoons.Get(id);
+        if IsDefined(def) && Equals(def.patron, patron.id) {
+          count += 1;
+        }
+      }
+      if count > bestCount {
+        bestCount = count;
+        best = patron.id;
+      }
+    }
+    return best;
   }
 
   // "ARASAKA, VOODOO BOYS, MAELSTROM, THE AFTERLIFE"

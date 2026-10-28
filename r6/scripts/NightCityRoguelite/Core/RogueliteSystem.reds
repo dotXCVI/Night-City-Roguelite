@@ -92,6 +92,8 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_offerCategory: RLRewardCategory;
   private let m_offerPatron: CName;
   private let m_offerHot: Bool;
+  // Cards the screen deals over the usual (Open Line); a reroll keeps them.
+  private let m_offerBonus: Int32;
   private let m_doors: array<ref<RLDoor>>;
   // The enemy faction of the fight being travelled to / fought.
   private let m_faction: ref<RLFactionPool>;
@@ -211,6 +213,13 @@ public class RogueliteSystem extends ScriptableSystem {
     if ArraySize(this.m_lineup) == 0 {
       this.m_lineup = RLPatrons.RollLineup();
     }
+    // Standing Offer bought or switched on after the lineup was rolled.
+    if RLTerminal.Has(n"PatronsEar", 2) {
+      let favourite = RLPatrons.MostBacked();
+      if IsNameValid(favourite) && !ArrayContains(this.m_lineup, favourite) {
+        this.m_lineup[ArraySize(this.m_lineup) - 1] = favourite;
+      }
+    }
     return this.m_lineup;
   }
 
@@ -273,6 +282,7 @@ public class RogueliteSystem extends ScriptableSystem {
     if refund > 0 {
       RLNotify(this.GetGameInstance(), s"Some upgrades are gone with the level-ups. +\(refund) Cred back.", 8.0);
     }
+    RLTerminal.Migrate(service);
     // No run survives a load: drop any boon buffs that came along.
     RLBoons.ClearBuffs(GetPlayer(this.GetGameInstance()));
     this.PrepareSession();
@@ -492,6 +502,9 @@ public class RogueliteSystem extends ScriptableSystem {
         break;
       case n"prepareKit":
         this.PrepareRunKit();
+        break;
+      case n"favorNotice":
+        RLNotify(this.GetGameInstance(), s"THE FIXERS OWE YOU. \(RogueliteService.Get().GetFavors()) FAVORS TO CALL IN AT THE ARMORY.", 5.0);
         break;
       case n"openingScreens":
         this.OpenOpeningScreens();
@@ -1050,11 +1063,11 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_pacing.ResetRun();
     this.m_run.patrons = this.GetLineup();
     ArrayClear(this.m_lineup);
-    this.m_run.coverMax = RLConfig.CoverPerRun() + (RLMeta.PerkActive(service, n"perk.Platinum") ? 1 : 0);
+    this.m_run.coverMax = RLConfig.CoverPerRun() + (RLTerminal.Has(n"TraumaTeam", 2) ? 1 : 0);
     this.m_run.cover = this.m_run.coverMax;
-    this.m_run.rerollsPerAct = RLMeta.RerollsPerAct(service);
+    this.m_run.rerollsPerAct = RLTerminal.Has(n"FixerContacts", 1) ? 2 : 1;
     this.m_run.rerolls = this.m_run.rerollsPerAct;
-    this.m_run.offerCount = RLMeta.PerkActive(service, n"perk.FourthChoice") ? 4 : 3;
+    this.m_run.offerCount = RLTerminal.Has(n"WideNet", 1) ? 4 : 3;
     ArrayClear(this.m_offers);
     ArrayClear(this.m_doors);
     this.m_lastArena = n"";
@@ -1086,7 +1099,8 @@ public class RogueliteSystem extends ScriptableSystem {
     let service = RogueliteService.Get();
     // V's level first: the kit's chrome checks it.
     RLDifficulty.SetPlayerLevel(player, this.m_run.act);
-    RLKits.Apply(player, service.GetPools(), this.m_run, RLMeta.PerkActive(service, n"perk.MedKit") ? 2 : 0, RLMeta.BonusAttributePoints(service));
+    RLKits.Apply(player, service.GetPools(), this.m_run, RLTerminal.Has(n"BackAlleyDoc", 1) ? 2 : 0);
+    RLKits.ApplyTerminal(player, this.m_run);
 
     if this.m_run.isTest {
       this.PrepareTestRun(player);
@@ -1115,7 +1129,7 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     this.m_openingPending = false;
     RLStyles.Refresh(player, this.m_run, false);
-    this.m_starterPickPending = RLMeta.PerkActive(RogueliteService.Get(), n"perk.StarterPick");
+    this.m_starterPickPending = RLTerminal.Has(n"Quartermaster", 1);
     this.RollOffers(RLRewardCategory.Gig, n"", false);
     if ArraySize(this.m_offers) == 0 {
       this.AfterGig();
@@ -1126,7 +1140,7 @@ public class RogueliteSystem extends ScriptableSystem {
   private func AfterGig() {
     if this.m_starterPickPending {
       this.m_starterPickPending = false;
-      this.RollOffers(RLRewardCategory.Armory, n"", false);
+      this.RollOffers(RLRewardCategory.Armory, n"", RLTerminal.Has(n"Quartermaster", 2));
     }
   }
 
@@ -1167,7 +1181,7 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(this.m_run) {
       return;
     }
-    let doorCount = RLMeta.PerkActive(RogueliteService.Get(), n"perk.FourthDoor") ? 4 : 3;
+    let doorCount = RLTerminal.Has(n"StreetMap", 1) ? 4 : 3;
     this.m_doors = RLRewards.RollDoors(GetPlayer(this.GetGameInstance()), RogueliteService.Get().GetPools(), this.m_run, this.m_lastArena, doorCount);
   }
 
@@ -1685,9 +1699,14 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     service.AddCred(cred);
     this.m_run.credEarned += cred;
+    // A boss down: the fixers owe V (Meta/MetaProgression.reds).
+    let favors = this.m_run.IsBossFloor() ? RLMeta.PayFavors(service, this.m_run, this.m_run.IsFinalFloor()) : 0;
+    if favors > 0 {
+      this.After(n"favorNotice", 4.5);
+    }
     let eddies = this.m_run.IsFinalFloor() ? 0 : RLFixer.ArenaEddies(this.m_run);
     if IsDefined(door) && Equals(door.category, RLRewardCategory.Bounty) {
-      eddies += 400 + 40 * this.m_run.Depth();
+      eddies += (400 + 40 * this.m_run.Depth()) * (RLTerminal.Has(n"BountyBoard", 2) ? 2 : 1);
     }
     if IsDefined(player) && eddies > 0 {
       RLGear.GiveEddies(player, eddies);
@@ -1771,7 +1790,17 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_offerPatron = patron;
     this.m_offerHot = hot;
     this.m_run.screenRerollUsed = false;
-    let count = hot ? this.m_run.offerCount + 1 : this.m_run.offerCount;
+    // Open Line: the run's first patron screen deals a card more.
+    if !reroll {
+      this.m_offerBonus = 0;
+      if Equals(category, RLRewardCategory.Boons) && !this.m_run.firstPatronDealt {
+        this.m_run.firstPatronDealt = true;
+        if RLTerminal.Has(n"PatronsEar", 1) {
+          this.m_offerBonus = 1;
+        }
+      }
+    }
+    let count = RLRewards.CardCount(this.m_run, hot) + this.m_offerBonus;
     this.m_offers = RLRewards.RollForCategory(player, RogueliteService.Get().GetPools(), this.m_run, category, patron, hot, count);
     RLRewards.MarkSeen(this.m_run, this.m_offers);
     if !reroll {
@@ -1972,7 +2001,9 @@ public class RogueliteSystem extends ScriptableSystem {
     let replacement: ref<RLOffer>;
     let tries = 0;
     while !IsDefined(replacement) && tries < 4 {
-      let fresh = RLRewards.RollForCategory(player, RogueliteService.Get().GetPools(), this.m_run, this.m_offerCategory, this.m_offerPatron, this.m_offerHot, this.m_run.offerCount);
+      // Blacklist: the replacement is a standout.
+      let standout = this.m_offerHot || RLTerminal.Has(n"BurnNotice", 2);
+      let fresh = RLRewards.RollForCategory(player, RogueliteService.Get().GetPools(), this.m_run, this.m_offerCategory, this.m_offerPatron, standout, this.m_run.offerCount);
       for candidate in fresh {
         if !IsDefined(replacement) && !RLRewards.ContainsCard(this.m_offers, candidate) {
           replacement = candidate;
@@ -2041,11 +2072,21 @@ public class RogueliteSystem extends ScriptableSystem {
     this.After(n"nextStep", 0.3);
   }
 
+  // Inner Circle: the first door reroll on each floor costs nothing.
+  public func HasFreeDoorReroll() -> Bool {
+    return IsDefined(this.m_run) && RLTerminal.Has(n"FixerContacts", 2) && this.m_run.freeDoorRerollDepth != this.m_run.Depth();
+  }
+
   public func OnDoorReroll() {
-    if ArraySize(this.m_doors) <= 1 || this.m_run.rerolls <= 0 || !this.IsBetweenFights() {
+    let free = this.HasFreeDoorReroll();
+    if ArraySize(this.m_doors) <= 1 || (!free && this.m_run.rerolls <= 0) || !this.IsBetweenFights() {
       return;
     }
-    this.m_run.rerolls -= 1;
+    if free {
+      this.m_run.freeDoorRerollDepth = this.m_run.Depth();
+    } else {
+      this.m_run.rerolls -= 1;
+    }
     RLTelemetry.Record(this.m_run, "PICK", RLTelemetry.Field("screen", "doors") + RLTelemetry.IntField("depth", this.m_run.Depth()) + RLTelemetry.Field("took", "reroll"));
     this.RollDoors();
     this.After(n"nextStep", 0.3);
@@ -2121,7 +2162,8 @@ public class RogueliteSystem extends ScriptableSystem {
     let game = player.GetGame();
     this.m_run.cover -= 1;
     this.m_run.coverSpent += 1;
-    GameInstance.GetStatPoolsSystem(game).RequestSettingStatPoolValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatPoolType.Health, RLConfig.CoverHealth(), null, true);
+    let health = RLTerminal.Has(n"TraumaTeam", 1) ? 75.0 : RLConfig.CoverHealth();
+    GameInstance.GetStatPoolsSystem(game).RequestSettingStatPoolValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatPoolType.Health, health, null, true);
     this.m_deathGuard.Rearm();
     let fx = this.Fx(player);
     for enemy in this.EnemiesNear(player.GetWorldPosition(), 8.0) {
@@ -2225,7 +2267,8 @@ public class RogueliteSystem extends ScriptableSystem {
     let run = this.m_run;
     RLTelemetry.Record(run, "END", RLTelemetry.Field("result", victory ? "won" : (abandoned ? "abandoned" : "lost"))
       + RLTelemetry.IntField("floors", run.floorsCleared) + RLTelemetry.IntField("kills", run.kills)
-      + RLTelemetry.IntField("mins", RoundF((RLBoonEffects.Now(game) - run.startTime) / 60.0)));
+      + RLTelemetry.IntField("mins", RoundF((RLBoonEffects.Now(game) - run.startTime) / 60.0))
+      + RLTelemetry.IntField("cred", run.credEarned) + RLTelemetry.IntField("favors", run.favorsEarned));
     this.m_state = RLState.Ending;
     RLOverdrive.Stop(game, player);
     RLBoonEffects.EndFight(player, this.m_combat);
@@ -2247,6 +2290,7 @@ public class RogueliteSystem extends ScriptableSystem {
 
     this.m_deathGuard.Disarm();
     RLBoons.RemoveAll(player, run);
+    RLArmMods.RemoveAll(player, run);
     RLEvents.RemoveRunMods(player, run);
     this.StopObjective();
     this.m_event = null;
@@ -2255,9 +2299,9 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_hud.Hide();
 
     this.m_endTitle = victory ? "NIGHT CITY IS YOURS" : (abandoned ? "RUN ABANDONED" : "FLATLINED");
-    this.m_endSubtitle = this.RunSummary() + s"   +\(run.credEarned + payout) CRED";
+    this.m_endSubtitle = this.RunSummary() + s"   +\(run.credEarned + payout) CRED" + (run.favorsEarned > 0 ? s"   +\(run.favorsEarned) FAVORS" : "");
     this.m_lastSummary = (victory ? "RUN COMPLETE" : "RUN OVER")
-      + s" - floors cleared \(run.floorsCleared), kills \(run.kills). Cred earned \(run.credEarned + payout) (total \(service.GetCred())).";
+      + s" - floors cleared \(run.floorsCleared), kills \(run.kills). Cred earned \(run.credEarned + payout) (total \(service.GetCred())), favors \(run.favorsEarned) (total \(service.GetFavors())).";
     RLLog(this.m_lastSummary);
     this.m_run = null;
 

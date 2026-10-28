@@ -131,7 +131,7 @@ public abstract class RLBoons {
       "SHOCKED enemies SHOCK their neighbours when they die.", [n"netrunner"]);
     RLBoons.Effect(list, n"GhostProtocol", n"VoodooBoys", "Ghost Protocol", glitch, shock,
       "Quickhacks and SHOCK also GLITCH for 6 s: no dodging, no Sandevistan, no healing.",
-      "Gun hits on GLITCHED enemies give back RAM.", [n"netrunner"]);
+      "Main weapon hits on GLITCHED enemies give back RAM.", [n"netrunner"]);
     RLBoons.Effect(list, n"DaisyChain", n"VoodooBoys", "Daisy Chain", shock, none,
       "A quickhack kill jumps: the nearest enemy is SHOCKED and loses 15% health.",
       "It jumps twice.", [n"netrunner"]);
@@ -372,6 +372,11 @@ public abstract class RLBoons {
   public static func IsOfferable(run: ref<RLRunState>, def: ref<RLBoonDef>) -> Bool {
     let state = RLBoons.Owned(run, def.id);
     if Equals(def.id, n"LoanShark") && !IsDefined(state) && !RLBoons.CanCutHealth(run, 0.25) {
+      return false;
+    }
+    // Quickhacks never headshot or swing: Thunder Rounds has nothing to do
+    // on a deck.
+    if Equals(def.id, n"ThunderRounds") && RLArms.IsMainDeck(run) {
       return false;
     }
     if ArrayContains(run.banished, "boon:" + NameToString(def.id)) {

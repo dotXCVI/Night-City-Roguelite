@@ -120,6 +120,7 @@ public abstract class RLPerkCatalog {
       return picked;
     }
     let expected = RLPerkCatalog.ExpectedPower(run.Depth(), run.TotalFloors());
+    let mainTags = RLBuildProfile.RecordTags(RLWeapons.MainRecord(run));
     let candidates: array<ref<RLPerkDef>>;
     for def in RLPerkCatalog.All() {
       if !ArrayContains(exclude, def.perk) && RLPerkCatalog.IsOfferable(data, def, profile) {
@@ -134,14 +135,14 @@ public abstract class RLPerkCatalog {
         }
       }
       while ArraySize(picked) < Min(strong, count) && ArraySize(above) > 0 {
-        let def = RLPerkCatalog.WeightedPick(above, expected, profile);
+        let def = RLPerkCatalog.WeightedPick(above, expected, profile, mainTags);
         ArrayPush(picked, def);
         ArrayRemove(above, def);
         ArrayRemove(candidates, def);
       }
     }
     while ArraySize(picked) < count && ArraySize(candidates) > 0 {
-      let def = RLPerkCatalog.WeightedPick(candidates, expected, profile);
+      let def = RLPerkCatalog.WeightedPick(candidates, expected, profile, mainTags);
       ArrayPush(picked, def);
       ArrayRemove(candidates, def);
     }
@@ -149,8 +150,9 @@ public abstract class RLPerkCatalog {
   }
 
   // Power at or below the floor's expectation is common, above it rarer
-  // (5 / 2 / 1 for +1 / +2 / +3); the build raises matching perks up to 40%.
-  public static func Weight(def: ref<RLPerkDef>, expected: Int32, profile: ref<RLBuildProfile>) -> Float {
+  // (5 / 2 / 1 for +1 / +2 / +3); the build raises matching perks up to 40%,
+  // and a perk for the main weapon (`mainTags`) counts double.
+  public static func Weight(def: ref<RLPerkDef>, expected: Int32, profile: ref<RLBuildProfile>, opt mainTags: array<CName>) -> Float {
     let base = 10.0;
     let above = def.power - expected;
     if above == 1 {
@@ -160,20 +162,26 @@ public abstract class RLPerkCatalog {
     } else if above >= 3 {
       base = 1.0;
     }
-    return base * RLBuildProfile.Multiplier(profile, def.tags);
+    let forMain = false;
+    for tag in def.tags {
+      if ArrayContains(mainTags, tag) {
+        forMain = true;
+      }
+    }
+    return base * RLBuildProfile.Multiplier(profile, def.tags) * (forMain ? 2.0 : 1.0);
   }
 
-  private static func WeightedPick(list: array<ref<RLPerkDef>>, expected: Int32, profile: ref<RLBuildProfile>) -> ref<RLPerkDef> {
+  private static func WeightedPick(list: array<ref<RLPerkDef>>, expected: Int32, profile: ref<RLBuildProfile>, mainTags: array<CName>) -> ref<RLPerkDef> {
     if ArraySize(list) == 0 {
       return null;
     }
     let total = 0.0;
     for def in list {
-      total += RLPerkCatalog.Weight(def, expected, profile);
+      total += RLPerkCatalog.Weight(def, expected, profile, mainTags);
     }
     let roll = RandRangeF(0.0, total);
     for def in list {
-      roll -= RLPerkCatalog.Weight(def, expected, profile);
+      roll -= RLPerkCatalog.Weight(def, expected, profile, mainTags);
       if roll <= 0.0 {
         return def;
       }

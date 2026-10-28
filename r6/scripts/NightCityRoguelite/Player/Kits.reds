@@ -202,11 +202,11 @@ public abstract class RLGear {
 
 // Starting kits: Common weapons (no Smart or Tech weapons at the start), one
 // identity perk, the kit's attributes, and a basic MaxDoc (an Uncommon one with
-// the Med Kit unlock), and a Common frag grenade (Demolitions starts with a
+// the terminal's House Call), and a Common frag grenade (Demolitions starts with a
 // better one); better grenades are rewards.
 //
 // Attributes are the kit's, not spent by hand: from the base 3, the kit's main
-// attribute gets +4 and its second +3 (the Edge unlocks add to the main one).
+// attribute gets +4 and its second +3 (the terminal's Edge adds to both).
 // After that they grow with the perks V takes.
 public abstract class RLKits {
   public static func MainAttribute(kit: CName) -> gamedataStatType {
@@ -250,7 +250,7 @@ public abstract class RLKits {
 
   // Gives the kit and puts its weapons in the run's slots: the first weapon
   // is the main, the second the sidearm (Rewards/Weapons.reds).
-  public static func Apply(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, healthStep: Int32, bonusAttributePoints: Int32) {
+  public static func Apply(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, healthStep: Int32) {
     let kit = run.kit;
     let weapons: array<ItemID>;
     let basic = RLRewards.AllowedEvolutions(1);
@@ -264,7 +264,8 @@ public abstract class RLKits {
         perk = gamedataNewPerkType.Reflexes_Right_Milestone_2;
         break;
       case n"Netrunner":
-        RLKits.Chrome(player, run, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
+        // The deck is the main weapon: its quickhacks are its hits.
+        RLKits.Deck(player, pools, run, weapons);
         let first = pools.PickQuickhack(0, noIDs);
         let second = pools.PickQuickhack(0, [first]);
         RLGear.GiveQuickhacks(player, [first, second]);
@@ -277,10 +278,10 @@ public abstract class RLKits {
         perk = gamedataNewPerkType.Cool_Left_Milestone_2;
         break;
       case n"Brawler":
-        // The arms are the main weapon; the shotgun backs them up.
+        // The arms are the main weapon; a pistol is only a backup.
         RLKits.Arms(player, pools, run, gamedataItemType.Cyb_StrongArms, weapons);
-        RLKits.Weapon(player, pools, [gamedataItemType.Wea_Shotgun, gamedataItemType.Wea_ShotgunDual], basic, weapons);
-        perk = gamedataNewPerkType.Body_Left_Milestone_2;
+        RLKits.Weapon(player, pools, pistols, basic, weapons);
+        perk = gamedataNewPerkType.Body_Right_Milestone_2;
         break;
       case n"Gunslinger":
         RLKits.Weapon(player, pools, [gamedataItemType.Wea_Revolver], basic, weapons);
@@ -288,6 +289,8 @@ public abstract class RLKits {
         perk = gamedataNewPerkType.Cool_Central_Milestone_2;
         break;
       case n"Demolitions":
+        // The launcher is the main weapon: every shot an explosion.
+        RLKits.Arms(player, pools, run, gamedataItemType.Cyb_Launcher, weapons);
         RLKits.Weapon(player, pools, [gamedataItemType.Wea_SubmachineGun], basic, weapons);
         RLConsumables.SetGrenade(player, RLConsumables.PickGrenadeOfFamily("Frag", 2));
         perk = gamedataNewPerkType.Tech_Left_Milestone_1;
@@ -313,7 +316,7 @@ public abstract class RLKits {
     }
     let data = PlayerDevelopmentSystem.GetData(player);
     if IsDefined(data) {
-      data.RL_RaiseAttribute(RLKits.MainAttribute(kit), 4 + bonusAttributePoints);
+      data.RL_RaiseAttribute(RLKits.MainAttribute(kit), 4);
       data.RL_RaiseAttribute(RLKits.SecondAttribute(kit), 3);
       RLPerks.Grant(data, perk, 0);
       data.UpdateUIBB();
@@ -327,6 +330,29 @@ public abstract class RLKits {
     RLLog("Kit applied: " + NameToString(kit) + ".");
   }
 
+  // The terminal's upgrades that shape V at the start of a run: Edge and
+  // Honed (attributes), Tolerance (capacity), Repeat Customer (a MaxDoc
+  // charge). Run mods, so they go when the run ends.
+  public static func ApplyTerminal(player: ref<PlayerPuppet>, run: ref<RLRunState>) {
+    let data = PlayerDevelopmentSystem.GetData(player);
+    if IsDefined(data) {
+      if RLTerminal.Has(n"Edge", 1) {
+        data.RL_RaiseAttribute(RLKits.MainAttribute(run.kit), 1);
+      }
+      if RLTerminal.Has(n"Edge", 2) {
+        data.RL_RaiseAttribute(RLKits.SecondAttribute(run.kit), 1);
+      }
+      data.UpdateUIBB();
+    }
+    if RLTerminal.Has(n"Tolerance", 1) {
+      RLEvents.AddRunMod(player, run, gamedataStatType.Humanity, gameStatModifierType.Additive, 10.0);
+    }
+    if RLTerminal.Has(n"BackAlleyDoc", 2) {
+      RLEvents.AddRunMod(player, run, gamedataStatType.HealingItemMaxCharges, gameStatModifierType.Additive, 1.0);
+      ConsumablesChargesHelper.RefreshAllCharges(player.GetGame(), gamedataStatPoolType.HealingItemsCharges);
+    }
+  }
+
   // Kit chrome brings its own capacity: a level-1 V never has it refused.
   private static func Chrome(player: ref<PlayerPuppet>, run: ref<RLRunState>, record: TweakDBID) {
     let cost = RLGear.NetCapacityCost(player, record);
@@ -335,6 +361,17 @@ public abstract class RLKits {
     }
     if !RLGear.InstallCyberware(player, record) {
       RLLog("Kit chrome missing: no record to install.");
+    }
+  }
+
+  // The kit's cyberdeck as its main weapon (Common, with its own capacity).
+  private static func Deck(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, out weapons: array<ItemID>) {
+    let noIDs: array<TweakDBID>;
+    let given = RLArms.Install(player, run, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs), ItemID.None());
+    if ItemID.IsValid(given) {
+      ArrayPush(weapons, given);
+    } else {
+      RLLog("Kit deck missing: no record to install.");
     }
   }
 

@@ -1,8 +1,15 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - meta progression
 // -----------------------------------------------------------------------------
-// Cred is earned for every cleared arena (never for a lost one), plus a bonus
-// for a completed run, and spent at the hub terminal.
+// Two currencies, kept outside saves (RogueliteService):
+//
+//   CRED     every cleared arena (never a lost one) and a won run; spent on
+//            the terminal's upgrades (Meta/Terminal.reds).
+//   FAVORS   what fixers owe V for putting bosses down: one per boss, one
+//            more for winning, and one the first time V reaches Act 2, Act 3
+//            and the end. Spent on kits in the armory, priced like Hades'
+//            weapons: the first comes in a few runs, the last is a long goal
+//            (30 favors for all seven, around 20 runs).
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -11,44 +18,29 @@ public class RLUnlockDef {
   public let id: CName;
   public let name: String;
   public let description: String;
+  // Kits: favors.
   public let cost: Int32;
-  // Another unlock that must be owned first (for tiered perks).
-  public let requires: CName;
 }
 
 public abstract class RLMeta {
-  // Meta unlocks lean towards more choice (Roboquest's basecamp): rerolls,
-  // more cards, more doors, a starting pick, a second life - not raw power.
+  // The kits to call in. Unlock IDs are stored on disk: never rename them.
   public static func Unlocks() -> array<ref<RLUnlockDef>> {
     let list: array<ref<RLUnlockDef>>;
-    ArrayPush(list, RLMeta.Def(n"kit.Netrunner", "Kit: Netrunner", "Cyberdeck, two quickhacks, pistol, Optimization.", 150, n""));
-    ArrayPush(list, RLMeta.Def(n"kit.Marksman", "Kit: Marksman", "Precision or sniper rifle, pistol, Focus.", 150, n""));
-    ArrayPush(list, RLMeta.Def(n"kit.Brawler", "Kit: Brawler", "Gorilla Arms, shotgun, Die! Die! Die!", 250, n""));
-    ArrayPush(list, RLMeta.Def(n"kit.Gunslinger", "Kit: Gunslinger", "Revolver, pistol, Double Trouble.", 250, n""));
-    ArrayPush(list, RLMeta.Def(n"kit.Demolitions", "Kit: Demolitions", "SMG, frag grenades, Glutton for War.", 300, n""));
-    ArrayPush(list, RLMeta.Def(n"kit.Juggernaut", "Kit: Juggernaut", "Light machine gun, pistol, Painkiller.", 350, n""));
-    ArrayPush(list, RLMeta.Def(n"kit.Wireman", "Kit: Wireman", "Monowire, cyberdeck, a quickhack, pistol, Siphon.", 300, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Reroll", "Fixer Contacts I", "Know a guy. +1 free reroll every act.", 200, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Reroll2", "Fixer Contacts II", "Know a better guy. Another free reroll every act.", 450, n"perk.Reroll"));
-    ArrayPush(list, RLMeta.Def(n"perk.FourthChoice", "Wide Net", "Four cards on every reward screen, not three.", 400, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.FourthDoor", "Street Map", "Four doors to pick from, not three.", 350, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.StarterPick", "Quartermaster", "Every run opens with a free Armory pick.", 300, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Platinum", "Trauma Platinum", "A second Trauma Team cover every run.", 450, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.StreetSmart", "Street Smart", "The Fixer knocks 20% off.", 200, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.MedKit", "Med Kit", "Start every run with an Uncommon MaxDoc.", 150, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Attribute1", "Edge I", "+1 to your kit's main attribute.", 100, n""));
-    ArrayPush(list, RLMeta.Def(n"perk.Attribute2", "Edge II", "Another +1 to it.", 200, n"perk.Attribute1"));
-    ArrayPush(list, RLMeta.Def(n"perk.Attribute3", "Edge III", "Another +1 to it.", 350, n"perk.Attribute2"));
+    ArrayPush(list, RLMeta.Def(n"kit.Netrunner", "Kit: Netrunner", 2));
+    ArrayPush(list, RLMeta.Def(n"kit.Marksman", "Kit: Marksman", 2));
+    ArrayPush(list, RLMeta.Def(n"kit.Gunslinger", "Kit: Gunslinger", 3));
+    ArrayPush(list, RLMeta.Def(n"kit.Juggernaut", "Kit: Juggernaut", 4));
+    ArrayPush(list, RLMeta.Def(n"kit.Demolitions", "Kit: Demolitions", 5));
+    ArrayPush(list, RLMeta.Def(n"kit.Brawler", "Kit: Brawler", 6));
+    ArrayPush(list, RLMeta.Def(n"kit.Wireman", "Kit: Wireman", 8));
     return list;
   }
 
-  private static func Def(id: CName, name: String, description: String, cost: Int32, requires: CName) -> ref<RLUnlockDef> {
+  private static func Def(id: CName, const name: String, cost: Int32) -> ref<RLUnlockDef> {
     let def = new RLUnlockDef();
     def.id = id;
     def.name = name;
-    def.description = description;
     def.cost = cost;
-    def.requires = requires;
     return def;
   }
 
@@ -81,46 +73,47 @@ public abstract class RLMeta {
   }
 
   public static func CanBuy(service: ref<RogueliteService>, def: ref<RLUnlockDef>) -> Bool {
-    if service.HasUnlock(def.id) {
-      return false;
-    }
-    if IsNameValid(def.requires) && !service.HasUnlock(def.requires) {
-      return false;
-    }
-    return service.GetCred() >= def.cost;
+    return !service.HasUnlock(def.id) && service.GetFavors() >= def.cost;
   }
 
   public static func TryBuy(service: ref<RogueliteService>, id: CName) -> Bool {
     let def = RLMeta.Get(id);
-    if !IsDefined(def) || !RLMeta.CanBuy(service, def) {
-      return false;
-    }
-    if !service.TrySpendCred(def.cost) {
+    if !IsDefined(def) || !RLMeta.CanBuy(service, def) || !service.TrySpendFavors(def.cost) {
       return false;
     }
     service.AddUnlock(def.id);
     return true;
   }
 
-  public static func PerkActive(service: ref<RogueliteService>, id: CName) -> Bool {
-    return service.HasUnlock(id);
+  // --- Favors ----------------------------------------------------------------------------
+
+  // A boss down (or the run won): what the fixers owe V, plus the firsts.
+  // Returns the favors paid. Test runs pay nothing.
+  public static func PayFavors(service: ref<RogueliteService>, run: ref<RLRunState>, won: Bool) -> Int32 {
+    if run.isTest {
+      return 0;
+    }
+    let paid = 1;
+    if won {
+      paid += 1 + RLMeta.First(service, n"milestone.Win");
+    } else if run.act == 1 {
+      paid += RLMeta.First(service, n"milestone.Act2");
+    } else if run.act == 2 {
+      paid += RLMeta.First(service, n"milestone.Act3");
+    }
+    service.AddFavors(paid);
+    run.favorsEarned += paid;
+    RLLog(s"Favors: +\(paid) (now \(service.GetFavors())).");
+    return paid;
   }
 
-  public static func BonusAttributePoints(service: ref<RogueliteService>) -> Int32 {
-    let bonus = 0;
-    if RLMeta.PerkActive(service, n"perk.Attribute1") { bonus += 1; }
-    if RLMeta.PerkActive(service, n"perk.Attribute2") { bonus += 1; }
-    if RLMeta.PerkActive(service, n"perk.Attribute3") { bonus += 1; }
-    return bonus;
-  }
-
-  // Free reroll charges per act (rewards and doors): one for everyone, more
-  // with the Fixer Contacts unlocks.
-  public static func RerollsPerAct(service: ref<RogueliteService>) -> Int32 {
-    let charges = 1;
-    if RLMeta.PerkActive(service, n"perk.Reroll") { charges += 1; }
-    if RLMeta.PerkActive(service, n"perk.Reroll2") { charges += 1; }
-    return charges;
+  // 1 the first time a milestone is reached.
+  private static func First(service: ref<RogueliteService>, id: CName) -> Int32 {
+    if service.HasUnlock(id) {
+      return 0;
+    }
+    service.AddUnlock(id);
+    return 1;
   }
 
   // Cred for a cleared arena: more for later acts, harder fights and bosses.
@@ -162,13 +155,13 @@ public abstract class RLMeta {
     switch kit {
       case n"Solo": return "Assault rifle, pistol, Ready, Rested, Reloaded.";
       case n"Blade": return "Katana, pistol, Lead and Steel.";
-      case n"Netrunner": return "Cyberdeck, two quickhacks, pistol, Optimization.";
+      case n"Netrunner": return "Cyberdeck as the main, two quickhacks, pistol, Optimization.";
       case n"Marksman": return "Precision or sniper rifle, pistol, Focus.";
-      case n"Brawler": return "Gorilla Arms, shotgun, Die! Die! Die!";
+      case n"Brawler": return "Gorilla Arms as the main, pistol, Wrecking Ball.";
       case n"Gunslinger": return "Revolver, pistol, Double Trouble.";
-      case n"Demolitions": return "SMG, frag grenades, Glutton for War.";
+      case n"Demolitions": return "Projectile Launcher as the main, SMG, frag grenades, Glutton for War.";
       case n"Juggernaut": return "Light machine gun, pistol, Painkiller.";
-      case n"Wireman": return "Monowire, cyberdeck, a quickhack, pistol, Siphon.";
+      case n"Wireman": return "Monowire as the main, cyberdeck, a quickhack, pistol, Siphon.";
     }
     return "";
   }

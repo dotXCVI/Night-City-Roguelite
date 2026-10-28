@@ -487,6 +487,18 @@ public class RLCard extends CustomButton {
     return chip;
   }
 
+  // A short marker in the top right corner ("ON").
+  public func SetTag(const text: String, color: CName) {
+    RLCard.Chip(text, color, 22).Reparent(this.m_corner);
+  }
+
+  // Cards with no kicker or pips give the row's height back to the lines.
+  public func HideKicker() {
+    let header = this.m_kicker.GetParentWidget();
+    header.SetVisible(false);
+    header.SetAffectsLayoutWhenHidden(false);
+  }
+
   // NEW: never taken in any run.
   public func SetNew() {
     RLCard.Chip("NEW", n"MainColors.ActiveYellow", 22).Reparent(this.m_corner);

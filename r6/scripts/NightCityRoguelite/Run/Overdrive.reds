@@ -70,7 +70,9 @@ public abstract class RLOverdrive {
       return;
     }
     let wasReady = RLOverdrive.IsReady(run);
-    run.overdrive = MinF(RLOverdrive.Full(), run.overdrive + amount);
+    // Hair Trigger (the terminal): the meter fills a quarter faster.
+    let gain = RLTerminal.Has(n"Primed", 2) ? amount * 1.25 : amount;
+    run.overdrive = MinF(RLOverdrive.Full(), run.overdrive + gain);
     if !wasReady && RLOverdrive.IsReady(run) {
       RLNotify(game, RLOverdrive.Name(run.os) + " READY - ACTIVATE YOUR OPERATING SYSTEM", 5.0);
     }
@@ -115,9 +117,23 @@ public abstract class RLOverdrive {
       default:
         return false;
     }
+    RLOverdrive.AfterActivated(player);
     RLNotify(game, RLOverdrive.Name(os), 3.0);
     RLLog("Overdrive: " + RLOverdrive.Name(os) + ".");
     return true;
+  }
+
+  // The terminal's Meltdown row: Afterburn refills the MaxDoc, Meltdown sets
+  // off a BLAST around V.
+  private static func AfterActivated(player: ref<PlayerPuppet>) {
+    let game = player.GetGame();
+    if RLTerminal.Has(n"Meltdown", 1) {
+      ConsumablesChargesHelper.RefreshAllCharges(game, gamedataStatPoolType.HealingItemsCharges);
+    }
+    let system = RogueliteSystem.Get(game);
+    if RLTerminal.Has(n"Meltdown", 2) && IsDefined(system) && system.IsFighting() {
+      RLKeywords.Blast(system.Fx(player), player.GetWorldPosition(), 6.0, null, 0);
+    }
   }
 
   private static func Blackwall(player: ref<PlayerPuppet>) {
@@ -203,7 +219,9 @@ public abstract class RLOverdrive {
       return;
     }
     combat.psychoTimer = 0.0;
-    if RandF() < MinF(0.6, 0.06 * Cast<Float>(run.overclock)) {
+    // Neural Dampers (the terminal) halve the odds.
+    let odds = MinF(0.6, 0.06 * Cast<Float>(run.overclock)) * (RLTerminal.Has(n"Tolerance", 2) ? 0.5 : 1.0);
+    if RandF() < odds {
       combat.psychoUntil = now + 6.0;
       GameObjectEffectHelper.StartEffectEvent(player, n"transition_glitch_loop", false);
       RLDelay(game, RLEpisodeEnd.Create(player), n"episodeEnd", 6.0);

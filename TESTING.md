@@ -139,8 +139,18 @@ roguelite character for this build. Tell me how these feel:
 - Dash-based effects (Kinetic Dash, Convoy, Burnout, Slipstream): do they
   fire on every dash?
 
+**Kits and chrome**
+- Try the **Brawler**, **Wireman**, **Demolitions** and **Netrunner**: their
+  main weapon is chrome (Gorilla Arms, Monowire, the Projectile Launcher, the
+  cyberdeck). Is it installed from the first arena? Do Armory screens offer
+  its mods (KNUCKLES, CABLE, ROUND, ICEBREAKER...) and do they change how it
+  fights? Send the log if a line says "Chrome refused".
+- **Favors:** beat a boss and the fixers owe you one - check the armory.
+- **Terminal UPGRADES:** switch a row's take and buy a rank. Does it read
+  well? Did your old unlocks carry over?
+
 **Weapons**
-- Your kit's gun is your **main weapon** - every Armory reward goes into it.
+- Your kit's main weapon takes every Armory reward.
   Did Tune-Ups feel worth it (the card shows DPS before and after)?
 - Did you trade guns, and did your weapon effects come along?
 - Does the sidearm stepping up after each boss feel like enough?

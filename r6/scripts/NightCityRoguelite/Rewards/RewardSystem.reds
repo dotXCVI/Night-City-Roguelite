@@ -46,6 +46,7 @@ public enum RLOfferKind {
   OperatingSystem = 11,
   Gig = 12,
   Rewire = 13,
+  ArmMod = 14,
 }
 
 public enum RLRewardCategory {
@@ -94,6 +95,9 @@ public class RLOffer {
   // never taken in any run (NEW).
   public let links: array<CName>;
   public let isNew: Bool;
+  // Keywords it makes and uses (effects, arm mods, a rewire's element).
+  public let makes: array<CName>;
+  public let uses: array<CName>;
   public let tags: array<CName>;
   // Operating Systems: the kind (Sandevistan, Berserk, Cyberdeck).
   public let mod: CName;
@@ -138,8 +142,23 @@ public abstract class RLRewards {
   }
 
   // How many cards the door's screen deals.
-  public static func CardCount(run: ref<RLRunState>, door: ref<RLDoor>) -> Int32 {
-    return IsDefined(door) && door.hot ? run.offerCount + 1 : run.offerCount;
+  // What a door's screen will deal, as its card promises it (Open Line's
+  // extra card on the run's first patron screen included).
+  public static func DoorCardCount(run: ref<RLRunState>, door: ref<RLDoor>) -> Int32 {
+    let count = RLRewards.CardCount(run, door.hot);
+    if Equals(door.category, RLRewardCategory.Boons) && !run.firstPatronDealt && RLTerminal.Has(n"PatronsEar", 1) {
+      count += 1;
+    }
+    return count;
+  }
+
+  // Cards on a reward screen: a hot door deals one more (two with Hot
+  // Streak).
+  public static func CardCount(run: ref<RLRunState>, hot: Bool) -> Int32 {
+    if !hot {
+      return run.offerCount;
+    }
+    return run.offerCount + (RLTerminal.Has(n"HotStreak", 1) ? 2 : 1);
   }
 
   // What a door pays, in plain words ("Pick 1 of 3 Voodoo Boys effects.").
@@ -229,11 +248,13 @@ public abstract class RLRewards {
     }
     // Now and then a door is an event (no fight), a bounty (Act 2 on) or
     // Cred. Test runs always show the event and the bounty.
-    if (depth >= 2 || run.isTest) && !run.IsEliteFloor() && ArraySize(doors) < count && (run.isTest || RandF() < RLConfig.EventDoorChance()) {
+    let eventChance = RLConfig.EventDoorChance() * (RLTerminal.Has(n"InsideMan", 1) ? 2.0 : 1.0);
+    if (depth >= 2 || run.isTest) && !run.IsEliteFloor() && ArraySize(doors) < count && (run.isTest || RandF() < eventChance) {
       ArrayPush(used, RLRewardCategory.Event);
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Event, false, usedArenas));
     }
-    if run.act >= 2 && ArraySize(doors) < count && (run.isTest || RandF() < RLConfig.BountyDoorChance()) {
+    let bountyAct = RLTerminal.Has(n"BountyBoard", 1) ? 1 : 2;
+    if run.act >= bountyAct && depth >= 2 && ArraySize(doors) < count && (run.isTest || RandF() < RLConfig.BountyDoorChance()) {
       ArrayPush(used, RLRewardCategory.Bounty);
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Bounty, false, usedArenas));
     }
@@ -259,6 +280,11 @@ public abstract class RLRewards {
     }
     if RLRewardDirector.WantsHotDoor(player, run) {
       RLRewards.MakeOneHot(player, pools, run, doors, usedArenas);
+    }
+    // Inside Man: Acts 2 and 3 open with a door from V's lead patron (a
+    // reroll of those doors keeps it).
+    if run.floor == 1 && run.act > 1 && RLTerminal.Has(n"InsideMan", 2) {
+      RLRewards.PlacePatronDoor(pools, run, doors, usedArenas);
     }
     return doors;
   }
@@ -308,6 +334,25 @@ public abstract class RLRewards {
       i -= 1;
     }
     return -1;
+  }
+
+  // The lead patron's door, in place of the last regular door that isn't
+  // already one of theirs.
+  private static func PlacePatronDoor(pools: ref<RLTweakPools>, run: ref<RLRunState>, out doors: array<ref<RLDoor>>, out usedArenas: array<CName>) {
+    let patron = RLPatrons.Lead(run);
+    if !IsNameValid(patron) || RLRewards.HasPatronDoor(doors, patron) {
+      return;
+    }
+    let i = ArraySize(doors) - 1;
+    while i >= 0 {
+      if RLRewards.IsRegular(doors[i]) && !doors[i].hot {
+        let door = RLRewards.MakeDoor(pools, run, RLRewardCategory.Boons, false, usedArenas);
+        door.patron = patron;
+        doors[i] = door;
+        return;
+      }
+      i -= 1;
+    }
   }
 
   private static func SetHot(run: ref<RLRunState>, door: ref<RLDoor>) {
@@ -424,7 +469,8 @@ public abstract class RLRewards {
   // quality steps up and a big card.
   public static func RollForCategory(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, patron: CName, hot: Bool, count: Int32) -> array<ref<RLOffer>> {
     let profile = RLBuildProfile.Read(player);
-    let spike = hot || RLRewardDirector.SpikeDue(run);
+    // Sure Thing: an act's first reward screen always has a standout.
+    let spike = hot || RLRewardDirector.SpikeDue(run) || run.floor == 1 && RLTerminal.Has(n"LuckyStar", 2);
     let offers: array<ref<RLOffer>>;
     switch category {
       case RLRewardCategory.System:
@@ -558,6 +604,8 @@ public abstract class RLRewards {
     offer.overclock = overclock;
     offer.patron = def.patron;
     offer.tags = def.tags;
+    offer.makes = def.makes;
+    offer.uses = def.uses;
     offer.title = overclock ? def.name + "+" : def.name;
     offer.description = overclock ? def.overclock : def.text;
     let patrons = Equals(def.kind, RLBoonKind.Duo) ? RLPatrons.Name(def.patron) + " + " + RLPatrons.Name(def.partner) : RLPatrons.Name(def.patron);
@@ -603,7 +651,8 @@ public abstract class RLRewards {
   // --- The Armory ---------------------------------------------------------------------------
 
   // The main weapon's screen: the evolution when it's ready, a Tune-Up,
-  // weapon effects from the run's patrons, one TRADE, now and then a grenade.
+  // weapon effects from the run's patrons, a mod for main chrome, one TRADE
+  // (REWIRE for arms), now and then a grenade.
   private static func ArmoryOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, count: Int32, hot: Bool, spike: Bool) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
     let evolve = RLRewards.EvolveOffer(player, pools, run);
@@ -620,17 +669,30 @@ public abstract class RLRewards {
         ArrayPush(effects, def);
       }
     }
+    // Chrome in the main slot: one of its own mods. Arm chrome is rewired
+    // and a deck kept, never traded away. Both wait behind at least one
+    // weapon effect.
+    let none: array<CName>;
+    let mod = RLArmMods.DealOne(run, none);
+    let trade: ref<RLOffer>;
+    if !RLArms.IsMainDeck(run) {
+      trade = RLArms.IsMainArms(run) ? RLArms.RewireOffer(run) : RLRewards.TradeOffer(player, pools, run);
+    }
+    let reserved = (IsDefined(mod) ? 1 : 0) + (IsDefined(trade) ? 1 : 0);
     let taken: array<CName>;
-    let room = count - ArraySize(offers) - 1;
+    let room = Max(1, count - ArraySize(offers) - reserved);
     while room > 0 && RLRewards.DealOne(player, run, effects, taken, offers) {
       room -= 1;
     }
-    // Arm chrome is rewired, never traded away.
-    if ArraySize(offers) < count {
-      let trade = RLArms.IsMainArms(run) ? RLArms.RewireOffer(run) : RLRewards.TradeOffer(player, pools, run);
-      if IsDefined(trade) {
-        ArrayPush(offers, trade);
-      }
+    // Room for only one of the two: either, at even odds.
+    if IsDefined(mod) && IsDefined(trade) && count - ArraySize(offers) == 1 && RandRange(0, 2) == 0 {
+      mod = null;
+    }
+    if IsDefined(mod) && ArraySize(offers) < count {
+      ArrayPush(offers, mod);
+    }
+    if IsDefined(trade) && ArraySize(offers) < count {
+      ArrayPush(offers, trade);
     }
     let guard = 0;
     while ArraySize(offers) < count && guard < 6 {
@@ -650,7 +712,11 @@ public abstract class RLRewards {
       return null;
     }
     let target = Min(RLQuality.MaxStep(), run.mainStep + steps);
-    let record = RLArms.IsMainArms(run) ? RLArms.MainRecordAt(run, target) : RLWeapons.MainRecord(run);
+    let record = RLArms.IsMainChrome(run) ? RLArms.MainRecordAt(run, target) : RLWeapons.MainRecord(run);
+    // A deck at the end of its upgrade chain has nowhere to go.
+    if RLArms.IsMainDeck(run) && record == ItemID.GetTDBID(run.mainWeapon) {
+      return null;
+    }
     let offer = new RLOffer();
     offer.kind = RLOfferKind.TuneUp;
     offer.itemID = run.mainWeapon;
@@ -707,7 +773,7 @@ public abstract class RLRewards {
     if !RLWeapons.CanEvolve(run) {
       return null;
     }
-    if RLArms.IsMainArms(run) {
+    if RLArms.IsMainChrome(run) {
       return RLArms.EvolveOffer(run);
     }
     let iconic = pools.PickIconicFor(RPGManager.GetItemType(run.mainWeapon));
@@ -739,6 +805,11 @@ public abstract class RLRewards {
     let tune = RLRewards.TuneUpOffer(player, run, 2);
     if IsDefined(tune) {
       ArrayPush(offers, tune);
+    }
+    let none: array<CName>;
+    let mod = RLArmMods.DealOne(run, none);
+    if IsDefined(mod) && ArraySize(offers) < count {
+      ArrayPush(offers, mod);
     }
     let health = RLRewards.HealthUpgradeOffer(player);
     if IsDefined(health) && ArraySize(offers) < count {
@@ -904,9 +975,30 @@ public abstract class RLRewards {
       case RLOfferKind.Cyberware:
         // Once Overdrive is unlocked the Operating System stays the one it came with.
         offer.record = RLRewards.PickWeighted(pools, profile, step, run.overdriveUnlocked);
-        // Arms in the main slot stay: no other arm chrome for them.
+        // Chrome in the main slot stays: no other arms over arms, no
+        // Operating System over a deck.
         if RLArms.IsMainArms(run) && RLArms.IsArmsRecord(offer.record) {
           return null;
+        }
+        if RLArms.IsMainDeck(run) && Equals(EquipmentSystem.GetEquipAreaType(ItemID.FromTDBID(offer.record)), gamedataEquipmentArea.SystemReplacementCW) {
+          return null;
+        }
+        // Arm chrome for a gun build takes over the main slot.
+        if !RLArms.IsMainChrome(run) && RLArms.IsArmsRecord(offer.record) && ItemID.IsValid(run.mainWeapon) {
+          // It comes in at the main slot's tier, so the card shows that record.
+          let family = RLArms.Family(TweakDBInterface.GetItemRecord(offer.record).ItemType().Type());
+          let slotRecord = RLArms.Record(family, "", Max(run.mainStep, RLArms.MinStep()));
+          if TDBID.IsValid(slotRecord) {
+            offer.record = slotRecord;
+          }
+          offer.mod = n"TakeMain";
+          offer.step = RLQuality.StepOfRecord(offer.record);
+          offer.subtitle = "CYBERWARE - YOUR NEW MAIN";
+          offer.description = "Takes the main slot at your main's tier, weapon effects and all. " + RLRewards.ItemName(RLWeapons.MainRecord(run)) + " becomes your sidearm.";
+          offer.excitement = offer.step - expected;
+          ArrayPush(offer.tags, n"chrome");
+          offer.title = RLRewards.ItemName(offer.record);
+          return offer;
         }
         if TDBID.IsValid(offer.record) {
           offer.step = RLQuality.StepOfRecord(offer.record);
@@ -998,6 +1090,23 @@ public abstract class RLRewards {
   // quality. Each unlocks its own Overdrive.
   public static func OperatingSystemOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
+    // A deck in the main slot is the Operating System: it goes into Overdrive
+    // itself, two steps up.
+    if RLArms.IsMainDeck(run) {
+      let offer = new RLOffer();
+      offer.kind = RLOfferKind.OperatingSystem;
+      offer.mod = n"Cyberdeck";
+      offer.record = RLArms.MainRecordAt(run, run.mainStep + 2);
+      offer.step = RLQuality.StepOfRecord(offer.record);
+      let steps = offer.record != ItemID.GetTDBID(run.mainWeapon) ? "Two steps up, and " : "";
+      offer.title = RLRewards.ItemName(offer.record);
+      offer.subtitle = "YOUR DECK - " + RLQuality.DisplayName(offer.step);
+      offer.description = steps + "OVERDRIVE: " + RLOverdrive.Name(n"Cyberdeck") + ". " + RLOverdrive.Description(n"Cyberdeck");
+      offer.excitement = 2;
+      ArrayPush(offer.tags, n"netrunner");
+      ArrayPush(offers, offer);
+      return offers;
+    }
     let step = RLRewardDirector.RollStep(run, true);
     for os in RLRewards.OperatingSystems() {
       let record = pools.PickOperatingSystem(os, RLRewards.BandForStep(step));
@@ -1069,7 +1178,7 @@ public abstract class RLRewards {
         RLWeapons.ReplaceMain(player, run, offer.record);
         break;
       case RLOfferKind.Evolve:
-        if RLArms.IsMainArms(run) {
+        if RLArms.IsMainChrome(run) {
           RLArms.Evolve(player, run);
         } else {
           RLWeapons.ReplaceMain(player, run, offer.record);
@@ -1078,6 +1187,9 @@ public abstract class RLRewards {
       case RLOfferKind.Rewire:
         RLArms.Rewire(player, run, offer);
         break;
+      case RLOfferKind.ArmMod:
+        RLArmMods.Apply(player, run, offer.boon, offer.overclock);
+        break;
       case RLOfferKind.Iconic:
         RLGear.GiveWeapon(player, offer.record, offer.tier, false);
         break;
@@ -1085,6 +1197,10 @@ public abstract class RLRewards {
         RLWeapons.TuneUp(player, run, offer.amount);
         break;
       case RLOfferKind.Cyberware:
+        if Equals(offer.mod, n"TakeMain") {
+          RLArms.TakeOverMain(player, run, offer.record);
+          break;
+        }
         if offer.amount > 0 {
           RLRewards.Overclock(player, run, offer.amount);
         }
@@ -1134,11 +1250,15 @@ public abstract class RLRewards {
   // An Operating System brings its own capacity, unlocks Overdrive, and a
   // cyberdeck comes with the Overclock perk that activates it.
   private static func InstallOperatingSystem(player: ref<PlayerPuppet>, run: ref<RLRunState>, offer: ref<RLOffer>) {
-    let cost = RLGear.NetCapacityCost(player, offer.record);
-    if cost > 0.0 {
-      RLEvents.AddRunMod(player, run, gamedataStatType.Humanity, gameStatModifierType.Additive, cost);
+    if RLArms.IsMainDeck(run) {
+      RLWeapons.TuneUp(player, run, 2);
+    } else {
+      let cost = RLGear.NetCapacityCost(player, offer.record);
+      if cost > 0.0 {
+        RLEvents.AddRunMod(player, run, gamedataStatType.Humanity, gameStatModifierType.Additive, cost);
+      }
+      RLGear.InstallCyberware(player, offer.record);
     }
-    RLGear.InstallCyberware(player, offer.record);
     if Equals(offer.mod, n"Cyberdeck") {
       let overclock = RLPerkCatalog.Find(gamedataNewPerkType.Intelligence_Central_Milestone_3);
       if IsDefined(overclock) && !RLPerkCatalog.IsOwned(PlayerDevelopmentSystem.GetData(player), overclock.perk) {
@@ -1147,7 +1267,7 @@ public abstract class RLRewards {
     }
     run.os = offer.mod;
     run.overdriveUnlocked = true;
-    run.overdrive = 50.0;
+    run.overdrive = RLTerminal.Has(n"Primed", 1) ? RLOverdrive.Full() : 50.0;
     RLNotify(player.GetGame(), "OVERDRIVE ONLINE: " + RLOverdrive.Name(offer.mod) + ". Fill the meter, then activate your OS.", 8.0);
   }
 
@@ -1160,6 +1280,8 @@ public abstract class RLRewards {
         return "perk:" + EnumValueToString("gamedataNewPerkType", Cast<Int64>(EnumInt(offer.perk)));
       case RLOfferKind.Boon:
         return "boon:" + NameToString(offer.boon);
+      case RLOfferKind.ArmMod:
+        return "mod:" + NameToString(offer.boon);
       case RLOfferKind.Trade:
       case RLOfferKind.Iconic:
       case RLOfferKind.Cyberware:
@@ -1226,7 +1348,8 @@ public abstract class RLRewards {
   }
 
   // Eddies for skipping a reward screen.
-  public static func SkipEddies(run: ref<RLRunState>) -> Int32 = 100 + 25 * run.Depth()
+  // Off the Books doubles it.
+  public static func SkipEddies(run: ref<RLRunState>) -> Int32 = (100 + 25 * run.Depth()) * (RLTerminal.Has(n"Skim", 2) ? 2 : 1)
 
   // Quality step of an owned item (0 Common .. 10 Legendary++).
   public static func ItemStep(item: wref<gameItemData>) -> Int32 {

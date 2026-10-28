@@ -55,6 +55,9 @@ public abstract class RLWeapons {
     if !ItemID.IsValid(run.mainWeapon) {
       return -1;
     }
+    if RLArms.IsDeck(run.mainWeapon) {
+      return RLStyle.Netrunner();
+    }
     let styles = RLStyles.ItemStyles(run.mainWeapon);
     return ArraySize(styles) > 0 ? styles[0] : -1;
   }
@@ -74,7 +77,13 @@ public abstract class RLWeapons {
   public static func AssignSlots(run: ref<RLRunState>, weapons: array<ItemID>) {
     run.mainWeapon = ArraySize(weapons) > 0 ? weapons[0] : ItemID.None();
     run.sidearm = ArraySize(weapons) > 1 ? weapons[1] : ItemID.None();
-    run.mainStep = RLArms.IsArms(run.mainWeapon) ? RLArms.MinStep() : 0;
+    if RLArms.IsArms(run.mainWeapon) {
+      run.mainStep = RLArms.MinStep();
+    } else if RLArms.IsDeck(run.mainWeapon) {
+      run.mainStep = RLQuality.StepOfRecord(ItemID.GetTDBID(run.mainWeapon));
+    } else {
+      run.mainStep = 0;
+    }
     run.sidearmStep = 0;
     run.mainElement = "";
     run.mainEvolved = false;
@@ -84,9 +93,15 @@ public abstract class RLWeapons {
   // Rewards/ArmChrome.reds).
   public static func ApplySteps(player: ref<PlayerPuppet>, run: ref<RLRunState>) {
     let transactions = GameInstance.GetTransactionSystem(player.GetGame());
-    if RLArms.IsMainArms(run) {
-      run.mainStep = Max(run.mainStep, RLArms.MinStep());
+    if RLArms.IsMainChrome(run) {
+      if RLArms.IsMainArms(run) {
+        run.mainStep = Max(run.mainStep, RLArms.MinStep());
+      }
       RLArms.ReplaceMain(player, run, RLArms.MainRecordAt(run, run.mainStep));
+      // A deck's chain can end short of the step: the slot is what it holds.
+      if RLArms.IsMainDeck(run) {
+        run.mainStep = Min(run.mainStep, RLQuality.StepOfRecord(ItemID.GetTDBID(run.mainWeapon)));
+      }
     } else if ItemID.IsValid(run.mainWeapon) {
       let main = transactions.GetItemData(player, run.mainWeapon);
       if IsDefined(main) {

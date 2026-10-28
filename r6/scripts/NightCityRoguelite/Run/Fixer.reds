@@ -14,7 +14,8 @@
 // The Fixer also buys back gear V carries but doesn't use (weapons and
 // cyberware that aren't equipped) - Cyberpunk's card removal.
 //
-// Prices scale with the floor; the Street Smart unlock takes 20% off.
+// Prices scale with the floor; Street Smart (the terminal) takes 15% or 30%
+// off.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -36,7 +37,8 @@ public abstract class RLFixer {
   // Eddies for a cleared arena.
   public static func ArenaEddies(run: ref<RLRunState>) -> Int32 {
     let base = Cast<Float>(100 + 40 * run.Depth());
-    let scale = run.IsHotFight() ? 1.5 : 1.0;
+    // Half again on a hot door; Skim (the terminal) skims 20% on top.
+    let scale = (run.IsHotFight() ? 1.5 : 1.0) * (RLTerminal.Has(n"Skim", 1) ? 1.2 : 1.0);
     return RoundF(base * scale) + (run.IsBossFloor() ? 400 : 0);
   }
 
@@ -56,6 +58,18 @@ public abstract class RLFixer {
     RLFixer.AddItem(stock, run, grenade, 300 + 60 * depth);
     let effect = RLRewards.AnyBoonOffer(player, run);
     RLFixer.AddItem(stock, run, effect, 350 + 50 * depth);
+    // Made Man (the terminal): a second effect on the shelf.
+    if RLTerminal.Has(n"StreetSmart", 2) && IsDefined(effect) {
+      let tries = 0;
+      while tries < 4 {
+        let second = RLRewards.AnyBoonOffer(player, run);
+        if IsDefined(second) && NotEquals(second.boon, effect.boon) {
+          RLFixer.AddItem(stock, run, second, 350 + 50 * depth);
+          tries = 4;
+        }
+        tries += 1;
+      }
+    }
     let none: array<gamedataNewPerkType>;
     let perks = RLPerkCatalog.Pick(player, run, profile, 1, 0, none);
     if ArraySize(perks) > 0 {
@@ -171,11 +185,9 @@ public abstract class RLFixer {
     ArrayPush(stock, item);
   }
 
+  // Street Smart: 15% off (Haggler), 30% (Made Man).
   public static func Discounted(run: ref<RLRunState>, price: Int32) -> Int32 {
-    let scale = 1.0;
-    if RLMeta.PerkActive(RogueliteService.Get(), n"perk.StreetSmart") {
-      scale *= 0.8;
-    }
+    let scale = RLTerminal.Has(n"StreetSmart", 2) ? 0.7 : (RLTerminal.Has(n"StreetSmart", 1) ? 0.85 : 1.0);
     return RoundF(Cast<Float>(price) * scale);
   }
 }

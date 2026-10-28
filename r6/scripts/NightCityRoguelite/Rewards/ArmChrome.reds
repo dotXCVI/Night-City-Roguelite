@@ -1,10 +1,12 @@
 // -----------------------------------------------------------------------------
-// Night City Roguelite - arm chrome as the main weapon
+// Night City Roguelite - chrome as the main weapon
 // -----------------------------------------------------------------------------
 // Gorilla Arms, Mantis Blades, Monowire and the Projectile Launcher are the
-// point of the kits that start with them (Brawler, Wireman), so they take the
-// main slot (Rewards/Weapons.reds) the way a gun does - weapon effects and
-// all - with their own take on the slot's rewards:
+// point of the kits that start with them (Brawler, Wireman, Demolitions), and
+// the cyberdeck is the Netrunner's, so they take the main slot
+// (Rewards/Weapons.reds) the way a gun does - weapon effects and all (a
+// deck's quickhacks are its hits) - with their own take on the slot's
+// rewards, and two mod slots of their own (Rewards/ArmMods.reds):
 //
 //   Tune-Up   the game's own upgrade path. Each quality of arm chrome is its
 //             own record (Items.Advanced<Family><Element><Tier>), the way a
@@ -16,6 +18,14 @@
 //             hits BURN, Electric hits SHOCK, Chemical hits BLEED.
 //   Evolve    at Legendary with two weapon effects: Legendary++ and a third
 //             weapon effect slot (there are no iconic arms to evolve into).
+//
+// A deck has no elements and no records by name: its Tune-Ups follow the
+// game's own upgrade chain (each record's next upgrade), and it is never
+// traded or rewired. At the Act 1 boss it goes into Overdrive itself rather
+// than making way for another Operating System.
+//
+// Arm chrome a Chrome door turns up for a gun build can take over the main
+// slot (TakeOverMain): the gun steps down to sidearm.
 //
 // The arms bring their own capacity, like an Operating System: what a swap
 // costs is added to V's capacity as it goes in, so the kit's arms are never
@@ -45,6 +55,16 @@ public abstract class RLArms {
   }
 
   public static func IsMainArms(run: ref<RLRunState>) -> Bool = IsDefined(run) && RLArms.IsArms(run.mainWeapon)
+
+  public static func IsDeck(itemID: ItemID) -> Bool {
+    let item = TweakDBInterface.GetItemRecord(ItemID.GetTDBID(itemID));
+    return ItemID.IsValid(itemID) && IsDefined(item) && item.TagsContains(n"Cyberdeck");
+  }
+
+  public static func IsMainDeck(run: ref<RLRunState>) -> Bool = IsDefined(run) && RLArms.IsDeck(run.mainWeapon)
+
+  // Arms or a deck: chrome that swaps records to step up.
+  public static func IsMainChrome(run: ref<RLRunState>) -> Bool = RLArms.IsMainArms(run) || RLArms.IsMainDeck(run)
 
   // The lowest step arm chrome comes in (Uncommon).
   public static func MinStep() -> Int32 = 2
@@ -90,9 +110,24 @@ public abstract class RLArms {
     return TDBID.None();
   }
 
-  // The main slot's arms at `step`, in its element.
+  // The main slot's chrome at `step`: arms in their element, a deck along
+  // its upgrade chain (as far as the chain goes).
   public static func MainRecordAt(run: ref<RLRunState>, step: Int32) -> TweakDBID {
-    return RLArms.Record(RLArms.Family(RPGManager.GetItemType(run.mainWeapon)), run.mainElement, step);
+    if RLArms.IsMainArms(run) {
+      return RLArms.Record(RLArms.Family(RPGManager.GetItemType(run.mainWeapon)), run.mainElement, step);
+    }
+    let record = TweakDBInterface.GetItemRecord(ItemID.GetTDBID(run.mainWeapon));
+    let guard = 0;
+    while IsDefined(record) && RLQuality.StepOfRecord(record.GetID()) < step && guard < 12 {
+      let next = record.NextUpgradeItem();
+      if !IsDefined(next) || !TDBID.IsValid(next.GetID()) {
+        guard = 12;
+      } else {
+        record = next;
+      }
+      guard += 1;
+    }
+    return IsDefined(record) ? record.GetID() : TDBID.None();
   }
 
   // --- Elements -------------------------------------------------------------------------
@@ -154,13 +189,46 @@ public abstract class RLArms {
     if cost > 0.0 {
       RLEvents.AddRunMod(player, run, gamedataStatType.Humanity, gameStatModifierType.Additive, cost);
     }
+    // Rewards go in inside the arena, where pickups are filtered.
+    let system = RogueliteSystem.Get(player.GetGame());
+    if IsDefined(system) {
+      system.ExpectGrant(record);
+    }
+    // A deck carries its quickhacks inside it: take them out before the old
+    // one goes, and slot them into the new one once it's in (the same queue,
+    // so the equip lands first).
+    let programs: array<ItemID>;
+    if RLArms.IsDeck(old) && ItemID.GetTDBID(old) != record {
+      programs = RLArms.StripPrograms(player, old);
+    }
     let itemID = RLGear.InstallCyberwareItem(player, record);
     let transactions = GameInstance.GetTransactionSystem(player.GetGame());
     if ItemID.IsValid(old) && old != itemID && transactions.HasItem(player, old) {
       transactions.RemoveItem(player, old, 1);
     }
+    if ArraySize(programs) > 0 {
+      let request = new GameplayEquipProgramsRequest();
+      request.owner = player;
+      request.programIDs = programs;
+      EquipmentSystem.GetInstance(player).QueueRequest(request);
+    }
     RLLog("Arm chrome: " + RLRewards.ItemName(record) + " (" + RLQuality.DisplayName(RLQuality.StepOfRecord(record)) + ").");
     return itemID;
+  }
+
+  // The quickhacks slotted in a deck, taken out into V's inventory.
+  private static func StripPrograms(player: ref<PlayerPuppet>, deck: ItemID) -> array<ItemID> {
+    let programs: array<ItemID>;
+    let transactions = GameInstance.GetTransactionSystem(player.GetGame());
+    for slot in ItemModificationSystem.GetAllSlots(player, deck) {
+      if Equals(slot.status, ESlotState.Taken) && ItemID.GetTDBID(slot.installedPart) != t"Items.GenericItemRoot" {
+        let program = transactions.RemovePart(player, deck, slot.slotID);
+        if ItemID.IsValid(program) {
+          ArrayPush(programs, program);
+        }
+      }
+    }
+    return programs;
   }
 
   // Swaps the main arms for `record` (Tune-Up, Rewire, Evolve, act step).
@@ -176,7 +244,7 @@ public abstract class RLArms {
 
   // On every trip: the main arms are where they belong, or they go back in.
   public static func Heal(player: ref<PlayerPuppet>, run: ref<RLRunState>) {
-    if !RLArms.IsMainArms(run) || !IsDefined(player) {
+    if !RLArms.IsMainChrome(run) || !IsDefined(player) {
       return;
     }
     let equipment = EquipmentSystem.GetData(player);
@@ -189,6 +257,24 @@ public abstract class RLArms {
     if ItemID.IsValid(given) {
       run.mainWeapon = given;
     }
+  }
+
+  // Arm chrome from a Chrome door takes the main slot, effects and all (the
+  // card already carries the record at the slot's tier); the gun it replaces
+  // becomes the sidearm (the old sidearm stays in the bag).
+  public static func TakeOverMain(player: ref<PlayerPuppet>, run: ref<RLRunState>, record: TweakDBID) {
+    let oldMain = run.mainWeapon;
+    let given = RLArms.Install(player, run, record, ItemID.None());
+    if !ItemID.IsValid(given) {
+      return;
+    }
+    run.sidearm = oldMain;
+    run.sidearmStep = run.mainStep;
+    run.mainWeapon = given;
+    run.mainStep = RLQuality.StepOfRecord(ItemID.GetTDBID(given));
+    run.mainEvolved = run.mainEvolved || RLWeapons.IsIconic(oldMain);
+    run.mainElement = "";
+    RLLog("Arm chrome takes the main slot; " + RLRewards.ItemName(ItemID.GetTDBID(oldMain)) + " is the sidearm now.");
   }
 
   // --- Cards -----------------------------------------------------------------------------
@@ -217,6 +303,10 @@ public abstract class RLArms {
     offer.title = RLRewards.ItemName(offer.record);
     offer.subtitle = "REWIRE - " + RLArms.ElementName(element);
     offer.description = RLArms.ElementLine(element) + " Same tier, same weapon effects.";
+    let keyword = RLArms.ElementKeyword(element);
+    if IsNameValid(keyword) {
+      ArrayPush(offer.makes, keyword);
+    }
     offer.tags = RLBuildProfile.RecordTags(offer.record);
     return offer;
   }
@@ -236,7 +326,7 @@ public abstract class RLArms {
     RLArms.ReplaceMain(player, run, RLArms.MainRecordAt(run, run.mainStep));
   }
 
-  // The arms' evolution: Legendary++ and a third weapon effect slot.
+  // The chrome's evolution: the top of its line and a third weapon effect slot.
   public static func EvolveOffer(run: ref<RLRunState>) -> ref<RLOffer> {
     let record = RLArms.MainRecordAt(run, RLQuality.MaxStep());
     if !TDBID.IsValid(record) {

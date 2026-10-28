@@ -56,7 +56,7 @@ public class RLGuidePopup extends InGamePopup {
     this.AddPage(top, 1, RLArts.Terminal(), "TERMINAL",
       "Your desk computer. Start a run, spend Cred on upgrades, check your record.");
     this.AddPage(top, 2, RLArts.Armory(), "ARMORY",
-      "The weapon room in the back. Open the stash, pick the kit you walk out with. New kits cost Cred.");
+      "The weapon room in the back. Open the stash, pick the kit you walk out with. New kits cost favors - one for every boss you put down.");
 
     let bottom = RLUI.HPanel(9.0);
     bottom.SetHAlign(inkEHorizontalAlign.Center);
@@ -66,7 +66,7 @@ public class RLGuidePopup extends InGamePopup {
     this.AddPage(bottom, 4, RLArts.Patrons(), "PATRONS",
       "Four of six work the city each run. Their effects feed each other: SHOCK, BURN, MARK, BLAST. Three from one earns their favour.");
     this.AddPage(bottom, 5, RLArts.Flatline(), "FLATLINE",
-      "Trauma Team picks you up once a run. Go down again and you wake up here with nothing but your Cred.");
+      "Trauma Team picks you up once a run. Go down again and you wake up here with nothing but your Cred and favors.");
 
     let actions = RLUI.HPanel(0.0);
     actions.SetHAlign(inkEHorizontalAlign.Center);

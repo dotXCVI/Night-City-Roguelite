@@ -11,6 +11,7 @@ public class RLRunState {
   public let token: Int32;
   public let kit: CName;
   public let credEarned: Int32;
+  public let favorsEarned: Int32;
   public let act: Int32;
   public let floor: Int32;
   public let floorsCleared: Int32;
@@ -47,6 +48,8 @@ public class RLRunState {
   // for the plain one), and whether it has evolved.
   public let mainElement: String;
   public let mainEvolved: Bool;
+  // Arm mods (Rewards/ArmMods.reds), one per slot.
+  public let armMods: array<ref<RLBoonState>>;
 
   // Trade-offs taken at events and deals: extra damage V takes (0.15 =
   // +15%), and stat modifiers that are removed when the run ends.
@@ -93,6 +96,12 @@ public class RLRunState {
   // left (one per act).
   public let banished: array<String>;
   public let banishes: Int32;
+  public let banishesPerAct: Int32;
+  // Terminal upgrades that fire once: the first patron screen (Open Line),
+  // the floor whose free door reroll is spent (Inner Circle), the act whose
+  // opening patron door is placed (Inside Man).
+  public let firstPatronDealt: Bool;
+  public let freeDoorRerollDepth: Int32;
   // The Operating System taken at the Act 1 boss, and Overdrive
   // (Run/Overdrive.reds): unlocked with it, charged 0..100.
   public let os: CName;
@@ -124,7 +133,9 @@ public class RLRunState {
     run.act = 1;
     run.floor = 1;
     run.offerCount = 3;
-    run.banishes = 1;
+    run.banishesPerAct = RLTerminal.Has(n"BurnNotice", 1) ? 2 : 1;
+    run.banishes = run.banishesPerAct;
+    run.pityOffset = RLTerminal.Has(n"LuckyStar", 1) ? 12 : 0;
     run.gigStyle = -1;
     run.hotLeft = RLRewardDirector.HotDoorsPerAct(1);
     run.lastHotDepth = -9;
@@ -153,7 +164,7 @@ public class RLRunState {
     this.floor = 1;
     this.act += 1;
     this.rerolls = Max(this.rerolls, this.rerollsPerAct);
-    this.banishes = Max(this.banishes, 1);
+    this.banishes = Max(this.banishes, this.banishesPerAct);
     this.hotLeft = RLRewardDirector.HotDoorsPerAct(this.act);
     return true;
   }

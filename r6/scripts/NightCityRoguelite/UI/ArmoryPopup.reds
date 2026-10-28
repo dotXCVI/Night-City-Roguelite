@@ -1,13 +1,14 @@
 // -----------------------------------------------------------------------------
 // Night City Roguelite - armory
 // -----------------------------------------------------------------------------
-// The back room of V's apartment: where the starting kit is picked (and
-// locked kits are bought with Cred). Opened from the stash wall there, or F7
+// The back room of V's apartment: where the starting kit is picked, and
+// locked kits are called in with favors (one for every boss V puts down). Opened from the stash wall there, or F7
 // while standing in the room (Hub/HomeDevices.reds); from the terminal only
 // when the apartment isn't available.
 //
 // Two rows of kit cards, each with the kit's weapon on it, the attitude, the
-// loadout and the two attributes it starts with.
+// loadout and the two attributes it starts with. A kit out of reach shakes
+// when clicked rather than sitting greyed out.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -42,7 +43,7 @@ public class RLArmoryPopup extends InGamePopup {
     this.m_header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
-    footer.SetFluffText("YOUR KIT IS WHAT YOU WALK OUT WITH. EVERYTHING ELSE, YOU EARN.");
+    footer.SetFluffText("PUT A BOSS DOWN, AND A FIXER OWES YOU A FAVOR.");
     footer.Reparent(this);
 
     this.m_content = InGamePopupContent.Create();
@@ -55,7 +56,7 @@ public class RLArmoryPopup extends InGamePopup {
 
   private func Rebuild() {
     let service = RogueliteService.Get();
-    this.m_header.SetFluffRight(s"\(service.GetCred()) CRED");
+    this.m_header.SetFluffRight(s"\(service.GetFavors()) FAVORS");
     let root = this.m_content.GetRootCompoundWidget();
     root.RemoveAllChildren();
     let rows = RLUI.VPanel(9.0);
@@ -90,7 +91,7 @@ public class RLArmoryPopup extends InGamePopup {
     } else if available {
       card.SetKicker("READY");
     } else if IsDefined(unlock) {
-      card.SetKicker(affordable ? s"BUY - \(unlock.cost) CRED" : s"\(unlock.cost) CRED");
+      card.SetKicker(affordable ? s"CALL IN - \(unlock.cost) FAVORS" : s"\(unlock.cost) FAVORS");
     } else {
       card.SetKicker("LOCKED");
     }
@@ -100,7 +101,6 @@ public class RLArmoryPopup extends InGamePopup {
     card.AddLine(RLMeta.KitDescription(kit), n"MainColors.Grey", 22);
     card.AddLine(RLKits.AttributeName(RLKits.MainAttribute(kit)) + "  /  " + RLKits.AttributeName(RLKits.SecondAttribute(kit)), n"MainColors.Blue", 20);
     card.SetSelected(selected);
-    card.SetDisabled(!available && !affordable);
     card.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
     card.Reparent(parent);
     if !this.m_introPlayed {
@@ -121,10 +121,14 @@ public class RLArmoryPopup extends InGamePopup {
     let kit = StringToName(StrAfterFirst(name, "_"));
     if !RLMeta.IsKitAvailable(service, kit) {
       if !RLMeta.TryBuy(service, StringToName("kit." + NameToString(kit))) {
+        let card = button as RLCard;
+        if IsDefined(card) {
+          card.Shake();
+        }
         return false;
       }
       this.PlaySound(n"Item", n"OnBuy");
-      RLLog("Kit bought: " + NameToString(kit) + ".");
+      RLLog("Kit called in: " + NameToString(kit) + ".");
     }
     service.SetSelectedKit(kit);
     this.Rebuild();

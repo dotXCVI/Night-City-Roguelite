@@ -14,6 +14,8 @@ module NightCityRoguelite
 public class RogueliteService extends ScriptableService {
   // Meta progression
   private persistent let m_cred: Int32;
+  // Favors fixers owe V (bosses, firsts): what kits cost (Meta/MetaProgression).
+  private persistent let m_favors: Int32;
   private persistent let m_unlocks: array<CName>;
   private persistent let m_selectedKit: CName;
   private let m_testFloor: Int32;
@@ -233,7 +235,25 @@ public class RogueliteService extends ScriptableService {
     return true;
   }
 
+  public func GetFavors() -> Int32 = this.m_favors
+
+  public func AddFavors(amount: Int32) {
+    this.m_favors = Max(0, this.m_favors + amount);
+  }
+
+  public func TrySpendFavors(amount: Int32) -> Bool {
+    if this.m_favors < amount {
+      return false;
+    }
+    this.m_favors -= amount;
+    return true;
+  }
+
   public func HasUnlock(id: CName) -> Bool = ArrayContains(this.m_unlocks, id)
+
+  public func RemoveUnlock(id: CName) {
+    ArrayRemove(this.m_unlocks, id);
+  }
 
   public func AddUnlock(id: CName) {
     if !ArrayContains(this.m_unlocks, id) {
@@ -251,6 +271,8 @@ public class RogueliteService extends ScriptableService {
   }
 
   public func HasTakenBoon(id: CName) -> Bool = ArrayContains(this.m_takenBoons, id)
+
+  public func GetTakenBoons() -> array<CName> = this.m_takenBoons
 
   public func MarkBoonTaken(id: CName) {
     if !ArrayContains(this.m_takenBoons, id) {

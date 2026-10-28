@@ -64,6 +64,10 @@ public abstract class RLBoonEffects {
     if IsDefined(run) && IsDefined(weapon) && RLWeapons.IsMain(run, weapon.GetItemID()) {
       flags |= RLHitFlag.Main();
     }
+    // A deck in the main slot: its quickhacks are its hits.
+    if IsDefined(run) && RLHitFlag.Has(flags, RLHitFlag.Quickhack()) && RLArms.IsMainDeck(run) {
+      flags |= RLHitFlag.Main();
+    }
     return flags;
   }
 
@@ -123,6 +127,7 @@ public abstract class RLBoonEffects {
 
     let factor = kensei;
     factor *= RLBoonEffects.Multipliers(fx, ctx, main);
+    factor *= RLArmModEffects.Multiplier(fx, ctx, main);
     // Styles and Overdrive, then the target's plating.
     factor *= 1.0 + RLStyles.DamageBonus(RLStyles.BestRank(run, styles));
     factor *= RLStyles.OnHit(run, combat, ctx, styles);
@@ -138,6 +143,9 @@ public abstract class RLBoonEffects {
       foe.executed = true;
       factor *= 100.0;
       RLBoonEffects.Execute(fx, target);
+    }
+    if !tick && RLArmModEffects.Garrotes(fx, ctx, main) {
+      factor *= 100.0;
     }
     combat.damageDealt += dealt;
 
@@ -313,8 +321,8 @@ public abstract class RLBoonEffects {
     if quickhack {
       RLBoonEffects.QuickhackProcs(fx, ctx);
     }
-    // GLITCH payback: gun hits on glitched enemies feed the deck.
-    if RLHitFlag.Has(flags, RLHitFlag.Ranged()) && fx.Overclocked(n"GhostProtocol") && fx.combat.IsGlitched(foe, fx.now) && fx.now - combat.ramRefundAt >= 1.0 {
+    // GLITCH payback: main weapon hits on glitched enemies feed the deck.
+    if main && fx.Overclocked(n"GhostProtocol") && fx.combat.IsGlitched(foe, fx.now) && fx.now - combat.ramRefundAt >= 1.0 {
       combat.ramRefundAt = fx.now;
       RLBoonEffects.GiveRam(fx, 1.0);
       RLBoonEffects.Note(fx, n"GhostProtocol", 0.0);
@@ -344,6 +352,7 @@ public abstract class RLBoonEffects {
     }
     if main {
       combat.lastMainHitAt = fx.now;
+      RLArmModEffects.OnMainHit(fx, ctx, dealt);
     }
   }
 
@@ -354,7 +363,9 @@ public abstract class RLBoonEffects {
     if fx.now - foe.quickhackTime < 1.0 {
       return;
     }
+    let first = foe.quickhackTime <= 0.0;
     foe.quickhackTime = fx.now;
+    RLArmModEffects.OnQuickhack(fx, ctx, first);
     if fx.Has(n"GhostProtocol") {
       RLKeywords.Glitch(fx, target);
       RLBoonEffects.Note(fx, n"GhostProtocol", 0.0);
@@ -587,6 +598,7 @@ public abstract class RLBoonEffects {
       }
     }
     RLBoonEffects.ZanshinKill(fx, marked);
+    RLArmModEffects.OnKill(fx, body, foe, flags);
     if RLHitFlag.Has(flags, RLHitFlag.Quickhack()) && fx.Has(n"DaisyChain") {
       RLBoonEffects.Note(fx, n"DaisyChain", 0.0);
       let reached: array<EntityID>;
@@ -1014,7 +1026,7 @@ public abstract class RLBoonEffects {
   private static func CounterStep(fx: ref<RLFx>, crit: Bool) -> Int32 = crit && fx.Has(n"LoadedDice") ? 2 : 1
 
   // An effect's multiplier, noted in the ledger.
-  private static func Boost(fx: ref<RLFx>, id: CName, damage: Float, multiplier: Float) -> Float {
+  public static func Boost(fx: ref<RLFx>, id: CName, damage: Float, multiplier: Float) -> Float {
     RLBoonEffects.Note(fx, id, damage * (multiplier - 1.0));
     return multiplier;
   }
@@ -1023,7 +1035,7 @@ public abstract class RLBoonEffects {
     fx.combat.Fired(id, damage);
   }
 
-  private static func GiveRam(fx: ref<RLFx>, amount: Float) {
+  public static func GiveRam(fx: ref<RLFx>, amount: Float) {
     GameInstance.GetStatPoolsSystem(fx.game).RequestChangingStatPoolValue(Cast<StatsObjectID>(fx.player.GetEntityID()), gamedataStatPoolType.Memory, amount, null, false, false);
   }
 
@@ -1059,8 +1071,24 @@ public abstract class RLBoonEffects {
     return IsDefined(puppet) && !puppet.IsDead() ? puppet : null;
   }
 
-  private static func NearestExcept(fx: ref<RLFx>, position: Vector4, radius: Float, except: array<EntityID>) -> ref<ScriptedPuppet> {
+  public static func NearestExcept(fx: ref<RLFx>, position: Vector4, radius: Float, except: array<EntityID>) -> ref<ScriptedPuppet> {
     return RLBoonEffects.NearestExceptMarked(fx, position, radius, except, false);
+  }
+
+  // The nearest MARKED enemy within `radius`, or null.
+  public static func NearestMarked(fx: ref<RLFx>, position: Vector4, radius: Float) -> ref<ScriptedPuppet> {
+    let best: ref<ScriptedPuppet>;
+    let bestDistance = radius;
+    for enemy in RLKeywords.EnemiesNear(fx, position, radius) {
+      if !enemy.IsDead() && RLKeywords.IsMarked(fx, fx.combat.Foe(enemy.GetEntityID())) {
+        let distance = Vector4.Distance(position, enemy.GetWorldPosition());
+        if distance <= bestDistance {
+          bestDistance = distance;
+          best = enemy;
+        }
+      }
+    }
+    return best;
   }
 
   private static func NearestExceptMarked(fx: ref<RLFx>, position: Vector4, radius: Float, except: array<EntityID>, preferMarked: Bool) -> ref<ScriptedPuppet> {

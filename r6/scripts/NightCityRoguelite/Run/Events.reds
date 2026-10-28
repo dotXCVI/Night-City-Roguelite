@@ -137,12 +137,12 @@ public abstract class RLEvents {
         event.flavor = "Says it fell off an Arasaka truck.";
         let deal = RLEvents.Choice(n"Iconic", "", "ICONIC", "", 0, n"MainColors.Gold");
         // Arm chrome in the main slot isn't for trading.
-        if !RLArms.IsMainArms(run) {
+        if !RLArms.IsMainChrome(run) {
           deal.offer = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Iconic, null, true);
         }
-        if RLArms.IsMainArms(run) {
+        if RLArms.IsMainChrome(run) {
           deal.title = "Wrong Market";
-          deal.text = "He deals in guns. Your arms aren't for sale.";
+          deal.text = "He deals in guns. Your chrome isn't for sale.";
           deal.disabled = true;
         } else if IsDefined(deal.offer) {
           deal.title = deal.offer.title;

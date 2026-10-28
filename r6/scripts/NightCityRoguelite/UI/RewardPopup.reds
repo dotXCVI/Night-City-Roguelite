@@ -153,9 +153,9 @@ public class RLRewardPopup extends InGamePopup {
   }
 
   // YOUR BUILD: every effect V holds, in its patron's colour, overclocks
-  // marked +, favours last.
+  // marked +, favours after them, then the main chrome's element and mods.
   private func BuildStrip(parent: ref<inkCompoundWidget>, run: ref<RLRunState>) {
-    if ArraySize(run.boons) == 0 {
+    if ArraySize(run.boons) == 0 && ArraySize(run.armMods) == 0 && StrLen(run.mainElement) == 0 {
       return;
     }
     let box = RLUI.VPanel(4.0);
@@ -181,6 +181,16 @@ public class RLRewardPopup extends InGamePopup {
         this.AddStripChip(row, state.id, def.name, RLPatrons.Accent(def.patron));
       }
     }
+    // The main chrome: its element and its mods.
+    if StrLen(run.mainElement) > 0 {
+      this.AddStripChip(row, n"", RLArms.ElementName(run.mainElement), RLKeywords.Color(RLArms.ElementKeyword(run.mainElement)));
+    }
+    for state in run.armMods {
+      let mod = RLArmMods.Get(state.id);
+      if IsDefined(mod) {
+        this.AddStripChip(row, state.id, state.overclocked ? mod.name + "+" : mod.name, n"MainColors.ActiveYellow");
+      }
+    }
   }
 
   private func AddStripChip(row: ref<inkCompoundWidget>, id: CName, const name: String, color: CName) {
@@ -204,17 +214,26 @@ public class RLRewardPopup extends InGamePopup {
   public static func RerollCard(system: ref<RogueliteSystem>, rewardScreen: Bool) -> ref<RLCard> {
     let charges = system.GetRerollCharges();
     let favour = rewardScreen && system.HasFavourReroll();
-    let card = RLCard.Create(n"reroll", 420.0, 120.0, favour || charges > 0 ? n"MainColors.Blue" : n"MainColors.Grey");
+    let inner = !rewardScreen && system.HasFreeDoorReroll();
+    let free = favour || inner;
+    let card = RLCard.Create(n"reroll", 420.0, 120.0, free || charges > 0 ? n"MainColors.Blue" : n"MainColors.Grey");
     card.SetCompact();
-    card.SetKicker(favour ? "FREE - THE AFTERLIFE'S FAVOUR" : (charges > 0 ? s"\(charges) LEFT" : "NONE LEFT THIS ACT"));
+    if favour {
+      card.SetKicker("FREE - THE AFTERLIFE'S FAVOUR");
+    } else if inner {
+      card.SetKicker("FREE - INNER CIRCLE");
+    } else {
+      card.SetKicker(charges > 0 ? s"\(charges) LEFT" : "NONE LEFT THIS ACT");
+    }
     card.SetTitle("REROLL");
     card.SetTitleSize(36);
-    card.SetDisabled(!favour && charges <= 0);
+    card.SetDisabled(!free && charges <= 0);
     return card;
   }
 
   private func BuildCard(parent: ref<inkCompoundWidget>, offer: ref<RLOffer>, index: Int32, width: Float) {
     let isEffect = Equals(offer.kind, RLOfferKind.Boon);
+    let speaks = isEffect || Equals(offer.kind, RLOfferKind.ArmMod) || Equals(offer.kind, RLOfferKind.Rewire);
     let accent = isEffect && IsNameValid(offer.patron) ? RLPatrons.Accent(offer.patron) : RLRewardPopup.KindAccent(offer.kind);
     let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 760.0, accent);
     card.SetCompact();
@@ -240,7 +259,7 @@ public class RLRewardPopup extends InGamePopup {
       card.AddLine(offer.dpsLine, n"MainColors.Yellow", 30);
     }
     let run = IsDefined(this.m_system) ? this.m_system.GetRun() : null;
-    if isEffect {
+    if speaks {
       RLRewardPopup.AddKeywordChips(card, offer);
       if ArraySize(offer.links) > 0 && IsDefined(run) {
         card.AddLine("BUILDS ON: " + RLRewardPopup.LinkNames(run, offer), n"MainColors.Gold", 26);
@@ -261,20 +280,17 @@ public class RLRewardPopup extends InGamePopup {
     ArrayPush(this.m_cards, card);
   }
 
-  // MAKES / USES chips for an effect card, each keyword in its colour.
+  // MAKES / USES chips (effects, arm mods, a rewire), each keyword in its
+  // colour.
   private static func AddKeywordChips(card: ref<RLCard>, offer: ref<RLOffer>) {
-    let def = RLBoons.Get(offer.boon);
-    if !IsDefined(def) {
-      return;
-    }
     let labels: array<String>;
     let colors: array<CName>;
-    for keyword in def.makes {
+    for keyword in offer.makes {
       ArrayPush(labels, "MAKES " + NameToString(keyword));
       ArrayPush(colors, RLKeywords.Color(keyword));
     }
-    for keyword in def.uses {
-      if !ArrayContains(def.makes, keyword) && ArraySize(labels) < 4 {
+    for keyword in offer.uses {
+      if !ArrayContains(offer.makes, keyword) && ArraySize(labels) < 4 {
         ArrayPush(labels, "USES " + NameToString(keyword));
         ArrayPush(colors, RLKeywords.Color(keyword));
       }
@@ -353,6 +369,7 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.OperatingSystem: return n"MainColors.Blue";
       case RLOfferKind.Gig: return n"MainColors.Gold";
       case RLOfferKind.Rewire: return n"MainColors.Blue";
+      case RLOfferKind.ArmMod: return n"MainColors.ActiveYellow";
     }
     return n"MainColors.ActiveWhite";
   }
@@ -373,6 +390,7 @@ public class RLRewardPopup extends InGamePopup {
       case RLOfferKind.OperatingSystem: return n"ico_cyberware";
       case RLOfferKind.Gig: return n"ico_journal";
       case RLOfferKind.Rewire: return n"ico_cyberware";
+      case RLOfferKind.ArmMod: return n"ico_cyberware";
     }
     return n"ico_map";
   }

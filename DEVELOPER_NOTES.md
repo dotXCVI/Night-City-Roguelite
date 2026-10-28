@@ -111,8 +111,9 @@ Every file starts with a header comment explaining its design - read it.
 | Area | Files |
 | --- | --- |
 | Core | `Config.reds` (all tunables), `Runtime.reds` (RLLog/RLDebug/RLNotify, RLDelay timers, RLDelayTarget), `RogueliteService.reds` (meta progression persisted outside saves, F7 key, session hooks), `RogueliteSystem.reds` (per-save state machine - the orchestrator), `RunState.reds`, `Story.reds` (quiet story) |
+| Meta | `MetaProgression.reds` (kits for favors, favor payouts, Cred payouts), `Terminal.reds` (the ten upgrade rows; `RLTerminal.Has(take, rank)` is how code asks for an upgrade) |
 | Run | `Difficulty.reds` (act levels, act damage scale, incoming damage hook), `Encounters.reds` (wave plans, bosses, bounties), `Pacing.reds` (L4D director), `Fixer.reds` (+ buy-backs), `Objectives.reds` (survive / uplink / sabotage), `Events.reds` ("?" doors), `Overdrive.reds` (the ultimate, overclock episodes), `Gigs.reds` |
-| Rewards | `RewardSystem.reds` (doors, offers, granting, skip/banish), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Patrons.reds` (keywords, the run's line-up), `Boons.reds` (the effect catalogue: effects, weapon effects, duos, legendaries, favours; stat effects), `BoonEffects.reds` (every effect's rule: hit/kill/dash/tick/fight hooks), `Styles.reds`, `Weapons.reds` (main + sidearm slots, Tune-Ups, trades, evolution, DPS previews) |
+| Rewards | `RewardSystem.reds` (doors, offers, granting, skip/banish), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Patrons.reds` (keywords, the run's line-up), `Boons.reds` (the effect catalogue: effects, weapon effects, duos, legendaries, favours; stat effects), `BoonEffects.reds` (every effect's rule: hit/kill/dash/tick/fight hooks), `Styles.reds`, `Weapons.reds` (main + sidearm slots, Tune-Ups, trades, evolution, DPS previews), `ArmChrome.reds` (arms and decks as the main: records, REWIRE, evolution, Heal, TakeOverMain), `ArmMods.reds` (the main chrome's two mod slots, `RLArmModEffects`) |
 | Combat | `Arenas.reds` (8 arenas), `ArenaDirector.reds` (teleport, walls tick, bounds), `ArenaWalls.reds`, `ArenaCleaner.reds`, `WaveSpawner.reds` (+ boss phases, objective hold-open), `Affixes.reds` (elite affixes, plating, `RLExplosions`), `DamageHooks.reds` (outgoing hit + NPC death hooks), `CombatState.reds` (`RLCombatState`: per-fight foes, keyword timers, MOMENTUM/SHIELD, the effect ledger), `Keywords.reds` (`RLKeywords`: the only place keywords are applied and shown; `RLLuck`; `RLEffectStep` chain beats), `Loot.reds` |
 | Player | `CharacterReset.reds`, `Kits.reds`, `Perks.reds`, `Consumables.reds` (quality steps, MaxDoc ladder, grenades), `DeathGuard.reds`, `Death.reds`, `OSHooks.reds` (OS activation -> Overdrive) |
 | Hub/Menu/Audio | `ApartmentHub.reds`, `HomeDevices.reds` (front door, computer, armory door and stash), `MainMenuEntry.reds`, `Music.reds` |
@@ -172,6 +173,10 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 5. **Persistent field names** in `RogueliteService` and `RogueliteSystem` and
    **unlock IDs** (`kit.Netrunner`, `perk.Reroll`, ...) are stored on disk.
    Renaming them silently wipes testers' Cred/unlocks. Add new ones instead.
+   The terminal stores its ranks as unlock ids too (`row.<Row>.<rank>`,
+   `take.<Row>.B`), favors in `m_favors`, firsts as `milestone.*`, and
+   `migrated.terminal` marks the one-time carry-over of the old `perk.*`
+   unlocks (Meta/Terminal.reds). Row and take ids are stored: never rename.
 6. **Death sequence** (`Player/Death.reds` + `RogueliteSystem.Flatline/
    DeathTick`): V is Immortal during runs (DeathGuard). On lethal damage the
    guard is disarmed, fact `block_death_menu` is set to 1 (old value restored
@@ -248,8 +253,8 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 - Damage V takes per act: 60% / 80% / 95% (`ActIncomingDamage`, game
   difficulty Hard), x pacing (+/-8%), x (1 - assist), x effects, x (1 +
   event trade-offs). No act gates: enemies never resist V's damage.
-- Health: full every fight. Trauma Team cover: 1 a run (+1 Trauma
-  Platinum), back up at 50%.
+- Health: full every fight. Trauma Team cover: 1 a run (+1 Platinum Plan),
+  back up at 50% (75% Gold Plan).
   Assist = 20% + 2% per run lost while on, max 80%, visible toggle only.
 - Doors: event 22% (from floor 2), bounty 15% (Act 2+), objective 30% of
   fights (from floor 3), Cred door 8% (from floor 3). Three cards a screen
@@ -267,9 +272,13 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   10]; boss and hot rewards +2; pity +6 per flat screen, spike after 2 flat
   screens; magnificence makes big picks rarer.
 - Eddies per arena: (100 + 40 x depth), x1.5 on hot doors, +400 on boss
-  floors. Fixer prices scale with depth; Street Smart -20%.
-- Rerolls: charges only - 1 per act (+1 per Fixer Contacts unlock, Fixer
-  sells +2), plus one free per screen with the Afterlife's favour.
+  floors (x1.2 Skim). Fixer prices scale with depth; Street Smart -15% / -30%.
+- Rerolls: charges only - 1 per act (+1 Know a Guy, Fixer sells +2), plus one
+  free per screen with the Afterlife's favour, one free door reroll per floor
+  with Inner Circle.
+- Meta: favors 1 per boss, +1 win, +1 each first Act 2 / Act 3 / win; kits
+  2/2/3/4/5/6/8 favors (30). Terminal ranks 250 / 600 Cred (Choice 400),
+  ~8,000 to max; Cred per arena 6 + 4 x act + 3 x threat (+30 boss), +150 win.
 - MaxDoc floor: rises with depth (`HealthFloorStep`); one extra drop per arena
   (boss always, elite 25%), max floor + 2.
 - The v0.0.13 playtest log (good tuning reference): a Solo run reached floor 8

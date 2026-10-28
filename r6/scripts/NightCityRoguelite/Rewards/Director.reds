@@ -91,7 +91,13 @@ public abstract class RLRewardDirector {
 
   // One in Act 1 (its window is floors 2-4, and two would always land on 2
   // and 4), two in Acts 2 and 3.
-  public static func HotDoorsPerAct(act: Int32) -> Int32 = act <= 1 ? 1 : 2
+  public static func HotDoorsPerAct(act: Int32) -> Int32 {
+    if act <= 1 {
+      // Marked Man (the terminal) puts a second one in Act 1.
+      return RLTerminal.Has(n"HotStreak", 2) ? 2 : 1;
+    }
+    return 2;
+  }
 
   // The highest floor of an act that can have a hot door (the elite floor
   // and the boss come after it).

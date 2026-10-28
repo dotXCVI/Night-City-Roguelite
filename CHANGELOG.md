@@ -27,6 +27,18 @@ roguelite character for this build.
 - **Arm chrome is a main weapon:** the Brawler's Gorilla Arms and the Wireman's Monowire take the main slot (their gun becomes the sidearm). Tune-Ups follow the game's own upgrade path for arm chrome, the Armory offers a **REWIRE** instead of a trade - Thermal arms BURN, Electric arms SHOCK, Chemical arms make them BLEED - and the evolution goes to Legendary++ with a third weapon effect slot. Kit chrome brings its own capacity, so it's never refused at level 1.
 - **Weapon mods are gone** (weapon effects replace them), and so is the weapon-quality damage penalty.
 
+**Kits are their main weapon**
+
+- **Every kit lives in its main slot.** The Netrunner's cyberdeck is its main weapon now (its quickhacks are its hits), the Demolitions kit fights with the Projectile Launcher (the SMG backs it up), and the Brawler's backup is a pistol, with Wrecking Ball - the blunt perk Gorilla Arms use - instead of a shotgun perk.
+- **Chrome mods:** main-weapon chrome gets two mod slots of its own - Gorilla Arms KNUCKLES and BATTERY, Monowire CABLE and BATTERY, the launcher ROUND and WIRING, the deck ICEBREAKER and FIRMWARE - three mods each, every one with an overclock, all speaking the keywords. 24 in all, dealt on Armory and Tune-Up screens.
+- **Arm chrome from a Chrome door** can become your new main; your gun steps down to sidearm.
+- **The first gig** always matches your main weapon, and perks for the main weapon turn up twice as often in Training.
+
+**Favors and the terminal**
+
+- **Favors:** kits are called in with favors now, not Cred. A fixer owes you one for every boss you put down, one for winning, and one the first time you reach Act 2, Act 3 and the end. Kits cost 2 to 8 (30 for all seven). Kits you own stay yours.
+- **The terminal, rebuilt:** UPGRADES is ten rows - Cover, Choice, Rerolls, Head Start, Eddies, Body, Overdrive, Heat, Style, Fortune - each with two takes on the idea (Hades' Mirror). Buy a row's ranks once, switch takes for free. Every rank has its own name and line. Your old unlocks carried over as the nearest ranks; Edge III (and Street Map, if you also had Wide Net) is refunded.
+
 **Run shape**
 
 - **HOT doors:** one in Act 1, two in Acts 2 and 3, placed when you need a spike most. Elites in every wave and a lieutenant with two affixes; the reward comes two steps up, with a card more and half again the eddies.
@@ -38,7 +50,7 @@ roguelite character for this build.
 - **Rerolls** come from charges only (one an act, more from unlocks, the Fixer and the Afterlife's favour) - no more eddies.
 - **Doors lead with the reward:** the patron's art, what the screen deals, its keywords and how many of its effects you hold.
 - **Events retuned:** the Ripperdoc restores a spent cover, the Bookie bets an effect on its overclock, Misty's cards overclock and widen screens, the stranger buys your cover for a legendary.
-- **Unlocks:** Trauma Platinum is new; Head Start and Vitality are retired and refunded. Quartermaster is a free Armory pick.
+- **Unlocks:** Head Start and Vitality are retired and refunded (the rest now live in the terminal's rows).
 
 **Weather**
 

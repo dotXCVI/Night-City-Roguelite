@@ -169,6 +169,14 @@ public class RLCombatState {
   public let redMist: Bool;
   // Blackwall Gate: an arc is landing its SHOCK (it continues its own chain).
   public let arcing: Bool;
+  // Arm mods (Rewards/ArmMods.reds): the Combo chain, the Capacitor's count,
+  // the last shell (one per explosion), the RAM Cache's count.
+  public let comboHits: Int32;
+  public let comboAt: Float;
+  public let armHits: Int32;
+  public let lastShellAt: Float;
+  public let lastSwingAt: Float;
+  public let hackCount: Int32;
   // Arasaka's favour: the wave whose toughest enemy is already MARKED.
   public let markedWave: Int32;
   // Slipstream's speed, swapped as MOMENTUM changes.
@@ -223,6 +231,12 @@ public class RLCombatState {
     this.ramRefundAt = 0.0;
     this.redMist = false;
     this.arcing = false;
+    this.comboHits = 0;
+    this.comboAt = 0.0;
+    this.armHits = 0;
+    this.lastShellAt = 0.0;
+    this.lastSwingAt = 0.0;
+    this.hackCount = 0;
     this.markedWave = 0;
     this.speedMod = null;
     this.droneID = EntityID();

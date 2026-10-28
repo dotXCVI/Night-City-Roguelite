@@ -3,6 +3,13 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## Unreleased
+
+**Fixes**
+
+- **Music no longer stacks between arenas.** Every trip ends every score the mod can play, not just the last one, and cuts any outro still ringing once the screen goes black, so each arena starts in silence.
+- **Your own pocket radio** no longer plays on top of the score. It's switched off for the run and comes back when you get home. Turn it on mid-run and your station replaces the score until you turn it off.
+
 ## v0.0.19 - Runs that hit different (2026-10-28)
 
 Runs that hit different: the patrons are rebuilt around effects that combine,

@@ -212,7 +212,13 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
     missing/wrong rewards).
 13c. **Music: a fight plays either a Wwise score set or a radio station,
     never both** (`RLMusic.Prepare`, `RLRadio`). Radio goes through the
-    pocket radio emitter with AudioSwitch, exactly as PocketRadio does.
+    pocket radio emitter with AudioSwitch, exactly as PocketRadio does, and
+    keeps PocketRadio's own state in step (`RLTune`) so its restriction
+    handling can't switch a second station back on. Checked against the
+    soundbanks: a set's states (alerted, combat, boss cues) are switches on
+    its one track, and its stop event only stops its own start, so every trip
+    sends every set's stop (`RLMusic.Stop`) and cuts the starts at the black
+    (`RLMusic.Silence`).
 14. Apartment coordinates/boxes in `Config.reds` and the apartment entry logic
     (hallway first, step inside once the floor streams in) were tuned in game.
 15. Enemies are TweakXL variants (`enemies.yaml`) of the game's open-world NPCs:

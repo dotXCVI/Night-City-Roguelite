@@ -46,7 +46,7 @@ roguelite character for this build.
 
 **Fixes from the first v0.0.18 run**
 
-- **Gorilla Arms and Monowire vanished:** the Brawler and Wireman kits (and any arm chrome from a Chrome door) were taken away on the first trip by the stray-weapon sweep, because the game files arm chrome as a weapon - leaving bare hands and a gun. Arm chrome and its holstered look are now always V's own. Thanks to Jon for catching this one and for testing.
+- **Gorilla Arms and Monowire never went in:** the Brawler and Wireman kits handed out their gun but the arms were quietly refused at install, leaving bare hands. Kit arms are now a fixed Uncommon model installed after V's level is set, bring their own capacity, are put back on any trip they're missing from, and the log says why if the game ever refuses chrome. Arm chrome is also safe from the stray-weapon sweep. Thanks to Jon for catching this one and for testing.
 - **Eddies:** NCPD bounties no longer pay out for roguelite characters. Most gang members carry one, which flooded runs with eddies - enough to buy out the Fixer by floor 5.
 - **Doors say what they pay:** "Pick 1 of 3 quickhacks", "Pick 1 of 3 Militech effects", "No fight - MISTY'S READING", and the objective spelled out.
 - **Cyberware, quickhack, grenade and OS cards show what the item does,** in the game's own tooltip words and numbers. MaxDoc and grenade upgrades say what they change.

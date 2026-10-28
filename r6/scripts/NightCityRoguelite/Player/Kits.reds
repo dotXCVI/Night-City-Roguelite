@@ -69,21 +69,40 @@ public abstract class RLGear {
 
   public static func InstallCyberware(player: ref<PlayerPuppet>, recordID: TweakDBID) -> Bool = ItemID.IsValid(RLGear.InstallCyberwareItem(player, recordID))
 
-  // Installs chrome and returns the installed copy's item ID (the request
-  // is queued; the ID is the handle on it).
+  // Installs chrome and returns the installed copy's item ID. The item is
+  // given here rather than by the request: a request that adds the item
+  // itself seeds a new ID, and this one would be no handle on it.
   public static func InstallCyberwareItem(player: ref<PlayerPuppet>, recordID: TweakDBID) -> ItemID {
     if !TDBID.IsValid(recordID) {
       return ItemID.None();
     }
+    let transactions = GameInstance.GetTransactionSystem(player.GetGame());
     let itemID = ItemID.FromTDBID(recordID);
+    if !transactions.HasItem(player, itemID) && !transactions.GiveItem(player, itemID, 1) {
+      RLLog("GiveItem failed for chrome " + RLRewards.ItemName(recordID) + ".");
+      return ItemID.None();
+    }
     let area = EquipmentSystem.GetEquipAreaType(itemID);
     let request = new EquipRequest();
     request.owner = player;
     request.itemID = itemID;
-    request.addToInventory = !GameInstance.GetTransactionSystem(player.GetGame()).HasItem(player, itemID);
     request.slotIndex = RLGear.FindFreeSlot(player, area);
     EquipmentSystem.GetInstance(player).QueueRequest(request);
+    RLGear.ExplainRefusal(player, itemID);
     return itemID;
+  }
+
+  // The game drops an equip it won't do without a word (item level above
+  // V's, an unmet requirement): say so in the log.
+  private static func ExplainRefusal(player: ref<PlayerPuppet>, itemID: ItemID) {
+    let data = EquipmentSystem.GetData(player);
+    let itemData = GameInstance.GetTransactionSystem(player.GetGame()).GetItemData(player, itemID);
+    if !IsDefined(data) || !IsDefined(itemData) || data.IsEquippable(itemData) {
+      return;
+    }
+    let stats = GameInstance.GetStatsSystem(player.GetGame());
+    let level = stats.GetStatValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatType.Level);
+    RLLog(s"Chrome refused: \(RLRewards.ItemName(ItemID.GetTDBID(itemID))) (item level \(itemData.GetStatValueByType(gamedataStatType.Level)), V level \(level) - or an unmet requirement).");
   }
 
   // What installing into the area would replace: the item in slot 0 when

@@ -1084,8 +1084,9 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     let service = RogueliteService.Get();
-    RLKits.Apply(player, service.GetPools(), this.m_run, RLMeta.PerkActive(service, n"perk.MedKit") ? 2 : 0, RLMeta.BonusAttributePoints(service));
+    // V's level first: the kit's chrome checks it.
     RLDifficulty.SetPlayerLevel(player, this.m_run.act);
+    RLKits.Apply(player, service.GetPools(), this.m_run, RLMeta.PerkActive(service, n"perk.MedKit") ? 2 : 0, RLMeta.BonusAttributePoints(service));
 
     if this.m_run.isTest {
       this.PrepareTestRun(player);

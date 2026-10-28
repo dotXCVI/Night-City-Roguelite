@@ -56,6 +56,8 @@ public class RLItemEntry {
   public let iconic: Bool;
   public let cyberdeck: Bool;
   public let evolution: gamedataWeaponEvolution;
+  // Quickhacks: the family (Rewards/Quickhacks.reds).
+  public let hackFamily: CName;
 }
 
 public class RLTweakPools {
@@ -217,6 +219,8 @@ public class RLTweakPools {
       return;
     }
     if Equals(itemType, gamedataItemType.Prt_Program) {
+      let family = RLHacks.Identify(id);
+      entry.hackFamily = IsDefined(family) ? family.id : n"";
       ArrayPush(this.m_quickhacks, entry);
       return;
     }
@@ -483,6 +487,27 @@ public class RLTweakPools {
   }
 
   public func HasQuickhacks() -> Bool = ArraySize(this.m_quickhacks) > 0
+
+  // Every quality of a quickhack family the vendors stock.
+  public func QuickhackRecords(family: CName) -> array<TweakDBID> {
+    let records: array<TweakDBID>;
+    for entry in this.m_quickhacks {
+      if Equals(entry.hackFamily, family) {
+        ArrayPush(records, entry.id);
+      }
+    }
+    return records;
+  }
+
+  // A stocked quickhack's family ("" for one that isn't stocked).
+  public func QuickhackFamily(id: TweakDBID) -> CName {
+    for entry in this.m_quickhacks {
+      if entry.id == id {
+        return entry.hackFamily;
+      }
+    }
+    return n"";
+  }
 }
 
 // Boss records: the open-world MaxTac squad (Data/EnemyRoster.reds), as

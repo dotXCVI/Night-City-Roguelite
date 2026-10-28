@@ -2,7 +2,7 @@
 // Night City Roguelite - effects in fights
 // -----------------------------------------------------------------------------
 // The rules behind the effects (Rewards/Boons.reds), the elite affixes' damage
-// side and V's FOCUS, MOMENTUM and SHIELD, driven by six hooks:
+// side and V's FOCUS, MOMENTUM and SHIELD, driven by seven hooks:
 //
 //   outgoing hit  every hit V lands (Combat/DamageHooks.reds): multipliers,
 //                 then the procs - which put keywords on enemies
@@ -10,6 +10,7 @@
 //   incoming hit  every hit V takes: the SHIELD, MOMENTUM lost, favours;
 //   kill          every arena enemy that dies: kill procs, which can read how
 //                 the killing hit landed;
+//   upload        a quickhack V uploaded landed (Combat/DamageHooks.reds);
 //   dash          V dodged or air-dashed (Player/OSHooks.reds);
 //   tick          once a second in a fight: bleeding, MOMENTUM from moving,
 //                 Red Mist, arcs, marks running out;
@@ -106,6 +107,8 @@ public abstract class RLBoonEffects {
     ctx.affixes = foe.affixes;
     let tick = RLHitFlag.Has(flags, RLHitFlag.Tick());
     let main = RLHitFlag.Has(flags, RLHitFlag.Main()) && !tick;
+    // How the main weapon lands its blows (Rewards/WeaponActions.reds).
+    let action = RLWeaponActions.Of(run);
 
     // Kensei: in FOCUS every hit is a crit.
     let kensei = 1.0;
@@ -117,6 +120,11 @@ public abstract class RLBoonEffects {
       RLBoonEffects.Note(fx, n"Kensei", ctx.damage * (kensei - 1.0));
     }
     ctx.flags = flags;
+    // A new shell: what it carries is read once, for all it catches.
+    if main && Equals(action, RLMainAction.Shell) && fx.now - combat.shellAt >= 0.25 {
+      combat.shellAt = fx.now;
+      RLWeaponActions.OnShell(fx, ctx);
+    }
     if !tick {
       combat.RecordHit(foe, flags, weaponID, fx.now);
       combat.UpdateRamp(targetID);
@@ -126,7 +134,7 @@ public abstract class RLBoonEffects {
     }
 
     let factor = kensei;
-    factor *= RLBoonEffects.Multipliers(fx, ctx, main);
+    factor *= RLBoonEffects.Multipliers(fx, ctx, main, action);
     factor *= RLArmModEffects.Multiplier(fx, ctx, main);
     // Styles and Overdrive, then the target's plating.
     factor *= 1.0 + RLStyles.DamageBonus(RLStyles.BestRank(run, styles));
@@ -150,7 +158,7 @@ public abstract class RLBoonEffects {
     combat.damageDealt += dealt;
 
     if !tick {
-      RLBoonEffects.HitProcs(fx, ctx, main, dealt);
+      RLBoonEffects.HitProcs(fx, ctx, main, action, dealt);
     }
     if factor != 1.0 && combat.loggedHits < 5 {
       combat.loggedHits += 1;
@@ -160,7 +168,7 @@ public abstract class RLBoonEffects {
   }
 
   // Every damage multiplier from the effects.
-  private static func Multipliers(fx: ref<RLFx>, ctx: ref<RLHitContext>, main: Bool) -> Float {
+  private static func Multipliers(fx: ref<RLFx>, ctx: ref<RLHitContext>, main: Bool, action: RLMainAction) -> Float {
     let run = fx.run;
     let combat = fx.combat;
     let foe = ctx.foe;
@@ -171,8 +179,12 @@ public abstract class RLBoonEffects {
     let explosion = RLHitFlag.Has(flags, RLHitFlag.Explosion());
     let factor = 1.0;
 
-    // Lucky Round: every 8th main weapon hit is a big one.
-    if main && fx.Has(n"LuckyRound") {
+    // Lucky Round: every 8th main weapon hit is a big one (a lucky shell:
+    // everything it catches).
+    if main && Equals(action, RLMainAction.Shell) {
+      factor *= RLWeaponActions.ShellMultiplier(fx, ctx);
+    }
+    if main && Equals(action, RLMainAction.Hit) && fx.Has(n"LuckyRound") {
       combat.luckyHits += RLBoonEffects.CounterStep(fx, crit);
       let every = fx.Overclocked(n"LuckyRound") ? 6 : 8;
       if combat.luckyHits >= every {
@@ -236,8 +248,12 @@ public abstract class RLBoonEffects {
     if fx.Has(n"LoanShark") && run.loanFights <= 0 {
       factor *= RLBoonEffects.Boost(fx, n"LoanShark", ctx.damage, 1.4);
     }
-    // Kinetic Rounds: a knockdown hit right after a dash (or at full MOMENTUM).
-    if main && fx.Has(n"KineticRounds") && (combat.dashUntil > fx.now || RLBoonEffects.FullMomentum(fx)) {
+    // Kinetic Rounds: a knockdown hit right after a dash (or at full
+    // MOMENTUM). A deck's reading is the upload's; its hacks keep the +30%.
+    if main && Equals(action, RLMainAction.Upload) && fx.Overclocked(n"KineticRounds") && foe.kineticUntil > fx.now {
+      factor *= RLBoonEffects.Boost(fx, n"KineticRounds", ctx.damage, 1.3);
+    }
+    if main && NotEquals(action, RLMainAction.Upload) && fx.Has(n"KineticRounds") && (combat.dashUntil > fx.now || RLBoonEffects.FullMomentum(fx)) {
       RLKeywords.Knockdown(fx, target);
       RLBoonEffects.Note(fx, n"KineticRounds", 0.0);
       if fx.Overclocked(n"KineticRounds") {
@@ -248,8 +264,13 @@ public abstract class RLBoonEffects {
   }
 
   // The keyword procs of a hit that landed.
-  private static func HitProcs(fx: ref<RLFx>, ctx: ref<RLHitContext>, main: Bool, dealt: Float) {
+  private static func HitProcs(fx: ref<RLFx>, ctx: ref<RLHitContext>, main: Bool, action: RLMainAction, dealt: Float) {
     let combat = fx.combat;
+    // Weapon effects' HIT readings; shells and uploads have their own.
+    let hit = main && Equals(action, RLMainAction.Hit);
+    if main && Equals(action, RLMainAction.Shell) {
+      RLWeaponActions.ShellHit(fx, ctx);
+    }
     let foe = ctx.foe;
     let target = ctx.target;
     let flags = ctx.flags;
@@ -269,7 +290,7 @@ public abstract class RLBoonEffects {
     if crit && RLKeywords.InFocus(fx) && fx.Overclocked(n"Kensei") {
       RLKeywords.Mark(fx, target, 6.0);
     }
-    if main && fx.Has(n"TracerRounds") {
+    if hit && fx.Has(n"TracerRounds") {
       foe.mainHits += RLBoonEffects.CounterStep(fx, crit);
       let every = fx.Overclocked(n"TracerRounds") ? 2 : 3;
       if foe.mainHits >= every {
@@ -279,7 +300,7 @@ public abstract class RLBoonEffects {
       }
     }
     // BLAST
-    if main && fx.Has(n"Payload") {
+    if hit && fx.Has(n"Payload") {
       combat.payloadHits += RLBoonEffects.CounterStep(fx, crit);
       let every = fx.Overclocked(n"Payload") ? 4 : 6;
       if combat.payloadHits >= every {
@@ -305,7 +326,7 @@ public abstract class RLBoonEffects {
       RLBoonEffects.Note(fx, n"Shrapnel", 0.0);
     }
     // SHOCK
-    if main && fx.Has(n"ThunderRounds") && (RLHitFlag.Has(flags, RLHitFlag.Headshot()) || Equals(ctx.hitEvent.attackData.GetAttackType(), gamedataAttackType.StrongMelee)) {
+    if hit && fx.Has(n"ThunderRounds") && (RLHitFlag.Has(flags, RLHitFlag.Headshot()) || Equals(ctx.hitEvent.attackData.GetAttackType(), gamedataAttackType.StrongMelee)) {
       RLBoonEffects.Note(fx, n"ThunderRounds", 0.0);
       RLKeywords.Tag(fx, "THUNDER", n"MainColors.Blue");
       RLKeywords.Shock(fx, target);
@@ -328,7 +349,7 @@ public abstract class RLBoonEffects {
       RLBoonEffects.Note(fx, n"GhostProtocol", 0.0);
     }
     // BURN and BLEED
-    if main && fx.Has(n"HotBarrel") {
+    if hit && fx.Has(n"HotBarrel") {
       RLBoonEffects.HeatUp(fx, crit, melee);
       if combat.hotUntil > fx.now {
         RLKeywords.Burn(fx, target);
@@ -353,24 +374,59 @@ public abstract class RLBoonEffects {
     if main {
       combat.lastMainHitAt = fx.now;
       RLArmModEffects.OnMainHit(fx, ctx, dealt);
+      RLSignatures.OnMainHit(fx, ctx, dealt);
     }
   }
 
+  // A quickhack hit with no upload behind it: the hack spread here (the
+  // game's own spread, CASCADE). It counts as an upload of its own.
   private static func QuickhackProcs(fx: ref<RLFx>, ctx: ref<RLHitContext>) {
-    let foe = ctx.foe;
-    let target = ctx.target;
-    // One upload counts once, however many hits it lands in a second.
-    if fx.now - foe.quickhackTime < 1.0 {
+    if fx.now - ctx.foe.uploadAt < 1.5 {
       return;
     }
-    let first = foe.quickhackTime <= 0.0;
+    RLBoonEffects.OnUpload(fx, ctx.target, TDBID.None(), true);
+  }
+
+  // --- Uploads -----------------------------------------------------------------------------
+
+  // A quickhack landed on an arena enemy, once per upload: `action` is the
+  // hack's object action (none for a spread one). The hack speaks its keyword
+  // (Rewards/Quickhacks.reds), then the effects, mods and a deck main's
+  // weapon effects that read uploads.
+  public static func OnUpload(fx: ref<RLFx>, target: ref<ScriptedPuppet>, action: TweakDBID, spread: Bool) {
+    let foe = RLKeywords.Living(fx, target);
+    // The same upload reported twice in one frame counts once.
+    if !IsDefined(foe) || fx.now - foe.uploadAt < 0.05 {
+      return;
+    }
+    let previous = foe.quickhackTime;
+    foe.uploadAt = fx.now;
     foe.quickhackTime = fx.now;
-    RLArmModEffects.OnQuickhack(fx, ctx, first);
+    fx.combat.uploads += 1;
+    // A spread carries the keyword of the upload it spread from (when its
+    // own action doesn't say).
+    let family = RLHacks.FamilyOfAction(action);
+    if spread {
+      if RLSignatures.Has(fx.run, "Deck") {
+        RLBoonEffects.Note(fx, n"Cascade", 0.0);
+      }
+      if !IsDefined(family) && fx.now - fx.combat.lastUploadAt < 3.0 {
+        family = RLHacks.Get(fx.combat.lastUploadFamily);
+      }
+    } else if IsDefined(family) {
+      fx.combat.lastUploadAt = fx.now;
+      fx.combat.lastUploadFamily = family.id;
+    }
+    // What was on it before this hack: a Ping's own MARK doesn't pay off
+    // on itself.
+    let marked = RLKeywords.IsMarked(fx, foe);
+    RLHacks.Speak(fx, target, family);
+    RLArmModEffects.OnQuickhack(fx, target, previous <= 0.0);
     if fx.Has(n"GhostProtocol") {
       RLKeywords.Glitch(fx, target);
       RLBoonEffects.Note(fx, n"GhostProtocol", 0.0);
     }
-    if fx.Has(n"GhostShot") && RLKeywords.IsMarked(fx, foe) {
+    if fx.Has(n"GhostShot") && marked {
       RLKeywords.Shock(fx, target);
       RLBoonEffects.Note(fx, n"GhostShot", 0.0);
     }
@@ -388,6 +444,9 @@ public abstract class RLBoonEffects {
       if IsDefined(other) {
         RLKeywords.Shock(fx, other);
       }
+    }
+    if RLArms.IsMainDeck(fx.run) {
+      RLWeaponActions.OnUpload(fx, target, foe, previous, marked);
     }
   }
 
@@ -599,6 +658,7 @@ public abstract class RLBoonEffects {
     }
     RLBoonEffects.ZanshinKill(fx, marked);
     RLArmModEffects.OnKill(fx, body, foe, flags);
+    RLSignatures.OnKill(fx, flags);
     if RLHitFlag.Has(flags, RLHitFlag.Quickhack()) && fx.Has(n"DaisyChain") {
       RLBoonEffects.Note(fx, n"DaisyChain", 0.0);
       let reached: array<EntityID>;
@@ -780,9 +840,21 @@ public abstract class RLBoonEffects {
       combat.charged = true;
       RLKeywords.Tag(fx, "CHARGED", n"MainColors.Gold");
     }
-    // Weapon heat bleeds off when the main weapon is quiet.
-    if combat.heat > 0 && fx.now - combat.lastMainHitAt > 1.0 {
+    // Weapon heat bleeds off when the main weapon is quiet (a gun's or a
+    // blade's: shells and a deck count theirs).
+    if combat.heat > 0 && fx.now - combat.lastMainHitAt > 1.0 && Equals(RLWeaponActions.Of(fx.run), RLMainAction.Hit) {
       combat.heat = Max(0, combat.heat - 3);
+    }
+    // Poison counts as BLEED.
+    for foe in combat.Foes() {
+      let puppet = RLBoonEffects.Puppet(fx, foe);
+      if IsDefined(puppet) {
+        RLHacks.PoisonBleeds(fx, puppet, foe);
+      }
+    }
+    // With a deck: seconds spent under a quarter of the RAM (telemetry).
+    if ItemID.IsValid(RLHacks.Deck(player)) && GameInstance.GetStatPoolsSystem(fx.game).GetStatPoolValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatPoolType.Memory, true) < 25.0 {
+      combat.ramLowSeconds += 1;
     }
     // Red Mist: fire or blood close by.
     if fx.Has(n"RedMist") {
@@ -896,6 +968,11 @@ public abstract class RLBoonEffects {
       case n"cocktail":
         if IsDefined(target) {
           RLKeywords.SpreadStatuses(fx, target);
+        }
+        break;
+      case n"jump":
+        if IsDefined(target) && !target.IsDead() {
+          RLWeaponActions.Jump(fx, target);
         }
         break;
       case n"arc":

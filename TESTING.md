@@ -142,9 +142,18 @@ roguelite character for this build. Tell me how these feel:
 **Kits and chrome**
 - Try the **Brawler**, **Wireman**, **Demolitions** and **Netrunner**: their
   main weapon is chrome (Gorilla Arms, Monowire, the Projectile Launcher, the
-  cyberdeck). Is it installed from the first arena? Do Armory screens offer
+  cyberdeck). Is it installed from the first arena? Do TUNE-UP doors offer
   its mods (KNUCKLES, CABLE, ROUND, ICEBREAKER...) and do they change how it
   fights? Send the log if a line says "Chrome refused".
+- **Netrunner:** do you start with one hack that kills and one that controls?
+  After a Tune-Up, are your hacks still slotted, and a quality higher? Pick a
+  quickhack with a full deck: does it ask which one to swap out, and does
+  BACK work? Does the run feel as strong as a gun run by Act 2 - and do you
+  run out of RAM a lot? (The log counts both.)
+- **Weapon effects on chrome:** on a launcher or a deck, do Payload, Hot
+  Barrel and the rest fire about as often as their cards say?
+- **Evolution:** if you evolve chrome (or buy the stranger's PROTOTYPE), does
+  its trick show - SHOCKWAVE, BLOOD RUSH, LIVE WIRE, BELT FEED, CASCADE?
 - **Favors:** beat a boss and the fixers owe you one - check the armory.
 - **Terminal UPGRADES:** switch a row's take and buy a rank. Does it read
   well? Did your old unlocks carry over?

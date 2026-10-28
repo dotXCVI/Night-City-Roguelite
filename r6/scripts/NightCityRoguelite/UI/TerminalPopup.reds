@@ -172,6 +172,15 @@ public class RLTerminalPopup extends InGamePopup {
       if StrLen(mods) > 0 || StrLen(run.mainElement) > 0 {
         RLUI.WrappedText((StrLen(run.mainElement) > 0 ? RLArms.ElementName(run.mainElement) + "   " : "") + mods, 28, n"MainColors.ActiveYellow", 1600.0).Reparent(body);
       }
+      if run.mainSignature && RLArms.IsMainChrome(run) {
+        RLUI.WrappedText(RLSignatures.Line(RLArmMods.MainFamily(run)), 28, n"MainColors.Gold", 1600.0).Reparent(body);
+      }
+      if RLArms.IsMainDeck(run) {
+        let hacks = RLHacks.Summary(GetPlayer(GetGameInstance()));
+        if StrLen(hacks) > 0 {
+          RLUI.WrappedText("QUICKHACKS: " + hacks, 28, n"MainColors.Green", 1600.0).Reparent(body);
+        }
+      }
     }
     if IsDefined(run) && ArraySize(run.boons) > 0 {
       RLUI.SectionLabel("EFFECTS").Reparent(body);
@@ -239,7 +248,7 @@ public class RLTerminalPopup extends InGamePopup {
     card.SetKicker(door.boss ? "BOSS" : (isPatron ? RLTerminalPopup.KeywordLine(door.patron) : RLRewards.CategoryDescription(door.category)));
     card.SetTitle(RLRewards.DoorTitle(door));
     card.SetTitleSize(44);
-    card.AddLine(RLRewards.DoorPromise(door, IsDefined(run) ? RLRewards.DoorCardCount(run, door) : 3), n"MainColors.ActiveWhite", 30);
+    card.AddLine(RLRewards.DoorPromise(run, door, IsDefined(run) ? RLRewards.DoorCardCount(run, door) : 3), n"MainColors.ActiveWhite", 30);
     if door.hot {
       card.AddLine("Double the trouble, double the take: an elite pack and a lieutenant, cards two steps up, +50% eddies.", n"MainColors.Red", 26);
     }

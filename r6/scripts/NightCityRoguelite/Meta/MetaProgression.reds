@@ -155,13 +155,13 @@ public abstract class RLMeta {
     switch kit {
       case n"Solo": return "Assault rifle, pistol, Ready, Rested, Reloaded.";
       case n"Blade": return "Katana, pistol, Lead and Steel.";
-      case n"Netrunner": return "Cyberdeck as the main, two quickhacks, pistol, Optimization.";
+      case n"Netrunner": return "Cyberdeck as the main, a damage hack, a control hack, pistol, Optimization.";
       case n"Marksman": return "Precision or sniper rifle, pistol, Focus.";
       case n"Brawler": return "Gorilla Arms as the main, pistol, Wrecking Ball.";
       case n"Gunslinger": return "Revolver, pistol, Double Trouble.";
       case n"Demolitions": return "Projectile Launcher as the main, SMG, frag grenades, Glutton for War.";
       case n"Juggernaut": return "Light machine gun, pistol, Painkiller.";
-      case n"Wireman": return "Monowire as the main, cyberdeck, a quickhack, pistol, Siphon.";
+      case n"Wireman": return "Monowire as the main, a cyberdeck with a setup hack, pistol, Siphon.";
     }
     return "";
   }

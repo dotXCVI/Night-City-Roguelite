@@ -111,6 +111,9 @@ public class RLOffer {
   public let disabled: Bool;
   // How far above the floor's expectation the card is (reward director).
   public let excitement: Int32;
+  // Quickhacks into a full deck: the slotted hack it swaps out (the slot
+  // picker's choice, UI/RewardPopup.reds).
+  public let replaces: ItemID;
 }
 
 public abstract class RLRewards {
@@ -162,14 +165,20 @@ public abstract class RLRewards {
   }
 
   // What a door pays, in plain words ("Pick 1 of 3 Voodoo Boys effects.").
-  public static func DoorPromise(door: ref<RLDoor>, count: Int32) -> String {
+  public static func DoorPromise(run: ref<RLRunState>, door: ref<RLDoor>, count: Int32) -> String {
     let pick = s"Pick 1 of \(count) ";
+    let deck = RLArms.IsMainDeck(run);
+    let chrome = RLArms.IsMainChrome(run);
     switch door.category {
-      case RLRewardCategory.Armory: return pick + "for your main weapon: tune-ups, weapon effects, a trade.";
+      case RLRewardCategory.Armory:
+        if deck {
+          return pick + "for your deck: tune-ups, weapon effects, a new quickhack.";
+        }
+        return pick + (RLArms.IsMainArms(run) ? "for your chrome: tune-ups, weapon effects, a rewire." : "for your main weapon: tune-ups, weapon effects, a trade.");
       case RLRewardCategory.Chrome: return pick + "cyberware, installed on the spot.";
-      case RLRewardCategory.Daemons: return pick + "quickhacks.";
+      case RLRewardCategory.Daemons: return pick + (deck ? "quickhacks for your deck." : "quickhacks.");
       case RLRewardCategory.Training: return pick + "perks.";
-      case RLRewardCategory.Workshop: return "Evolve or tune up your main weapon, or upgrade your MaxDoc.";
+      case RLRewardCategory.Workshop: return chrome ? "Evolve, tune up or mod your chrome." : "Evolve or tune up your main weapon, or upgrade your MaxDoc.";
       case RLRewardCategory.Boons: return pick + RLPatrons.Name(door.patron) + " effects.";
       case RLRewardCategory.Bounty: return "One cyberpsycho. Pays big in eddies, plus a " + RLPatrons.Name(door.patron) + " pick.";
       case RLRewardCategory.Cred: return "No card. Cred, kept for good.";
@@ -607,7 +616,7 @@ public abstract class RLRewards {
     offer.makes = def.makes;
     offer.uses = def.uses;
     offer.title = overclock ? def.name + "+" : def.name;
-    offer.description = overclock ? def.overclock : def.text;
+    offer.description = RLWeaponActions.Text(run, def, overclock);
     let patrons = Equals(def.kind, RLBoonKind.Duo) ? RLPatrons.Name(def.patron) + " + " + RLPatrons.Name(def.partner) : RLPatrons.Name(def.patron);
     offer.subtitle = (overclock ? "OVERCLOCK" : RLBoons.KindName(def.kind)) + " - " + patrons;
     if overclock {
@@ -651,8 +660,9 @@ public abstract class RLRewards {
   // --- The Armory ---------------------------------------------------------------------------
 
   // The main weapon's screen: the evolution when it's ready, a Tune-Up,
-  // weapon effects from the run's patrons, a mod for main chrome, one TRADE
-  // (REWIRE for arms), now and then a grenade.
+  // weapon effects from the run's patrons, one TRADE (a REWIRE for arms, a
+  // quickhack for a deck), now and then a grenade. Chrome's mods are the
+  // Tune-Up door's.
   private static func ArmoryOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, count: Int32, hot: Bool, spike: Bool) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
     let evolve = RLRewards.EvolveOffer(player, pools, run);
@@ -669,27 +679,19 @@ public abstract class RLRewards {
         ArrayPush(effects, def);
       }
     }
-    // Chrome in the main slot: one of its own mods. Arm chrome is rewired
-    // and a deck kept, never traded away. Both wait behind at least one
-    // weapon effect.
-    let none: array<CName>;
-    let mod = RLArmMods.DealOne(run, none);
+    // One TRADE after at least one weapon effect: another gun, the same arms
+    // in another element (REWIRE), or for a deck a quickhack it doesn't run.
     let trade: ref<RLOffer>;
-    if !RLArms.IsMainDeck(run) {
+    if RLArms.IsMainDeck(run) {
+      let none: array<CName>;
+      trade = RLHacks.DeckOffer(player, run, none, spike);
+    } else {
       trade = RLArms.IsMainArms(run) ? RLArms.RewireOffer(run) : RLRewards.TradeOffer(player, pools, run);
     }
-    let reserved = (IsDefined(mod) ? 1 : 0) + (IsDefined(trade) ? 1 : 0);
     let taken: array<CName>;
-    let room = Max(1, count - ArraySize(offers) - reserved);
+    let room = Max(1, count - ArraySize(offers) - (IsDefined(trade) ? 1 : 0));
     while room > 0 && RLRewards.DealOne(player, run, effects, taken, offers) {
       room -= 1;
-    }
-    // Room for only one of the two: either, at even odds.
-    if IsDefined(mod) && IsDefined(trade) && count - ArraySize(offers) == 1 && RandRange(0, 2) == 0 {
-      mod = null;
-    }
-    if IsDefined(mod) && ArraySize(offers) < count {
-      ArrayPush(offers, mod);
     }
     if IsDefined(trade) && ArraySize(offers) < count {
       ArrayPush(offers, trade);
@@ -795,7 +797,8 @@ public abstract class RLRewards {
   // --- Tune-Up doors ---------------------------------------------------------------------
 
   // Upgrades for what V carries: the evolution when it's ready, two steps for
-  // the main weapon, the MaxDoc, the grenade, room for chrome when overclocked.
+  // the main weapon, the main chrome's mods (Hades' hammers), the MaxDoc, the
+  // grenade, room for chrome when overclocked.
   public static func WorkshopOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, count: Int32) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
     let evolve = RLRewards.EvolveOffer(player, pools, run);
@@ -806,10 +809,17 @@ public abstract class RLRewards {
     if IsDefined(tune) {
       ArrayPush(offers, tune);
     }
-    let none: array<CName>;
-    let mod = RLArmMods.DealOne(run, none);
-    if IsDefined(mod) && ArraySize(offers) < count {
-      ArrayPush(offers, mod);
+    let dealt: array<CName>;
+    let mods = 0;
+    while mods < 2 && ArraySize(offers) < count {
+      let mod = RLArmMods.DealOne(run, dealt);
+      if !IsDefined(mod) {
+        mods = 2;
+      } else {
+        ArrayPush(dealt, mod.boon);
+        ArrayPush(offers, mod);
+        mods += 1;
+      }
     }
     let health = RLRewards.HealthUpgradeOffer(player);
     if IsDefined(health) && ArraySize(offers) < count {
@@ -848,6 +858,19 @@ public abstract class RLRewards {
   // A spike puts one card two steps up; a hot door all of them.
   private static func ItemOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, count: Int32, profile: ref<RLBuildProfile>, spike: Bool, hot: Bool) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
+    // A deck in the main slot: quickhacks it doesn't run, at its quality.
+    if Equals(category, RLRewardCategory.Daemons) && RLArms.IsMainDeck(run) {
+      let dealt: array<CName>;
+      while ArraySize(offers) < count {
+        let hack = RLHacks.DeckOffer(player, run, dealt, hot || spike);
+        if !IsDefined(hack) {
+          return offers;
+        }
+        ArrayPush(dealt, RLHacks.FamilyOf(hack.record).id);
+        ArrayPush(offers, hack);
+      }
+      return offers;
+    }
     let owned = RLRewards.OwnedNames(player);
     let kind = Equals(category, RLRewardCategory.Daemons) ? RLOfferKind.Quickhack : RLOfferKind.Cyberware;
     let guard = 0;
@@ -1018,12 +1041,12 @@ public abstract class RLRewards {
         offer.record = pools.PickQuickhack(RLRewards.BandForStep(step), noIDs);
         if TDBID.IsValid(offer.record) {
           offer.step = RLQuality.StepOfRecord(offer.record);
-          offer.subtitle = "QUICKHACK - " + RLQuality.DisplayName(offer.step);
+          RLHacks.Describe(offer);
+          offer.links = RLHacks.Links(run, offer.makes);
           if !EquipmentSystem.IsCyberdeckEquipped(player) {
             offer.description = "Needs a cyberdeck";
           }
           offer.excitement = offer.step - expected;
-          ArrayPush(offer.tags, n"netrunner");
         }
         break;
       case RLOfferKind.Grenade:
@@ -1217,7 +1240,7 @@ public abstract class RLRewards {
         RLGigs.Take(run, offer.amount);
         break;
       case RLOfferKind.Quickhack:
-        RLGear.GiveQuickhacks(player, [offer.record]);
+        RLHacks.Install(player, offer.record, offer.replaces);
         break;
       case RLOfferKind.Boon:
         RLBoons.Apply(player, run, offer.boon, offer.overclock);

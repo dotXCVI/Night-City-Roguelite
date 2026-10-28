@@ -1623,6 +1623,14 @@ public class RogueliteSystem extends ScriptableSystem {
     return IsDefined(player) ? RLBoonEffects.OnOutgoingHit(this.Fx(player), target, hitEvent) : 1.0;
   }
 
+  // A quickhack V uploaded finished on `target` (Combat/DamageHooks.reds).
+  public func OnQuickhackUploaded(target: ref<ScriptedPuppet>, action: TweakDBID) {
+    let player = GetPlayer(this.GetGameInstance());
+    if this.IsFighting() && IsDefined(player) && this.m_combat.IsArenaEnemy(target.GetEntityID()) {
+      RLBoonEffects.OnUpload(this.Fx(player), target, action, RLHacks.IsSpreadAction(action));
+    }
+  }
+
   // The escort drone hit an arena enemy (Combat/DamageHooks.reds).
   public func OnDroneHit(target: ref<ScriptedPuppet>) {
     let player = GetPlayer(this.GetGameInstance());
@@ -1827,6 +1835,11 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     if IsDefined(this.m_faction) {
       fields += RLTelemetry.Field("faction", RLEncounters.FactionName(this.m_faction.faction));
+    }
+    // Quickhacks: uploads and seconds short of RAM (is RAM what holds a
+    // netrunner back?).
+    if this.m_combat.uploads > 0 || this.m_combat.ramLowSeconds > 0 {
+      fields += RLTelemetry.IntField("uploads", this.m_combat.uploads) + RLTelemetry.IntField("ramlow", this.m_combat.ramLowSeconds);
     }
     RLTelemetry.Record(this.m_run, "FLOOR", fields + RLTelemetry.IntField("waves", this.m_waveCount) + this.m_pacing.Summary());
   }

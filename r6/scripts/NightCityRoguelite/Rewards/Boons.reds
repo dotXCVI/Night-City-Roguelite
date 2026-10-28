@@ -8,8 +8,10 @@
 //   Effect      four or five per patron. Taken once, then offered again as its
 //               overclock - a stronger version - once V holds it.
 //   Weapon      an effect bound to the main weapon (Rewards/Weapons.reds):
-//               it works with whatever V has in the slot, blades included,
-//               and moves with a trade. Two slots, three on an iconic.
+//               it works with whatever V has in the slot, blades, chrome and
+//               decks included - read for how that weapon lands its blows
+//               (Rewards/WeaponActions.reds) - and moves with a trade. Two
+//               slots, three on an iconic.
 //   Duo         one per pair of patrons, offered once V holds an effect from
 //               each.
 //   Legendary   the card a build chases, offered once V holds two of the
@@ -372,11 +374,6 @@ public abstract class RLBoons {
   public static func IsOfferable(run: ref<RLRunState>, def: ref<RLBoonDef>) -> Bool {
     let state = RLBoons.Owned(run, def.id);
     if Equals(def.id, n"LoanShark") && !IsDefined(state) && !RLBoons.CanCutHealth(run, 0.25) {
-      return false;
-    }
-    // Quickhacks never headshot or swing: Thunder Rounds has nothing to do
-    // on a deck.
-    if Equals(def.id, n"ThunderRounds") && RLArms.IsMainDeck(run) {
       return false;
     }
     if ArrayContains(run.banished, "boon:" + NameToString(def.id)) {

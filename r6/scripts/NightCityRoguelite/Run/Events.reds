@@ -11,8 +11,9 @@
 //               overclocked one
 //   TAROT       Misty reads three cards - each a deal with a price
 //   STRANGER    the Afterlife's deals (Act 2 on): an iconic for the main slot
-//               that makes V a target, sell an effect, or sell a cover for a
-//               legendary
+//               that makes V a target (for chrome: a prototype of its
+//               evolution, or an overclocked mod), sell an effect, or sell a
+//               cover for a legendary
 //
 // Prices and trade-offs are fixed when the screen opens (RLEventChoice), so
 // what the card says is what happens.
@@ -136,14 +137,15 @@ public abstract class RLEvents {
       case n"Stranger":
         event.flavor = "Says it fell off an Arasaka truck.";
         let deal = RLEvents.Choice(n"Iconic", "", "ICONIC", "", 0, n"MainColors.Gold");
-        // Arm chrome in the main slot isn't for trading.
-        if !RLArms.IsMainChrome(run) {
+        // Chrome in the main slot: a prototype of its evolution, or once it's
+        // evolved, a mod off the back of the truck, already overclocked.
+        if RLArms.IsMainChrome(run) {
+          RLEvents.ChromeDeal(deal, run);
+        } else {
           deal.offer = RLRewards.BuildOffer(player, pools, run, RLOfferKind.Iconic, null, true);
         }
         if RLArms.IsMainChrome(run) {
-          deal.title = "Wrong Market";
-          deal.text = "He deals in guns. Your chrome isn't for sale.";
-          deal.disabled = true;
+          // Set by ChromeDeal.
         } else if IsDefined(deal.offer) {
           deal.title = deal.offer.title;
           deal.text = "Your main weapon, effects kept. But someone wants it back: take 15% more damage for the rest of the run.";
@@ -192,6 +194,34 @@ public abstract class RLEvents {
       }
     }
     return event;
+  }
+
+  // The stranger's deal for chrome: the evolution's signature now (a
+  // PROTOTYPE, at the chrome's own quality, with the third slot), or an
+  // off-market mod, overclocked. Same price as his iconic.
+  private static func ChromeDeal(deal: ref<RLEventChoice>, run: ref<RLRunState>) {
+    let family = RLArmMods.MainFamily(run);
+    if !run.mainSignature {
+      deal.id = n"Prototype";
+      deal.kicker = "PROTOTYPE";
+      deal.title = RLSignatures.Name(family);
+      let what = RLSignatures.What(family);
+      deal.text = StrUpper(StrLeft(what, 1)) + StrMid(what, 1) + " Third effect slot included. But someone wants it back: take 15% more damage for the rest of the run.";
+      return;
+    }
+    let none: array<CName>;
+    deal.offer = RLArmMods.DealOne(run, none);
+    if !IsDefined(deal.offer) {
+      deal.title = "Empty Case";
+      deal.text = "Your chrome's as good as he's got.";
+      deal.disabled = true;
+      return;
+    }
+    deal.id = n"OffMarket";
+    deal.kicker = "OFF-MARKET MOD";
+    deal.title = deal.offer.overclock ? deal.offer.title : deal.offer.title + "+";
+    let def = RLArmMods.Get(deal.offer.boon);
+    deal.text = (deal.offer.overclock ? def.overclock : def.text + " " + def.overclock) + " Someone wants it back: take 15% more damage for the rest of the run.";
   }
 
   private static func TarotCard(id: CName, run: ref<RLRunState>) -> ref<RLEventChoice> {
@@ -312,6 +342,14 @@ public abstract class RLEvents {
         RLWeapons.ReplaceMain(player, run, choice.offer.record);
         run.damageTakenBonus += 0.15;
         return choice.offer.title + " is your main now. Watch your back.";
+      case n"Prototype":
+        RLSignatures.Unlock(player, run);
+        run.damageTakenBonus += 0.15;
+        return choice.title + " online. Watch your back.";
+      case n"OffMarket":
+        RLArmMods.Apply(player, run, choice.offer.boon, true);
+        run.damageTakenBonus += 0.15;
+        return choice.title + " installed. Watch your back.";
       case n"Policy":
         run.cover = run.coverMax;
         return "Covered again.";

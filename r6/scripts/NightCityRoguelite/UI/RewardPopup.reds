@@ -15,12 +15,15 @@
 //            has never taken it
 //   builds   BUILDS ON: the effects V holds it works with
 //
-// Under the cards, YOUR BUILD: every effect V holds, in its patron's colour.
-// Hovering a card lights up the ones it builds on. Below that: reroll,
-// banish, skip. A click in the first quarter second is ignored, so a held
-// trigger never picks; a pick goes in at once, the picked card swells, the
-// rest fall away, and the screen closes. Closing (C / ESC) keeps the cards:
-// F7 brings them back.
+// Under the cards, YOUR BUILD: every effect V holds, in its patron's colour,
+// then the main chrome's element, mods and quickhacks. Hovering a card lights
+// up the ones it builds on. Below that: reroll, banish, skip. A click in the
+// first quarter second is ignored, so a held trigger never picks; a pick goes
+// in at once, the picked card swells, the rest fall away, and the screen
+// closes. Closing (C / ESC) keeps the cards: F7 brings them back.
+//
+// A quickhack picked for a full deck turns the screen over to the deck: its
+// quickhacks as cards, one to swap out (or BACK to the cards).
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -43,6 +46,11 @@ public class RLRewardPopup extends InGamePopup {
   // The card being picked while its animation plays.
   private let m_picking: Int32;
   private let m_pickProxy: ref<inkAnimProxy>;
+  private let m_header: ref<InGamePopupHeader>;
+  // The deck view: the quickhack card it's for (-1 when the cards show) and
+  // the slotted quickhacks, in card order.
+  private let m_slotFor: Int32;
+  private let m_slotHacks: array<ItemID>;
 
   // `fluff`: the header's right-hand line (a patron's tagline); "CHOOSE ONE"
   // when empty.
@@ -53,6 +61,7 @@ public class RLRewardPopup extends InGamePopup {
     popup.m_title = title;
     popup.m_fluff = fluff;
     popup.m_picking = -1;
+    popup.m_slotFor = -1;
     RLUI.Show(popup);
     return popup;
   }
@@ -74,11 +83,10 @@ public class RLRewardPopup extends InGamePopup {
     this.m_container.SetSize(Vector2(2200.0, 1240.0));
     this.m_openedAt = RLUI.Now();
 
-    let header = InGamePopupHeader.Create();
-    header.SetFluffLeft("");
-    header.SetTitle(this.m_title);
-    header.SetFluffRight(StrLen(this.m_fluff) > 0 ? this.m_fluff : "CHOOSE ONE");
-    header.Reparent(this);
+    this.m_header = InGamePopupHeader.Create();
+    this.m_header.SetFluffLeft("");
+    this.SetCardsHeader();
+    this.m_header.Reparent(this);
 
     let footer = InGamePopupFooter.Create();
     let run = IsDefined(this.m_system) ? this.m_system.GetRun() : null;
@@ -91,6 +99,21 @@ public class RLRewardPopup extends InGamePopup {
 
     RLLog(s"Reward menu: building \(ArraySize(this.m_offers)) card(s).");
     this.Build();
+  }
+
+  private func SetCardsHeader() {
+    this.m_header.SetTitle(this.m_title);
+    this.m_header.SetFluffRight(StrLen(this.m_fluff) > 0 ? this.m_fluff : "CHOOSE ONE");
+  }
+
+  // Swaps what the content shows (the cards, or the deck).
+  private func Clear() {
+    this.m_content.GetRootCompoundWidget().RemoveAllChildren();
+    ArrayClear(this.m_cards);
+    ArrayClear(this.m_buildChips);
+    ArrayClear(this.m_buildIDs);
+    this.m_banishing = false;
+    this.m_openedAt = RLUI.Now();
   }
 
   private func Build() {
@@ -153,9 +176,14 @@ public class RLRewardPopup extends InGamePopup {
   }
 
   // YOUR BUILD: every effect V holds, in its patron's colour, overclocks
-  // marked +, favours after them, then the main chrome's element and mods.
+  // marked +, favours after them, then the main chrome's element and mods,
+  // and a deck main's quickhacks.
   private func BuildStrip(parent: ref<inkCompoundWidget>, run: ref<RLRunState>) {
-    if ArraySize(run.boons) == 0 && ArraySize(run.armMods) == 0 && StrLen(run.mainElement) == 0 {
+    let hacks: array<ItemID>;
+    if RLArms.IsMainDeck(run) {
+      hacks = RLHacks.Slotted(GetPlayer(GetGameInstance()));
+    }
+    if ArraySize(run.boons) == 0 && ArraySize(run.armMods) == 0 && StrLen(run.mainElement) == 0 && ArraySize(hacks) == 0 {
       return;
     }
     let box = RLUI.VPanel(4.0);
@@ -190,6 +218,12 @@ public class RLRewardPopup extends InGamePopup {
       if IsDefined(mod) {
         this.AddStripChip(row, state.id, state.overclocked ? mod.name + "+" : mod.name, n"MainColors.ActiveYellow");
       }
+    }
+    // A deck main's quickhacks, in the colour of what they make.
+    for hack in hacks {
+      let record = ItemID.GetTDBID(hack);
+      let keyword = RLHacks.Keyword(record);
+      this.AddStripChip(row, n"", RLRewards.ItemName(record), IsNameValid(keyword) ? RLKeywords.Color(keyword) : n"MainColors.Green");
     }
   }
 
@@ -233,7 +267,8 @@ public class RLRewardPopup extends InGamePopup {
 
   private func BuildCard(parent: ref<inkCompoundWidget>, offer: ref<RLOffer>, index: Int32, width: Float) {
     let isEffect = Equals(offer.kind, RLOfferKind.Boon);
-    let speaks = isEffect || Equals(offer.kind, RLOfferKind.ArmMod) || Equals(offer.kind, RLOfferKind.Rewire);
+    let isHack = Equals(offer.kind, RLOfferKind.Quickhack);
+    let speaks = isEffect || Equals(offer.kind, RLOfferKind.ArmMod) || Equals(offer.kind, RLOfferKind.Rewire) || isHack && ArraySize(offer.makes) > 0;
     let accent = isEffect && IsNameValid(offer.patron) ? RLPatrons.Accent(offer.patron) : RLRewardPopup.KindAccent(offer.kind);
     let card = RLCard.Create(StringToName("offer_" + IntToString(index)), width, 760.0, accent);
     card.SetCompact();
@@ -253,7 +288,10 @@ public class RLRewardPopup extends InGamePopup {
       card.AddLine(offer.description, warning ? n"MainColors.Red" : n"MainColors.ActiveWhite", 30);
     }
     if RLItemText.Wants(offer.kind) {
-      RLItemText.AddTo(card, offer.record, n"MainColors.ActiveWhite", 28, 2);
+      RLItemText.AddTo(card, offer.record, n"MainColors.ActiveWhite", 28, isHack ? 1 : 2);
+    }
+    if isHack && RLHacks.NeedsSlot(GetPlayer(GetGameInstance()), offer) {
+      card.AddLine("Deck full: you pick one to swap out.", n"MainColors.Grey", 24);
     }
     if StrLen(offer.dpsLine) > 0 {
       card.AddLine(offer.dpsLine, n"MainColors.Yellow", 30);
@@ -447,6 +485,17 @@ public class RLRewardPopup extends InGamePopup {
       return false;
     }
     let name = NameToString(button.GetName());
+    if Equals(name, "back") {
+      this.ShowCards();
+      return true;
+    }
+    if StrBeginsWith(name, "slot_") {
+      let slot = StringToInt(StrAfterFirst(name, "_"));
+      if slot >= 0 && slot < ArraySize(this.m_slotHacks) {
+        this.PickSlot(slot);
+      }
+      return true;
+    }
     if Equals(name, "reroll") {
       this.Close();
       this.m_system.OnRewardReroll();
@@ -481,10 +530,21 @@ public class RLRewardPopup extends InGamePopup {
   }
 
   // The pick goes in at once; the picked card swells, the others fall away,
-  // and the screen closes when that's done.
+  // and the screen closes when that's done. A quickhack for a full deck asks
+  // which one it replaces first.
   private func Pick(index: Int32) {
+    let offer = this.m_offers[index];
+    if !ItemID.IsValid(offer.replaces) && RLHacks.NeedsSlot(GetPlayer(GetGameInstance()), offer) {
+      this.ShowDeck(index);
+      return;
+    }
     this.m_picking = index;
     this.m_system.OnRewardChosen(index);
+    this.PlayPicked(index);
+  }
+
+  // The chosen card swells, the rest fall away, then the screen closes.
+  private func PlayPicked(index: Int32) {
     let i = 0;
     while i < ArraySize(this.m_cards) {
       if IsDefined(this.m_cards[i]) {
@@ -501,6 +561,100 @@ public class RLRewardPopup extends InGamePopup {
     } else {
       this.OnPickShown(null);
     }
+  }
+
+  // --- The deck: a quickhack for a full deck ------------------------------------------------
+
+  // The deck's quickhacks as cards: the one picked is swapped out.
+  private func ShowDeck(index: Int32) {
+    let offer = this.m_offers[index];
+    this.Clear();
+    this.m_slotFor = index;
+    this.m_slotHacks = RLHacks.Slotted(GetPlayer(GetGameInstance()));
+    this.m_header.SetTitle("SWAP IN " + StrUpper(offer.title));
+    this.m_header.SetFluffRight("YOUR DECK IS FULL");
+
+    let column = RLUI.VPanel(10.0);
+    column.SetAnchor(inkEAnchor.Fill);
+    column.SetMargin(RLUI.ContentMargin());
+    column.Reparent(this.m_content.GetRootCompoundWidget());
+
+    let note = RLUI.Text("Pick the quickhack it replaces.", 30, n"MainColors.Grey");
+    note.SetHAlign(inkEHorizontalAlign.Center);
+    note.SetMargin(inkMargin(0.0, 12.0, 0.0, 0.0));
+    note.Reparent(column);
+
+    let cards = RLUI.HPanel(18.0);
+    cards.SetHAlign(inkEHorizontalAlign.Center);
+    cards.SetMargin(inkMargin(0.0, 12.0, 0.0, 0.0));
+    cards.Reparent(column);
+    let count = ArraySize(this.m_slotHacks);
+    let width = MinF(470.0, (1980.0 - 18.0 * Cast<Float>(Max(count - 1, 0))) / Cast<Float>(Max(count, 1)));
+    let i = 0;
+    while i < count {
+      this.BuildSlotCard(cards, this.m_slotHacks[i], i, width);
+      i += 1;
+    }
+
+    let actions = RLUI.HPanel(18.0);
+    actions.SetHAlign(inkEHorizontalAlign.Center);
+    actions.SetMargin(inkMargin(0.0, 14.0, 0.0, 0.0));
+    actions.Reparent(column);
+    let back = RLCard.Create(n"back", 420.0, 120.0, n"MainColors.Blue");
+    back.SetCompact();
+    back.SetKicker("KEEP YOUR DECK");
+    back.SetTitle("BACK");
+    back.SetTitleSize(36);
+    back.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
+    back.Reparent(actions);
+    back.PlayIntro(0.08 * Cast<Float>(count));
+    // It falls away with the others when a hack is picked.
+    ArrayPush(this.m_cards, back);
+  }
+
+  // One slotted quickhack: what it is, what it does, what it makes.
+  private func BuildSlotCard(parent: ref<inkCompoundWidget>, hack: ItemID, index: Int32, width: Float) {
+    let record = ItemID.GetTDBID(hack);
+    let family = RLHacks.FamilyOf(record);
+    let keyword = RLHacks.Keyword(record);
+    let step = RLQuality.StepOfRecord(record);
+    let card = RLCard.Create(StringToName("slot_" + IntToString(index)), width, 600.0, IsNameValid(keyword) ? RLKeywords.Color(keyword) : n"MainColors.Green");
+    card.SetCompact();
+    if !card.SetRecordIcon(RLIcons.ItemIcon(record), 170.0, 170.0) {
+      card.SetAtlasIcon(RLIcons.HubAtlas(), n"ico_deck", 120.0);
+    }
+    card.SetQuality(step);
+    card.SetKicker("SWAP OUT - " + (IsDefined(family) ? RLHacks.RoleName(family.role) + " - " : "") + RLQuality.DisplayName(step));
+    card.SetTitle(RLRewards.ItemName(record));
+    card.SetTitleSize(40);
+    if IsDefined(family) {
+      card.AddLine(family.line, n"MainColors.ActiveWhite", 28);
+    }
+    if IsNameValid(keyword) {
+      card.AddChips(["MAKES " + NameToString(keyword)], [RLKeywords.Color(keyword)]);
+    }
+    card.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
+    card.Reparent(parent);
+    card.PlayIntro(0.08 * Cast<Float>(index));
+    ArrayPush(this.m_cards, card);
+  }
+
+  // BACK: the cards again, as they were.
+  private func ShowCards() {
+    this.Clear();
+    this.m_slotFor = -1;
+    ArrayClear(this.m_slotHacks);
+    this.SetCardsHeader();
+    this.Build();
+  }
+
+  // A slot was picked: the quickhack card goes in, in its place.
+  private func PickSlot(slot: Int32) {
+    let index = this.m_slotFor;
+    this.m_offers[index].replaces = this.m_slotHacks[slot];
+    this.m_picking = index;
+    this.m_system.OnRewardChosen(index);
+    this.PlayPicked(slot);
   }
 
   protected cb func OnPickShown(proxy: ref<inkAnimProxy>) -> Bool {

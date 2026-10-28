@@ -334,8 +334,12 @@ public abstract class RLKeywords {
     RLEffectStep.ScheduleOn(fx, n"cocktail", target, 0.25);
   }
 
-  // The burst: everything on `source` copies onto everyone within 5 m.
-  public static func SpreadStatuses(fx: ref<RLFx>, source: ref<ScriptedPuppet>) {
+  // The burst: everything on `source` copies onto everyone within `radius`
+  // (5 m for Cocktail).
+  public static func SpreadStatuses(fx: ref<RLFx>, source: ref<ScriptedPuppet>, opt radius: Float) {
+    if radius <= 0.0 {
+      radius = 5.0;
+    }
     let foe = fx.combat.Foe(source.GetEntityID());
     if !IsDefined(foe) {
       return;
@@ -345,7 +349,7 @@ public abstract class RLKeywords {
     let glitched = foe.glitchUntil > fx.now;
     let burning = RLKeywords.IsBurning(source);
     let bleeding = fx.combat.IsBleeding(foe, fx.now) ? foe.bleedStacks : 0;
-    for other in RLKeywords.EnemiesNear(fx, source.GetWorldPosition(), 5.0) {
+    for other in RLKeywords.EnemiesNear(fx, source.GetWorldPosition(), radius) {
       if other.GetEntityID() != source.GetEntityID() {
         if marked { RLKeywords.Mark(fx, other, 6.0); }
         if shocked { RLKeywords.Shock(fx, other); }

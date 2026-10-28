@@ -30,8 +30,19 @@ roguelite character for this build.
 **Kits are their main weapon**
 
 - **Every kit lives in its main slot.** The Netrunner's cyberdeck is its main weapon now (its quickhacks are its hits), the Demolitions kit fights with the Projectile Launcher (the SMG backs it up), and the Brawler's backup is a pistol, with Wrecking Ball - the blunt perk Gorilla Arms use - instead of a shotgun perk.
-- **Chrome mods:** main-weapon chrome gets two mod slots of its own - Gorilla Arms KNUCKLES and BATTERY, Monowire CABLE and BATTERY, the launcher ROUND and WIRING, the deck ICEBREAKER and FIRMWARE - three mods each, every one with an overclock, all speaking the keywords. 24 in all, dealt on Armory and Tune-Up screens.
+- **Chrome mods:** main-weapon chrome gets two mod slots of its own - Gorilla Arms KNUCKLES and BATTERY, Mantis Blades BLADE and ACTUATOR, Monowire CABLE and BATTERY, the launcher ROUND and WIRING, the deck ICEBREAKER and FIRMWARE - three mods each, every one with an overclock, all speaking the keywords. 30 in all, dealt on Tune-Up doors (our Daedalus hammers), so they never crowd the Armory.
+- **Weapon effects read your weapon.** A launcher fires shells and a deck uploads quickhacks, so every weapon effect has its own version for each, written for it: Payload's every 3rd shell is a heavy one, and every 3rd quickhack BLASTS. Hot Barrel overheats the deck. Lucky Round makes 1 in 4 quickhacks jump to the next enemy. Thunder Rounds is back on decks: a second hack on the same enemy calls down the strike.
+- **Evolution is a new trick.** Evolved chrome gets a signature that changes how it plays, on top of Legendary++ and the third effect slot: SHOCKWAVE (Gorilla Arms' strong punches floor everything around), BLOOD RUSH (a Mantis kill slows time and gives your dodge back), LIVE WIRE (a lash copies its target's statuses around), BELT FEED (a shell that kills hands its charge back), CASCADE (every quickhack spreads to two more enemies).
+- **The stranger deals in chrome too:** a PROTOTYPE of your chrome's signature and its third slot, early (Tune-Ups take it the rest of the way), or once it has its signature an off-market mod that comes overclocked. Same price as his iconic.
 - **Arm chrome from a Chrome door** can become your new main; your gun steps down to sidearm.
+
+**Netrunner**
+
+- **Quickhacks are your gun.** Your slotted hacks run at your deck's quality, and every deck Tune-Up takes them up with it.
+- **A start that kills:** the Netrunner opens with one damage hack (Overheat, Short Circuit or Contagion) and one control hack. The Wireman's deck brings a setup hack for the wire.
+- **Hacks speak the keywords:** Overheat BURNS, Short Circuit SHOCKS, Ping MARKS, Weapon Glitch and Cyberware Malfunction GLITCH, and Contagion's poison counts as BLEED. Their cards carry the chips and BUILDS ON.
+- **Your loadout is yours to shape:** the Armory offers a new quickhack in place of a trade, Daemons doors deal hacks your deck doesn't run, and a full deck asks which hack to swap out - with a BACK if you change your mind.
+- **Your deck on screen:** the YOUR BUILD strip and the terminal show your hacks in their keyword colours.
 - **The first gig** always matches your main weapon, and perks for the main weapon turn up twice as often in Training.
 
 **Favors and the terminal**
@@ -65,7 +76,7 @@ roguelite character for this build.
 - **Quickhacks that didn't install:** vendors also list crafting specs, and one of those ("Bait") could be offered and given instead of the quickhack. Specs are out of the pools.
 - **Music doubling after the Act 1 boss:** Royce's boss loop is now ended with its own outro.
 - **The Junkyard's locked garage:** enemies no longer spawn in it, and an enemy that can't be moved out of somewhere is removed (and counts as killed) right away instead of after two minutes.
-- **Logs:** reward kinds and the run state are named properly in the telemetry and bug marks; every fight logs how much damage each effect did.
+- **Logs:** reward kinds and the run state are named properly in the telemetry and bug marks; every fight logs how much damage each effect did, and with a deck how many quickhacks you uploaded and how long you sat short of RAM.
 - **Music left playing after a run** is stopped when V gets home, along with every score and the pocket radio.
 - **Stuck in the floor on arrival:** V is placed again once the arena's ground has loaded, before the fade-in.
 - **Enemies that wouldn't move** are now moved with the AI's own teleport as well.

@@ -87,6 +87,7 @@ public abstract class RLWeapons {
     run.sidearmStep = 0;
     run.mainElement = "";
     run.mainEvolved = false;
+    run.mainSignature = false;
   }
 
   // Puts both slots' weapons at their steps (arm chrome by swapping records,
@@ -152,16 +153,24 @@ public abstract class RLWeapons {
   }
 
   // The main weapon can evolve now: Legendary, two weapon effects, not
-  // already an iconic.
+  // already an iconic (chrome: not already holding its signature).
   public static func CanEvolve(run: ref<RLRunState>) -> Bool {
-    return ItemID.IsValid(run.mainWeapon) && !RLWeapons.IsIconic(run.mainWeapon) && !run.mainEvolved
+    return ItemID.IsValid(run.mainWeapon) && !RLWeapons.IsEvolved(run)
       && run.mainStep >= 8 && RLBoons.WeaponEffectCount(run) >= 2;
+  }
+
+  // An iconic gun, or chrome with its signature.
+  public static func IsEvolved(run: ref<RLRunState>) -> Bool {
+    if RLArms.IsMainChrome(run) {
+      return run.mainSignature;
+    }
+    return RLWeapons.IsIconic(run.mainWeapon) || run.mainEvolved;
   }
 
   // What evolving still needs, for the Armory's cards ("" once it can, or
   // when it never will).
   public static func EvolveRecipe(run: ref<RLRunState>) -> String {
-    if !ItemID.IsValid(run.mainWeapon) || RLWeapons.IsIconic(run.mainWeapon) || run.mainEvolved || RLWeapons.CanEvolve(run) {
+    if !ItemID.IsValid(run.mainWeapon) || RLWeapons.IsEvolved(run) || RLWeapons.CanEvolve(run) {
       return "";
     }
     return s"Evolves at Legendary with 2 weapon effects (now \(RLQuality.DisplayName(run.mainStep)), \(RLBoons.WeaponEffectCount(run))/2).";

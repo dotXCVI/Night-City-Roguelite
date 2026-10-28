@@ -115,7 +115,13 @@ public class RLFoe {
   public let mainHits: Int32;
   public let healTime: Float;
   public let ramTime: Float;
+  // The last quickhack upload on it (any that landed; uploadAt: the one the
+  // upload hook or a spread counted, so one upload counts once).
   public let quickhackTime: Float;
+  public let uploadAt: Float;
+  // Kinetic Rounds on a deck: the upload came in the dash window, so the
+  // hack's hits take the overclock's +30%.
+  public let kineticUntil: Float;
   // Last time V saw it burning (the game clears Burning when it dies).
   public let burnSeenAt: Float;
 }
@@ -177,6 +183,21 @@ public class RLCombatState {
   public let lastShellAt: Float;
   public let lastSwingAt: Float;
   public let hackCount: Int32;
+  // Signatures (Rewards/ArmChrome.reds): the last SHOCKWAVE or LIVE WIRE, the
+  // last BELT FEED charge.
+  public let signatureAt: Float;
+  public let beltAt: Float;
+  // Weapon effects read per action (Rewards/WeaponActions.reds): the shell in
+  // flight and what it carries, and the deck's own heat.
+  public let shellAt: Float;
+  public let shellHot: Bool;
+  public let shellLucky: Bool;
+  // The last upload's quickhack family, for the hits it spreads into.
+  public let lastUploadAt: Float;
+  public let lastUploadFamily: CName;
+  // Uploads this arena and seconds spent short of RAM (telemetry).
+  public let uploads: Int32;
+  public let ramLowSeconds: Int32;
   // Arasaka's favour: the wave whose toughest enemy is already MARKED.
   public let markedWave: Int32;
   // Slipstream's speed, swapped as MOMENTUM changes.
@@ -237,6 +258,15 @@ public class RLCombatState {
     this.lastShellAt = 0.0;
     this.lastSwingAt = 0.0;
     this.hackCount = 0;
+    this.signatureAt = 0.0;
+    this.beltAt = 0.0;
+    this.shellAt = 0.0;
+    this.shellHot = false;
+    this.shellLucky = false;
+    this.lastUploadAt = 0.0;
+    this.lastUploadFamily = n"";
+    this.uploads = 0;
+    this.ramLowSeconds = 0;
     this.markedWave = 0;
     this.speedMod = null;
     this.droneID = EntityID();

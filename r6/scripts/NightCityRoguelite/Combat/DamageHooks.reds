@@ -6,7 +6,9 @@
 //   - hits V lands on arena enemies are scaled after the game's own
 //     modifiers and before the damage is dealt (DamageSystem.Process calls
 //     ProcessCrowdTarget right after the global modifiers);
-//   - an arena enemy's death fires kill effects and death affixes at once.
+//   - an arena enemy's death fires kill effects and death affixes at once;
+//   - a quickhack V uploads onto one is read when the upload finishes, damage
+//     or not (Rewards/BoonEffects.reds OnUpload).
 //
 // Hits V takes are scaled in Run/Difficulty.reds.
 // -----------------------------------------------------------------------------
@@ -46,6 +48,28 @@ protected cb func OnDeath(evt: ref<gameDeathEvent>) -> Bool {
   let system = RogueliteSystem.Get(this.GetGame());
   if IsDefined(system) {
     system.OnArenaEnemyDied(this);
+  }
+  return result;
+}
+
+// A quickhack finished uploading. The listener is the game's own for every
+// quickhack upload; only V's uploads onto arena enemies count.
+@wrapMethod(QuickHackUploadListener)
+protected cb func OnStatPoolMaxValueReached(value: Float) -> Bool {
+  let action = this.m_action;
+  let game = this.m_gameInstance;
+  let result = wrappedMethod(value);
+  if !IsDefined(action) || !action.IsQuickHack() {
+    return result;
+  }
+  let executor = action.GetExecutor();
+  if !IsDefined(executor) || !executor.IsPlayer() {
+    return result;
+  }
+  let target = GameInstance.FindEntityByID(game, action.GetRequesterID()) as ScriptedPuppet;
+  let system = RogueliteSystem.Get(game);
+  if IsDefined(target) && IsDefined(system) {
+    system.OnQuickhackUploaded(target, action.GetObjectActionID());
   }
   return result;
 }

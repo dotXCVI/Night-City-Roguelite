@@ -131,6 +131,8 @@ public abstract class RLTelemetry {
       + RLTelemetry.Field("os", NameToString(run.os))
       + RLTelemetry.Field("main", RLRewards.ItemName(RLWeapons.MainRecord(run)) + ":" + IntToString(run.mainStep) + (StrLen(run.mainElement) > 0 ? ":" + run.mainElement : ""))
       + RLTelemetry.Field("mods", RLArmMods.Summary(run))
+      + RLTelemetry.Field("hacks", RLHacks.Summary(player))
+      + RLTelemetry.IntField("evolved", RLWeapons.IsEvolved(run) ? 1 : 0)
       + RLTelemetry.IntField("cover", run.cover)
       + RLTelemetry.IntField("overclock", run.overclock)
       + RLTelemetry.Field("gig", run.gigStyle >= 0 ? RLStyle.Name(run.gigStyle) + s" \(run.gigProgress)/\(run.gigTarget)" : "")

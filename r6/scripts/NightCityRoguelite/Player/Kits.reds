@@ -264,11 +264,11 @@ public abstract class RLKits {
         perk = gamedataNewPerkType.Reflexes_Right_Milestone_2;
         break;
       case n"Netrunner":
-        // The deck is the main weapon: its quickhacks are its hits.
+        // The deck is the main weapon: its quickhacks are its hits - one
+        // that kills, one that controls, at the deck's quality.
         RLKits.Deck(player, pools, run, weapons);
-        let first = pools.PickQuickhack(0, noIDs);
-        let second = pools.PickQuickhack(0, [first]);
-        RLGear.GiveQuickhacks(player, [first, second]);
+        let deckStep = ArraySize(weapons) > 0 ? RLQuality.StepOfRecord(ItemID.GetTDBID(weapons[0])) : 0;
+        RLGear.GiveQuickhacks(player, RLHacks.Starters(deckStep));
         RLKits.Weapon(player, pools, pistols, basic, weapons);
         perk = gamedataNewPerkType.Intelligence_Central_Milestone_1;
         break;
@@ -299,7 +299,12 @@ public abstract class RLKits {
         // Monowire with a deck behind it: Siphon turns every lash into RAM.
         RLKits.Arms(player, pools, run, gamedataItemType.Cyb_NanoWires, weapons);
         RLKits.Chrome(player, run, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
-        RLGear.GiveQuickhacks(player, [pools.PickQuickhack(0, noIDs)]);
+        // A hack that sets up the wire: Ping MARKS for the Garrote, the
+        // glitches feed Uplink and Feedback.
+        let setup = RLHacks.Pick(RLHacks.Control(), 0, [n"CrippleMovement", n"RebootOptics", n"MemoryWipe", n"Cyberpsychosis"]);
+        if TDBID.IsValid(setup) {
+          RLGear.GiveQuickhacks(player, [setup]);
+        }
         RLKits.Weapon(player, pools, pistols, basic, weapons);
         perk = gamedataNewPerkType.Intelligence_Inbetween_Left_2;
         break;

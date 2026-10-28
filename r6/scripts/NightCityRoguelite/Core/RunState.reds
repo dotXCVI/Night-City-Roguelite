@@ -48,6 +48,10 @@ public class RLRunState {
   // for the plain one), and whether it has evolved.
   public let mainElement: String;
   public let mainEvolved: Bool;
+  // Chrome that has learned its evolution's signature (RLSignatures). Kept
+  // apart from mainEvolved, which is the third effect slot: an iconic gun's
+  // slot carries over to chrome that takes the main slot, its trick doesn't.
+  public let mainSignature: Bool;
   // Arm mods (Rewards/ArmMods.reds), one per slot.
   public let armMods: array<ref<RLBoonState>>;
 

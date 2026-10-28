@@ -130,8 +130,9 @@ What a patron offers:
   **overclock**, a stronger version (shown as "Arc Flash+").
 - **Weapon effects** - one per patron, bound to your main weapon (Tracer
   Rounds, Payload, Thunder Rounds, Hot Barrel, Kinetic Rounds, Lucky Round).
-  They work on blades too and stay through a trade. Two slots, three on an
-  iconic.
+  They work on blades and chrome too and stay through a trade. Two slots,
+  three on an iconic or evolved chrome. Each reads the way your main weapon
+  lands its blows (see below).
 - **Legendaries** - seven, offered once you hold two of the patron's effects
   (Death Sentence, Fire Mission, Blackwall Gate, Cyberpsychosis, Nomad Run,
   Glass Chrome, Lucky Break).
@@ -149,6 +150,25 @@ tag, and BUILDS ON with the effects they link to; the YOUR BUILD strip under
 the cards lights up those effects when you hover one. The HUD's build row
 shows each patron's count (with a "+" for a favour), your cover, SHIELD and
 MOMENTUM. Everything is removed when the run ends.
+
+#### Weapon effects, weapon by weapon
+
+Guns, blades, Gorilla Arms, Mantis Blades and the Monowire land **hits**; the
+Projectile Launcher fires **shells** (one shell, whatever it catches); a
+cyberdeck **uploads** (one per quickhack that finishes uploading, damage or
+not - a hack that spreads counts on every enemy it reaches). Every weapon
+effect has its own version for each, written for it:
+
+| Effect | Hits | Shells | Uploads |
+| --- | --- | --- | --- |
+| Tracer Rounds | Every 3rd hit on one enemy MARKS it (2nd) | Shells MARK everything they catch (MARKS last twice as long) | Every quickhack MARKS its target (hacks on MARKED enemies give back 2 RAM) |
+| Payload | Every 6th hit BLASTS (4th) | Every 3rd shell is heavy: a second, bigger BLAST (2nd) | Every 3rd quickhack BLASTS on its target (2nd) |
+| Thunder Rounds | Headshots and strong attacks call down a SHOCK strike (4 m) | Every shell calls down a strike (4 m) | A second hack on the same enemy within 8 s calls down a strike (4 m) |
+| Hot Barrel | Keep firing: at full heat, hits BURN (twice as fast) | Every 3rd shell lands hot: all it catches BURNS (2nd) | Every 3rd quickhack overheats the deck: 6 s of BURNING hacks (2nd) |
+| Kinetic Rounds | 2 s after a dash or slide, hits knock down (+30%) | The same, for everything a shell catches | Hacks uploaded in that window knock their target down (+30%) |
+| Lucky Round | Every 8th hit triple damage (6th) | Every 4th shell triple damage (3rd) | 1 in 4 hacks jumps: what's on its target copies onto the nearest enemy (1 in 3) |
+
+(Overclocks in brackets.)
 
 ### Hot doors
 
@@ -218,7 +238,7 @@ You play one gun, so the run builds one gun:
 - **Evolution.** A Legendary main weapon with two weapon effects can evolve
   into an iconic of its type (at a TUNE-UP door), effects and all, and gains
   a third effect slot. The stranger's iconic (Act 2 on) is the only other
-  way to one.
+  way to one. Chrome evolves into its signature instead (below).
 - **Act step.** Beating a boss steps both weapons up one quality.
 
 ### Chrome as the main weapon
@@ -232,38 +252,81 @@ Every kit's identity lives in its main slot, so some mains are chrome:
 | Demolitions | Projectile Launcher | SMG |
 | Netrunner | Cyberdeck (its quickhacks are its hits) | Pistol |
 
-Weapon effects work on chrome like on any gun (Thunder Rounds isn't dealt to
-a deck: quickhacks never headshot). Its rewards follow the game's own upgrade
-path:
+Weapon effects work on chrome like on any gun, read for how it lands its
+blows (shells, uploads - see Patrons). Its rewards follow the game's own
+upgrade path:
 
 - **Tune-Ups** swap in the next quality of the same chrome. Arm chrome
-  starts at Uncommon.
+  starts at Uncommon. A deck's Tune-Up takes its slotted quickhacks up with
+  it.
 - **REWIRE** takes the place of a trade for arms: the same arms in another
   element. Thermal hits BURN, Electric hits SHOCK, Chemical hits make them
-  BLEED. A deck is never traded.
+  BLEED. A deck's trade is a new quickhack (see Quickhacks).
 - **Evolution** takes chrome to the top of its line with a third weapon
-  effect slot.
-- **Arm mods:** two slots of the chrome's own, three mods each, every mod
-  with an overclock. They're dealt on Armory and Tune-Up screens while the
-  chrome is the main:
+  effect slot and its **signature**, a trick that changes how it plays:
+
+| Chrome | Signature |
+| --- | --- |
+| Gorilla Arms | SHOCKWAVE: strong punches knock down everything within 4 m and hit each for half |
+| Mantis Blades | BLOOD RUSH: a kill with the blades slows time and gives your dodge back |
+| Monowire | LIVE WIRE: every lash copies what's on its target onto everyone within 4 m |
+| Projectile Launcher | BELT FEED: a shell that kills hands its charge back |
+| Cyberdeck | CASCADE: every quickhack spreads to two more enemies |
+
+- **Chrome mods:** two slots of the chrome's own, three mods each, every mod
+  with an overclock. They're dealt on TUNE-UP doors while the chrome is the
+  main (our Daedalus hammers), never on the Armory:
 
 | Chrome | Slot | Mods |
 | --- | --- | --- |
 | Gorilla Arms | KNUCKLES | Breaker (strong punches knock down; downed enemies take +40%), Detonator (strong punches BLAST), Rending (punches BLEED) |
 | Gorilla Arms | BATTERY | Combo (five punches without a break trigger FOCUS), Capacitor (every 8th punch SHOCKS everything near), Adrenal (punch kills build MOMENTUM and heal) |
+| Mantis Blades | BLADE | Thermal (strong slashes BURN), Serrated (slashes BLEED; at full BLEED a slash opens them for +100%), Mono (slashes on MARKED enemies always crit) |
+| Mantis Blades | ACTUATOR | Leap (strong attacks count as a dash), Shock (strong attacks SHOCK the target and the nearest enemy), Deflector (blade kills raise a SHIELD) |
 | Monowire | CABLE | Arc (lashes jump to the next enemy for half damage), Garrote (lashes kill MARKED enemies under 30%), Barbed (lashes BLEED; +25% to BLEEDING enemies) |
 | Monowire | BATTERY | Uplink (strong lashes GLITCH; wire kills give RAM), Capacitor (every 10th lash SHOCKS everything near), Feedback (+40% to enemies you quickhacked) |
 | Launcher | ROUND | Cluster (bomblets), Sticky (shells BLAST again), Seeker (a micro-missile at the nearest MARKED enemy) |
-| Launcher | WIRING | Autoloader (+1 charge), Recoil (every shot counts as a dash), Overpressure (shells knock down) |
+| Launcher | WIRING | Autoloader (+1 charge), Recoil (every shell that lands counts as a dash), Overpressure (shells knock down) |
 | Cyberdeck | ICEBREAKER | Breach (first hack on each enemy MARKS it and gives RAM), Spike (+60% to GLITCHED enemies), Logic Bomb (hacked enemies BLAST when they die) |
 | Cyberdeck | FIRMWARE | Cache (every 4th hack gives RAM), Overvolt (hacks SHOCK), Ghost (hack kills make you untouchable) |
 
 Chrome brings its own capacity, goes back in on the next trip if anything
 takes it, and isn't replaced by other arms or an Operating System from a
 Chrome door. At the Act 1 boss a deck goes into Overdrive itself (BLACKWALL)
-and steps up twice. The stranger doesn't deal in chrome. Arm chrome a Chrome
-door offers to a gun build can become **your new main**: the gun steps down
-to sidearm, the weapon effects stay with the slot.
+and steps up twice. The stranger sells chrome a PROTOTYPE of its signature
+early, with the third slot, at the chrome's own quality - it then skips the
+evolution, and Tune-Ups take it the rest of the way (once it holds its
+signature, he sells an off-market mod that comes overclocked instead).
+Arm chrome a Chrome door offers to a gun build - Mantis Blades included - can
+become **your new main**: the gun steps down to sidearm, the weapon effects
+stay with the slot.
+
+### Quickhacks
+
+A cyberdeck's quickhacks are read as weapons. Every hack speaks a keyword
+when its upload lands, and each has a role:
+
+| Role | Quickhacks |
+| --- | --- |
+| Damage | Overheat (BURN), Short Circuit (SHOCK), Contagion (its poison counts as BLEED), Synapse Burnout, Detonate Grenade (a BLAST) |
+| Control | Ping (MARK), Weapon Glitch (GLITCH), Cyberware Malfunction (GLITCH), Cripple Movement, Reboot Optics, Memory Wipe, Cyberpsychosis |
+| Ultimate | Suicide, System Collapse |
+
+With the deck as the main weapon:
+
+- **Your hacks run at the deck's quality.** Every Tune-Up, act step, the
+  Act 1 boss's step and the evolution take them up with the deck.
+- **The Netrunner starts** with one damage hack (Overheat, Short Circuit or
+  Contagion) and one control hack. The Wireman's deck brings Ping, Weapon
+  Glitch or Cyberware Malfunction to set up the wire.
+- **Shaping the loadout:** the Armory deals a quickhack your deck doesn't run
+  in place of a trade, and DAEMONS doors deal only those - at the deck's
+  quality, about which hack and never a step down (a hot door or a spike
+  lets the big ones in early). Cards carry their keyword chips and BUILDS ON.
+- **A full deck asks:** pick a quickhack card with every slot taken and the
+  screen turns to your deck - pick the hack it replaces, or BACK.
+- The YOUR BUILD strip and the terminal show your hacks in their keyword
+  colours.
 
 ### Styles
 
@@ -328,8 +391,9 @@ taken. Capacity cards at a TUNE-UP door pay the overclock down.
 
 TUNE-UP doors show up on floors 4, 10 and 16 (if you pass one over, it comes
 back on the next screen once). They work on what you already have: the
-evolution when your main weapon is ready, a Tune-Up two steps up, your MaxDoc,
-your grenade, or capacity when you're over it.
+evolution when your main weapon is ready, a Tune-Up two steps up, mods for
+main-weapon chrome (up to two cards), your MaxDoc, your grenade, or capacity
+when you're over it.
 
 ### The Fixer
 
@@ -505,8 +569,10 @@ A "?" door is a stop without a fight. It counts as a floor:
   Tower overclocks two effects for max health, Death takes an effect for one
   more card on every screen, The Hermit trades max health for a cover...).
 - **A Stranger's Offer** (Act 2 on) - an iconic for your main slot that makes
-  you a target (15% more damage taken for the run), sell an effect for
-  eddies, or sell your cover for a legendary (or every effect you hold overclocked).
+  you a target (15% more damage taken for the run) - for chrome, a PROTOTYPE
+  of its signature or an off-market mod, overclocked, at the same price -
+  sell an effect for eddies, or sell your cover for a legendary (or every
+  effect you hold overclocked).
 
 ### Menus
 
@@ -569,7 +635,10 @@ with
     python3 tools/runreport.py "<game folder>" --marks    # every F8 bug mark
     python3 tools/runreport.py "<game folder>" --log 100  # the last log lines
 
-The record format is documented in `Core/Telemetry.reds`.
+The record format is documented in `Core/Telemetry.reds`. With a deck, every
+fight also logs `uploads` (quickhacks that landed) and `ramlow` (seconds spent
+under a quarter of your RAM), so a run shows whether RAM or damage holds a
+netrunner back.
 
 ## Files
 
@@ -624,8 +693,10 @@ The record format is documented in `Core/Telemetry.reds`.
 | `Rewards/BoonEffects.reds` | What effects do in fights (hits, kills, dashes, ticks) |
 | `Rewards/Styles.reds` | Styles: points, ranks, damage bonuses, signatures |
 | `Rewards/Weapons.reds` | Main weapon and sidearm slots, Tune-Ups, trades, evolution, DPS previews |
-| `Rewards/ArmChrome.reds` | Arm chrome and decks as the main weapon: records, REWIRE, evolution, taking over the slot |
+| `Rewards/ArmChrome.reds` | Arm chrome and decks as the main weapon: records, REWIRE, evolution and signatures, taking over the slot |
 | `Rewards/ArmMods.reds` | The main chrome's mod slots and their rules |
+| `Rewards/WeaponActions.reds` | How the main weapon lands its blows (hits, shells, uploads) and the weapon effects' readings for each |
+| `Rewards/Quickhacks.reds` | Quickhack families, roles and keywords; the deck's loadout, its quality and the swap |
 | `Meta/MetaProgression.reds` | Kits and their favor prices, favors, Cred payout |
 | `Meta/Terminal.reds` | The terminal's ten upgrade rows, ranks, takes, the migration of old unlocks |
 | `UI/Card.reds` | The card used by every menu, icon helpers |

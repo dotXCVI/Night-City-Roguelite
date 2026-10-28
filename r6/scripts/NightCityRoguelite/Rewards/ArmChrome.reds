@@ -16,8 +16,10 @@
 //   Rewire    in place of a TRADE: the same arms in another element, and
 //             the element speaks a keyword (Combat/Keywords.reds) - Thermal
 //             hits BURN, Electric hits SHOCK, Chemical hits BLEED.
-//   Evolve    at Legendary with two weapon effects: Legendary++ and a third
-//             weapon effect slot (there are no iconic arms to evolve into).
+//   Evolve    at Legendary with two weapon effects: Legendary++, a third
+//             weapon effect slot and the chrome's signature (RLSignatures) -
+//             there are no iconic arms to evolve into, so the chrome itself
+//             learns a new trick. The stranger sells the signature early.
 //
 // A deck has no elements and no records by name: its Tune-Ups follow the
 // game's own upgrade chain (each record's next upgrade), and it is never
@@ -195,11 +197,12 @@ public abstract class RLArms {
       system.ExpectGrant(record);
     }
     // A deck carries its quickhacks inside it: take them out before the old
-    // one goes, and slot them into the new one once it's in (the same queue,
-    // so the equip lands first).
+    // one goes, bring them to the new deck's quality (Rewards/Quickhacks.reds)
+    // and slot them into it once it's in (the same queue, so the equip lands
+    // first).
     let programs: array<ItemID>;
     if RLArms.IsDeck(old) && ItemID.GetTDBID(old) != record {
-      programs = RLArms.StripPrograms(player, old);
+      programs = RLHacks.Retier(player, RLArms.StripPrograms(player, old), RLQuality.StepOfRecord(record));
     }
     let itemID = RLGear.InstallCyberwareItem(player, record);
     let transactions = GameInstance.GetTransactionSystem(player.GetGame());
@@ -222,6 +225,7 @@ public abstract class RLArms {
     let transactions = GameInstance.GetTransactionSystem(player.GetGame());
     for slot in ItemModificationSystem.GetAllSlots(player, deck) {
       if Equals(slot.status, ESlotState.Taken) && ItemID.GetTDBID(slot.installedPart) != t"Items.GenericItemRoot" {
+        RLHacks.Expect(player, ItemID.GetTDBID(slot.installedPart));
         let program = transactions.RemovePart(player, deck, slot.slotID);
         if ItemID.IsValid(program) {
           ArrayPush(programs, program);
@@ -272,7 +276,10 @@ public abstract class RLArms {
     run.sidearmStep = run.mainStep;
     run.mainWeapon = given;
     run.mainStep = RLQuality.StepOfRecord(ItemID.GetTDBID(given));
+    // An iconic's third slot stays with the slot; the chrome's own trick
+    // still has to be earned.
     run.mainEvolved = run.mainEvolved || RLWeapons.IsIconic(oldMain);
+    run.mainSignature = false;
     run.mainElement = "";
     RLLog("Arm chrome takes the main slot; " + RLRewards.ItemName(ItemID.GetTDBID(oldMain)) + " is the sidearm now.");
   }
@@ -326,27 +333,137 @@ public abstract class RLArms {
     RLArms.ReplaceMain(player, run, RLArms.MainRecordAt(run, run.mainStep));
   }
 
-  // The chrome's evolution: the top of its line and a third weapon effect slot.
+  // The chrome's evolution: the top of its line, a third weapon effect slot,
+  // and its signature.
   public static func EvolveOffer(run: ref<RLRunState>) -> ref<RLOffer> {
     let record = RLArms.MainRecordAt(run, RLQuality.MaxStep());
     if !TDBID.IsValid(record) {
       return null;
     }
+    let family = RLArmMods.MainFamily(run);
     let offer = new RLOffer();
     offer.kind = RLOfferKind.Evolve;
     offer.itemID = run.mainWeapon;
     offer.record = record;
     offer.step = RLQuality.MaxStep();
     offer.title = RLRewards.ItemName(record);
-    offer.subtitle = "EVOLVE - " + RLQuality.DisplayName(RLQuality.MaxStep());
-    offer.description = "Top of the line, effects and all, with a third weapon effect slot.";
+    offer.subtitle = "EVOLVE - " + RLSignatures.Name(family);
+    offer.description = RLSignatures.Line(family) + " Top of the line, with a third weapon effect slot.";
     offer.excitement = 3;
     return offer;
   }
 
   public static func Evolve(player: ref<PlayerPuppet>, run: ref<RLRunState>) {
-    run.mainEvolved = true;
     run.mainStep = RLQuality.MaxStep();
     RLArms.ReplaceMain(player, run, RLArms.MainRecordAt(run, run.mainStep));
+    RLSignatures.Unlock(player, run);
+  }
+}
+
+// What evolved chrome learns, one trick per family - each changes how it
+// plays, the way an iconic does for a gun:
+//
+//   Gorilla Arms        SHOCKWAVE  strong punches floor everything around
+//   Mantis Blades       BLOOD RUSH a kill slows time and gives the dodge back
+//   Monowire            LIVE WIRE  a lash copies its target's statuses around
+//   Projectile Launcher BELT FEED  a shell that kills hands its charge back
+//   Cyberdeck           CASCADE    every quickhack spreads to two more enemies
+public abstract class RLSignatures {
+  public static func Name(const family: String) -> String {
+    switch family {
+      case "StrongArms": return "SHOCKWAVE";
+      case "MantisBlades": return "BLOOD RUSH";
+      case "NanoWires": return "LIVE WIRE";
+      case "ProjectileLauncher": return "BELT FEED";
+      case "Deck": return "CASCADE";
+    }
+    return "";
+  }
+
+  // "SHOCKWAVE: strong punches..." for the evolution's card.
+  public static func Line(const family: String) -> String = RLSignatures.Name(family) + ": " + RLSignatures.What(family)
+
+  public static func What(const family: String) -> String {
+    switch family {
+      case "StrongArms": return "strong punches knock down everything within 4 m and hit each for half.";
+      case "MantisBlades": return "a kill with the blades slows time and gives your dodge back.";
+      case "NanoWires": return "every lash copies what's on its target onto everyone within 4 m.";
+      case "ProjectileLauncher": return "a shell that kills hands its charge back.";
+      case "Deck": return "every quickhack spreads to two more enemies.";
+    }
+    return "";
+  }
+
+  // The main chrome has learned its trick.
+  public static func Has(run: ref<RLRunState>, const family: String) -> Bool = run.mainSignature && Equals(RLArmMods.MainFamily(run), family)
+
+  // Evolved (or bought from the stranger): the trick and the third slot.
+  // CASCADE is the game's own quickhack spread.
+  public static func Unlock(player: ref<PlayerPuppet>, run: ref<RLRunState>) {
+    run.mainSignature = true;
+    run.mainEvolved = true;
+    if !RLArms.IsMainDeck(run) {
+      return;
+    }
+    RLEvents.AddRunMod(player, run, gamedataStatType.QuickHackSpreadNumber, gameStatModifierType.Additive, 2.0);
+    let stats = GameInstance.GetStatsSystem(player.GetGame());
+    let reach = stats.GetStatValue(Cast<StatsObjectID>(player.GetEntityID()), gamedataStatType.QuickHackSpreadDistance);
+    if reach < 8.0 {
+      RLEvents.AddRunMod(player, run, gamedataStatType.QuickHackSpreadDistance, gameStatModifierType.Additive, 8.0 - reach);
+    }
+    RLLog("Signature: CASCADE (quickhack spread +2).");
+  }
+
+  // A main hit landed (not a status tick).
+  public static func OnMainHit(fx: ref<RLFx>, ctx: ref<RLHitContext>, dealt: Float) {
+    if !fx.run.mainSignature {
+      return;
+    }
+    let combat = fx.combat;
+    let target = ctx.target;
+    let type = ctx.hitEvent.attackData.GetAttackType();
+    if Equals(type, gamedataAttackType.StrongMelee) && RLSignatures.Has(fx.run, "StrongArms") && fx.now - combat.signatureAt >= 0.3 {
+      combat.signatureAt = fx.now;
+      RLKeywords.Tag(fx, "SHOCKWAVE", n"MainColors.Gold");
+      GameInstance.GetAudioSystem(fx.game).PlayShockwave(n"explosion", target.GetWorldPosition());
+      RLKeywords.Knockdown(fx, target);
+      let total = 0.0;
+      for other in RLKeywords.EnemiesNear(fx, target.GetWorldPosition(), 4.0) {
+        if other.GetEntityID() != target.GetEntityID() {
+          RLKeywords.Knockdown(fx, other);
+          RLKeywords.Damage(fx, other, dealt * 0.5);
+          total += dealt * 0.5;
+        }
+      }
+      RLBoonEffects.Note(fx, n"Shockwave", total);
+    }
+    if RLSignatures.Has(fx.run, "NanoWires") && fx.now - combat.signatureAt >= 1.0 && RLKeywords.StatusCount(fx, ctx.foe, target) > 0 {
+      combat.signatureAt = fx.now;
+      RLKeywords.Tag(fx, "LIVE WIRE", n"MainColors.Blue");
+      RLKeywords.SpreadStatuses(fx, target, 4.0);
+      RLBoonEffects.Note(fx, n"LiveWire", 0.0);
+    }
+  }
+
+  // An arena enemy died; `flags` is how V's last hit on it landed.
+  public static func OnKill(fx: ref<RLFx>, flags: Int32) {
+    if !fx.run.mainSignature || !RLHitFlag.Has(flags, RLHitFlag.Main()) {
+      return;
+    }
+    let combat = fx.combat;
+    if RLSignatures.Has(fx.run, "MantisBlades") {
+      RLKeywords.Focus(fx, 1.0);
+      StatusEffectHelper.RemoveStatusEffect(fx.player, t"BaseStatusEffect.DodgeCooldown");
+      StatusEffectHelper.RemoveStatusEffect(fx.player, t"BaseStatusEffect.DodgeAirCooldown");
+      fx.player.rl_lastAirDash = 0.0;
+      RLKeywords.Tag(fx, "BLOOD RUSH", n"MainColors.Red");
+      RLBoonEffects.Note(fx, n"BloodRush", 0.0);
+    }
+    if RLSignatures.Has(fx.run, "ProjectileLauncher") && fx.now - combat.beltAt >= 0.3 {
+      combat.beltAt = fx.now;
+      ConsumablesChargesHelper.RefreshAmountOfCharges(fx.game, gamedataStatPoolType.ProjectileLauncherCharges, 1);
+      RLKeywords.Tag(fx, "+1 SHELL", n"MainColors.Yellow");
+      RLBoonEffects.Note(fx, n"BeltFeed", 0.0);
+    }
   }
 }

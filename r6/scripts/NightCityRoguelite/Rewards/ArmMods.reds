@@ -4,18 +4,21 @@
 // Chrome in the main slot (Rewards/ArmChrome.reds) gets two mod slots of its
 // own, named after the game's own parts, so it never competes with the weapon
 // effects for room. Each slot takes one of three mods; a mod V holds comes
-// back as its overclock. The cards only turn up while that chrome is the main
-// weapon, on Armory and Tune-Up screens, and every mod speaks the keywords
-// (Combat/Keywords.reds), so it plugs into the patrons' effects:
+// back as its overclock. The cards are the Tune-Up door's (Hades' hammers),
+// dealt while that chrome is the main weapon - and the stranger sells one,
+// overclocked - and every mod speaks the keywords (Combat/Keywords.reds), so
+// it plugs into the patrons' effects:
 //
-//   Gorilla Arms        KNUCKLES  Breaker, Detonator, Rending
-//                       BATTERY   Combo, Capacitor, Adrenal
-//   Monowire            CABLE     Arc, Garrote, Barbed
-//                       BATTERY   Uplink, Capacitor, Feedback
-//   Projectile Launcher ROUND     Cluster, Sticky, Seeker
-//                       WIRING    Autoloader, Recoil, Overpressure
+//   Gorilla Arms        KNUCKLES   Breaker, Detonator, Rending
+//                       BATTERY    Combo, Capacitor, Adrenal
+//   Mantis Blades       BLADE      Thermal, Serrated, Mono
+//                       ACTUATOR   Leap, Shock, Deflector
+//   Monowire            CABLE      Arc, Garrote, Barbed
+//                       BATTERY    Uplink, Capacitor, Feedback
+//   Projectile Launcher ROUND      Cluster, Sticky, Seeker
+//                       WIRING     Autoloader, Recoil, Overpressure
 //   Cyberdeck           ICEBREAKER Breach, Spike, Logic Bomb
-//                       FIRMWARE  Cache, Overvolt, Ghost
+//                       FIRMWARE   Cache, Overvolt, Ghost
 //
 // The rules are scripted with the effects' hooks (Rewards/BoonEffects.reds,
 // RLArmModEffects below); this file holds the catalogue and what V holds.
@@ -25,7 +28,8 @@ module NightCityRoguelite
 
 public class RLArmModDef {
   public let id: CName;
-  // The chrome it fits: StrongArms, NanoWires, ProjectileLauncher, Deck.
+  // The chrome it fits: StrongArms, MantisBlades, NanoWires,
+  // ProjectileLauncher, Deck.
   public let family: String;
   public let slot: String;
   public let name: String;
@@ -60,6 +64,25 @@ public abstract class RLArmMods {
     RLArmMods.Add(list, n"Adrenal", "StrongArms", "BATTERY", "Adrenal Battery", [n"MOMENTUM"], none,
       "Punch kills build MOMENTUM and heal 3%.",
       "Heal 6%.");
+    // Mantis Blades
+    RLArmMods.Add(list, n"ThermalEdge", "MantisBlades", "BLADE", "Thermal Edge", [n"BURN"], none,
+      "Strong slashes set them on fire.",
+      "Every slash does.");
+    RLArmMods.Add(list, n"SerratedEdge", "MantisBlades", "BLADE", "Serrated Edge", [n"BLEED"], [n"BLEED"],
+      "Slashes make them BLEED. At full BLEED, a slash opens them up: +100%, and the bleeding starts over.",
+      "+200%.");
+    RLArmMods.Add(list, n"MonoEdge", "MantisBlades", "BLADE", "Mono Edge", none, [n"MARK"],
+      "Slashes on MARKED enemies always crit.",
+      "And those crits MARK the nearest enemy.");
+    RLArmMods.Add(list, n"LeapActuator", "MantisBlades", "ACTUATOR", "Leap Actuator", [n"MOMENTUM"], none,
+      "Strong attacks count as a dash for your dash effects.",
+      "And knock down everything within 3 m.");
+    RLArmMods.Add(list, n"ShockActuator", "MantisBlades", "ACTUATOR", "Shock Actuator", [n"SHOCK"], none,
+      "Strong attacks SHOCK their target and the nearest enemy.",
+      "Every slash SHOCKS.");
+    RLArmMods.Add(list, n"Deflector", "MantisBlades", "ACTUATOR", "Deflector Actuator", [n"SHIELD"], none,
+      "A blade kill raises a SHIELD. One at a time.",
+      "Blade kills heal 3% too.");
     // Monowire
     RLArmMods.Add(list, n"ArcCable", "NanoWires", "CABLE", "Arc Cable", none, none,
       "Every lash jumps to the nearest other enemy within 5 m for half damage.",
@@ -157,6 +180,7 @@ public abstract class RLArmMods {
   public static func FamilyName(const family: String) -> String {
     switch family {
       case "StrongArms": return "GORILLA ARMS";
+      case "MantisBlades": return "MANTIS BLADES";
       case "NanoWires": return "MONOWIRE";
       case "ProjectileLauncher": return "LAUNCHER";
       case "Deck": return "CYBERDECK";
@@ -251,7 +275,8 @@ public abstract class RLArmMods {
     return links;
   }
 
-  // One card for the main chrome's slots (Armory and Tune-Up screens), or null.
+  // One card for the main chrome's slots (Tune-Up screens, the stranger), or
+  // null.
   public static func DealOne(run: ref<RLRunState>, exclude: array<CName>) -> ref<RLOffer> {
     let candidates: array<ref<RLArmModDef>>;
     for def in RLArmMods.All() {
@@ -365,6 +390,20 @@ public abstract class RLArmModEffects {
     if quickhack && RLArmModEffects.Has(fx, n"Spike") && fx.combat.IsGlitched(foe, fx.now) {
       factor *= RLBoonEffects.Boost(fx, n"Spike", ctx.damage, RLArmModEffects.Overclocked(fx, n"Spike") ? 2.0 : 1.6);
     }
+    // Serrated Edge: a full BLEED is opened up, and starts over.
+    if main && RLArmModEffects.Has(fx, n"SerratedEdge") && fx.combat.IsBleeding(foe, fx.now) && foe.bleedStacks >= RLKeywords.MaxBleed(fx) {
+      foe.bleedStacks = 0;
+      foe.bleedUntil = 0.0;
+      factor *= RLBoonEffects.Boost(fx, n"SerratedEdge", ctx.damage, RLArmModEffects.Overclocked(fx, n"SerratedEdge") ? 3.0 : 2.0);
+      RLKeywords.Tag(fx, "OPENED", n"MainColors.Red");
+    }
+    // Mono Edge: a slash on a MARKED enemy is a crit.
+    if main && RLArmModEffects.Has(fx, n"MonoEdge") && !RLHitFlag.Has(ctx.flags, RLHitFlag.Crit()) && RLKeywords.IsMarked(fx, foe) {
+      ctx.flags |= RLHitFlag.Crit();
+      ctx.hitEvent.attackData.AddFlag(hitFlag.CriticalHit, n"NCRogueliteMonoEdge");
+      let critDamage = GameInstance.GetStatsSystem(fx.game).GetStatValue(Cast<StatsObjectID>(fx.player.GetEntityID()), gamedataStatType.CritDamage);
+      factor *= RLBoonEffects.Boost(fx, n"MonoEdge", ctx.damage, 1.0 + MaxF(0.5, critDamage / 100.0));
+    }
     return factor;
   }
 
@@ -430,6 +469,39 @@ public abstract class RLArmModEffects {
     }
     if RLArmModEffects.Has(fx, n"ArmsCapacitor") {
       RLArmModEffects.Capacitor(fx, n"ArmsCapacitor", RLArmModEffects.Overclocked(fx, n"ArmsCapacitor") ? 5 : 8, 5.0);
+    }
+    // Mantis Blades
+    if RLArmModEffects.Has(fx, n"ThermalEdge") && (strong || RLArmModEffects.Overclocked(fx, n"ThermalEdge")) {
+      RLKeywords.Burn(fx, target);
+      RLBoonEffects.Note(fx, n"ThermalEdge", 0.0);
+    }
+    if RLArmModEffects.Has(fx, n"SerratedEdge") {
+      RLKeywords.Bleed(fx, target, 1);
+    }
+    if RLArmModEffects.Overclocked(fx, n"MonoEdge") && RLHitFlag.Has(ctx.flags, RLHitFlag.Crit()) && RLKeywords.IsMarked(fx, ctx.foe) {
+      let next = RLKeywords.Nearest(fx, target.GetWorldPosition(), 15.0, target.GetEntityID(), false);
+      if IsDefined(next) {
+        RLKeywords.Mark(fx, next, 6.0);
+      }
+    }
+    if strong && RLArmModEffects.Has(fx, n"LeapActuator") {
+      RLBoonEffects.Note(fx, n"LeapActuator", 0.0);
+      RLBoonEffects.OnDash(fx);
+      if RLArmModEffects.Overclocked(fx, n"LeapActuator") {
+        for enemy in RLKeywords.EnemiesNear(fx, fx.player.GetWorldPosition(), 3.0) {
+          RLKeywords.Knockdown(fx, enemy);
+        }
+      }
+    }
+    if RLArmModEffects.Has(fx, n"ShockActuator") && (strong || RLArmModEffects.Overclocked(fx, n"ShockActuator")) {
+      RLKeywords.Shock(fx, target);
+      if strong {
+        let other = RLKeywords.Nearest(fx, target.GetWorldPosition(), 8.0, target.GetEntityID(), false);
+        if IsDefined(other) {
+          RLKeywords.Shock(fx, other);
+        }
+      }
+      RLBoonEffects.Note(fx, n"ShockActuator", 0.0);
     }
     // Monowire
     if RLArmModEffects.Has(fx, n"ArcCable") {
@@ -542,11 +614,10 @@ public abstract class RLArmModEffects {
   }
 
   // A quickhack landed on an enemy, once per upload (the deck's daemons).
-  public static func OnQuickhack(fx: ref<RLFx>, ctx: ref<RLHitContext>, first: Bool) {
+  public static func OnQuickhack(fx: ref<RLFx>, target: ref<ScriptedPuppet>, first: Bool) {
     if ArraySize(fx.run.armMods) == 0 {
       return;
     }
-    let target = ctx.target;
     if first && RLArmModEffects.Has(fx, n"Breach") {
       RLKeywords.Mark(fx, target, 8.0);
       RLBoonEffects.GiveRam(fx, RLArmModEffects.Overclocked(fx, n"Breach") ? 8.0 : 4.0);
@@ -586,6 +657,19 @@ public abstract class RLArmModEffects {
     }
     if main && RLArmModEffects.Has(fx, n"Uplink") {
       RLBoonEffects.GiveRam(fx, 2.0);
+    }
+    if main && RLArmModEffects.Has(fx, n"Deflector") {
+      if !fx.combat.shield {
+        fx.combat.shield = true;
+        RLKeywords.Tag(fx, "SHIELD UP", n"MainColors.Gold");
+        if IsDefined(fx.system) {
+          fx.system.RefreshHud();
+        }
+      }
+      if RLArmModEffects.Overclocked(fx, n"Deflector") {
+        GameInstance.GetStatPoolsSystem(fx.game).RequestChangingStatPoolValue(Cast<StatsObjectID>(fx.player.GetEntityID()), gamedataStatPoolType.Health, 3.0, null, false, true);
+      }
+      RLBoonEffects.Note(fx, n"Deflector", 0.0);
     }
     if IsDefined(foe) && IsDefined(body) && foe.quickhackTime > 0.0 && RLArmModEffects.Has(fx, n"LogicBomb") {
       let big = RLArmModEffects.Overclocked(fx, n"LogicBomb");

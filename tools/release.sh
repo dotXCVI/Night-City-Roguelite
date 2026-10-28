@@ -19,6 +19,11 @@
 # CHANGELOG.md entry) publishes the release the same way.
 #
 # Write the version's CHANGELOG.md notes before running it.
+#
+# To fold a fix into a version that's already out, add it to that version's
+# CHANGELOG.md entry and push a commit to main whose message starts with
+# "vX.Y.Z update: <what>": the workflow moves the tag and replaces the
+# release's ZIP and notes.
 # -----------------------------------------------------------------------------
 set -euo pipefail
 

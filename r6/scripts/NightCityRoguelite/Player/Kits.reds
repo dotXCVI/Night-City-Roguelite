@@ -301,7 +301,7 @@ public abstract class RLKits {
         RLKits.Chrome(player, run, pools.PickCyberware(0, true, gamedataItemType.Invalid, noIDs));
         // A hack that sets up the wire: Ping MARKS for the Garrote, the
         // glitches feed Uplink and Feedback.
-        let setup = RLHacks.Pick(RLHacks.Control(), 0, [n"CrippleMovement", n"RebootOptics", n"MemoryWipe", n"Cyberpsychosis"]);
+        let setup = RLHacks.Pick(RLHacks.Control(), 0, [n"Ping", n"CrippleMovement", n"RebootOptics", n"Cyberpsychosis"]);
         if TDBID.IsValid(setup) {
           RLGear.GiveQuickhacks(player, [setup]);
         }

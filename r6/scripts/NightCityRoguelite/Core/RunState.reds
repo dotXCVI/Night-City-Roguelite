@@ -99,6 +99,10 @@ public class RLRunState {
   // Cards banished for the rest of the run (RLRewards.OfferKey) and banishes
   // left (one per act).
   public let banished: array<String>;
+  // Per door category (RLRewardCategory): door screens in a row that showed
+  // it and V went elsewhere. The more often a door is passed over, the less
+  // it comes back (RLRewards.RollCategory).
+  public let doorsPassed: array<Int32>;
   public let banishes: Int32;
   public let banishesPerAct: Int32;
   // Terminal upgrades that fire once: the first patron screen (Open Line),

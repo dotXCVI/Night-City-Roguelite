@@ -469,23 +469,6 @@ public class RLTweakPools {
     return TDBID.None();
   }
 
-  public func PickQuickhack(band: Int32, excludeIDs: array<TweakDBID>) -> TweakDBID {
-    let distance = 0;
-    while distance <= 4 {
-      let matches: array<TweakDBID>;
-      for entry in this.m_quickhacks {
-        if !ArrayContains(excludeIDs, entry.id) && Abs(entry.band - band) == distance {
-          ArrayPush(matches, entry.id);
-        }
-      }
-      if ArraySize(matches) > 0 {
-        return matches[RandRange(0, ArraySize(matches))];
-      }
-      distance += 1;
-    }
-    return TDBID.None();
-  }
-
   public func HasQuickhacks() -> Bool = ArraySize(this.m_quickhacks) > 0
 
   // Every quality of a quickhack family the vendors stock.

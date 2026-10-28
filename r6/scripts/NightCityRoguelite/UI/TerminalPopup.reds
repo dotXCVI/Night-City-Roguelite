@@ -411,11 +411,11 @@ public class RLTerminalPopup extends InGamePopup {
     this.Hook(kitCard, main);
     this.Intro(kitCard, 1);
 
-    // The column beside them fills the same height: four cards, six with
-    // the developer's test runs.
+    // The column beside them fills the same height: four cards, seven with
+    // the developer's test runs and arena scout.
     let dev = RLConfig.DevTools();
     let gap = 12.0;
-    let cards = dev ? 6.0 : 4.0;
+    let cards = dev ? 7.0 : 4.0;
     let height = (740.0 - gap * (cards - 1.0)) / cards;
     let side = RLUI.VPanel(gap);
     side.Reparent(main);
@@ -437,6 +437,8 @@ public class RLTerminalPopup extends InGamePopup {
     if dev {
       this.AddActionCard(side, n"test_floor", s"FLOOR \(service.GetTestFloor())", "TEST RUN STARTS ON", n"MainColors.Grey", height);
       this.AddActionCard(side, n"test_start", "TEST RUN", "NO CRED, NO STATS", n"MainColors.Grey", height);
+      let candidates = RLArenaCandidates.All();
+      this.AddActionCard(side, n"scout", "SCOUT ARENAS", s"\(ArraySize(candidates)) CANDIDATES", n"MainColors.Grey", height);
     }
   }
 
@@ -651,6 +653,9 @@ public class RLTerminalPopup extends InGamePopup {
     } else if Equals(name, "test_start") {
       this.Close();
       this.m_system.StartRun(service.GetSelectedKit(), service.GetTestFloor());
+    } else if Equals(name, "scout") {
+      this.Close();
+      this.m_system.StartScout();
     } else if Equals(name, "assist") {
       service.SetAssist(!service.IsAssistOn());
       this.Rebuild();

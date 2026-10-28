@@ -272,10 +272,11 @@ public abstract class RLRewards {
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Cred, false, usedArenas));
     }
     let profile = RLBuildProfile.Read(player);
+    let hasDeck = EquipmentSystem.IsCyberdeckEquipped(player) || RLArms.IsMainDeck(run);
     let guard = 0;
     while ArraySize(doors) < count && guard < 40 {
       guard += 1;
-      let category = RLRewards.RollCategory(pools, run, profile);
+      let category = RLRewards.RollCategory(pools, run, profile, hasDeck);
       if !ArrayContains(used, category) {
         ArrayPush(used, category);
         ArrayPush(doors, RLRewards.MakeDoor(pools, run, category, false, usedArenas));
@@ -428,22 +429,31 @@ public abstract class RLRewards {
     return door;
   }
 
-  private static func RollCategory(pools: ref<RLTweakPools>, run: ref<RLRunState>, profile: ref<RLBuildProfile>) -> RLRewardCategory {
+  private static func RollCategory(pools: ref<RLTweakPools>, run: ref<RLRunState>, profile: ref<RLBuildProfile>, hasDeck: Bool) -> RLRewardCategory {
     // No chrome before floor 3.
     let early = run.Depth() < 3;
-    // Daemons doors show up more for netrunner builds.
+    // Daemons doors need a deck to slot the hacks in, and show up more for
+    // netrunner builds.
     let daemons = 0;
-    if pools.HasQuickhacks() && !early {
+    if pools.HasQuickhacks() && !early && hasDeck {
       daemons = 8 + RoundF(10.0 * MinF(profile.Weight(n"netrunner"), 3.0) / 3.0);
     }
     // Armory, Chrome, Daemons, Boons, Training
     let weights: array<Int32> = [24, early ? 0 : 16, daemons, 32, 16];
+    // A door passed over comes back less: 2/3 of its weight after one screen,
+    // 1/2 after two, 2/5 after three.
+    let i = 0;
+    while i < ArraySize(weights) {
+      let passed = i < ArraySize(run.doorsPassed) ? run.doorsPassed[i] : 0;
+      weights[i] = weights[i] * 2 / (2 + passed);
+      i += 1;
+    }
     let total = 0;
     for w in weights {
       total += w;
     }
     let roll = RandRange(0, total);
-    let i = 0;
+    i = 0;
     while i < ArraySize(weights) {
       if roll < weights[i] {
         return IntEnum<RLRewardCategory>(i);
@@ -452,6 +462,25 @@ public abstract class RLRewards {
       i += 1;
     }
     return RLRewardCategory.Boons;
+  }
+
+  // V took door `index`: the categories passed over on this screen count up,
+  // the one taken starts fresh.
+  public static func NoteDoorPicked(run: ref<RLRunState>, doors: array<ref<RLDoor>>, index: Int32) {
+    while ArraySize(run.doorsPassed) <= EnumInt(RLRewardCategory.Gig) {
+      ArrayPush(run.doorsPassed, 0);
+    }
+    let taken = doors[index].category;
+    let i = 0;
+    while i < ArraySize(doors) {
+      let category = EnumInt(doors[i].category);
+      if Equals(doors[i].category, taken) {
+        run.doorsPassed[category] = 0;
+      } else if i != index {
+        run.doorsPassed[category] += 1;
+      }
+      i += 1;
+    }
   }
 
   public static func PickArena(exclude: array<CName>) -> CName {
@@ -684,7 +713,7 @@ public abstract class RLRewards {
     let trade: ref<RLOffer>;
     if RLArms.IsMainDeck(run) {
       let none: array<CName>;
-      trade = RLHacks.DeckOffer(player, run, none, spike);
+      trade = RLHacks.DeckOffer(player, run, none, spike, run.mainStep);
     } else {
       trade = RLArms.IsMainArms(run) ? RLArms.RewireOffer(run) : RLRewards.TradeOffer(player, pools, run);
     }
@@ -858,11 +887,13 @@ public abstract class RLRewards {
   // A spike puts one card two steps up; a hot door all of them.
   private static func ItemOffers(player: ref<PlayerPuppet>, pools: ref<RLTweakPools>, run: ref<RLRunState>, category: RLRewardCategory, count: Int32, profile: ref<RLBuildProfile>, spike: Bool, hot: Bool) -> array<ref<RLOffer>> {
     let offers: array<ref<RLOffer>>;
-    // A deck in the main slot: quickhacks it doesn't run, at its quality.
-    if Equals(category, RLRewardCategory.Daemons) && RLArms.IsMainDeck(run) {
+    // Quickhacks V's deck doesn't run: at the deck's quality when it's the
+    // main weapon, otherwise at the floor's.
+    if Equals(category, RLRewardCategory.Daemons) {
       let dealt: array<CName>;
       while ArraySize(offers) < count {
-        let hack = RLHacks.DeckOffer(player, run, dealt, hot || spike);
+        let step = RLArms.IsMainDeck(run) ? run.mainStep : RLRewardDirector.RollStep(run, hot || spike && ArraySize(offers) == 0);
+        let hack = RLHacks.DeckOffer(player, run, dealt, hot || spike, step);
         if !IsDefined(hack) {
           return offers;
         }
@@ -1038,15 +1069,11 @@ public abstract class RLRewards {
         }
         break;
       case RLOfferKind.Quickhack:
-        offer.record = pools.PickQuickhack(RLRewards.BandForStep(step), noIDs);
-        if TDBID.IsValid(offer.record) {
-          offer.step = RLQuality.StepOfRecord(offer.record);
-          RLHacks.Describe(offer);
-          offer.links = RLHacks.Links(run, offer.makes);
-          if !EquipmentSystem.IsCyberdeckEquipped(player) {
-            offer.description = "Needs a cyberdeck";
-          }
-          offer.excitement = offer.step - expected;
+        let none: array<CName>;
+        let hack = RLHacks.DeckOffer(player, run, none, spike, RLArms.IsMainDeck(run) ? run.mainStep : step);
+        if IsDefined(hack) {
+          offer = hack;
+          offer.excitement = Max(offer.excitement, offer.step - expected);
         }
         break;
       case RLOfferKind.Grenade:

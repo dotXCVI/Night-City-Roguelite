@@ -325,7 +325,17 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   the session (Codeware writes the store when a world unloads). When adding
   a decision point (a new screen, door type or event), record its OFFER/PICK.
 - **Test runs** are behind `RLConfig.DevTools()` (off in releases): it adds
-  the FLOOR and TEST RUN cards to the terminal.
+  the FLOOR, TEST RUN and SCOUT ARENAS cards to the terminal.
+- **New arenas** come from the arena scout. `source/arenas/candidates.tsv`
+  lists candidates taken from the game's own map pins (gang outposts,
+  cyberpsycho spots, gig sites; `gen_candidates.py` writes
+  `Data/ArenaCandidates.reds` and gives each its district's gangs). The pins
+  were read from `03_night_city.mappins` (ep1's copy) joined to
+  `cooked_journal.journal` by journal path: the pin's `journalPathHash` is
+  Murmur3 (seed 0x5EEDBA5E) of the path. SCOUT ARENAS visits each candidate
+  with V invulnerable and records how much of a 30 and 40 m circle is
+  walkable from the start (`Combat/ArenaScout.reds`); `runreport --scout`
+  ranks them, and the good ones become `RLArenas.Def` entries.
 - **Bug marks:** F8 (`RLConfig.BugKey()`) logs
   `===== BUG MARK #n =====` with the state machine, popup/countdown flags,
   arena, run and the spawner's view of every enemy (`RLWaveSpawner.Describe`).

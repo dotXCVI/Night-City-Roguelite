@@ -68,6 +68,8 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_hud: ref<RLHud>;
   private let m_apartment: ref<RLApartmentHub>;
   private let m_music: ref<RLMusic>;
+  // Dev tools: the arena scout (Combat/ArenaScout.reds).
+  private let m_scout: ref<RLArenaScout>;
   private let m_pacing: ref<RLPacing>;
   private let m_transition: ref<RLTransition>;
   private let m_journalGuard: ref<RLJournalGuard>;
@@ -742,6 +744,29 @@ public class RogueliteSystem extends ScriptableSystem {
     this.After(n"openingReady", 0.5);
   }
 
+  // --- Arena scout (dev tools) ----------------------------------------------------------------
+
+  public func IsScouting() -> Bool = IsDefined(this.m_scout) && this.m_scout.IsActive()
+
+  // From the terminal's SCOUT ARENAS card: off to every arena candidate and
+  // back home (Combat/ArenaScout.reds).
+  public func StartScout() {
+    if !RLConfig.DevTools() || !Equals(this.m_state, RLState.Hub) || IsDefined(this.m_run) || this.IsScouting() {
+      return;
+    }
+    this.m_apartment.StopLeash();
+    this.m_scout = new RLArenaScout();
+    this.m_scout.Start(this);
+  }
+
+  public func OnScoutDone() {
+    let player = GetPlayer(this.GetGameInstance());
+    if IsDefined(player) && Equals(this.m_state, RLState.Hub) {
+      this.ReturnToHub(player);
+      this.m_apartment.StartLeash();
+    }
+  }
+
   // Puts V back at the hub (apartment, or the fallback spot).
   private func ReturnToHub(player: ref<PlayerPuppet>) {
     if this.m_apartment.IsEnabled() {
@@ -1069,7 +1094,7 @@ public class RogueliteSystem extends ScriptableSystem {
   public func StartRun(kit: CName, opt testFloor: Int32) {
     let game = this.GetGameInstance();
     let player = GetPlayer(game);
-    if !Equals(this.m_state, RLState.Hub) || !IsDefined(player) {
+    if !Equals(this.m_state, RLState.Hub) || !IsDefined(player) || this.IsScouting() {
       return;
     }
     let service = RogueliteService.Get();
@@ -1250,6 +1275,7 @@ public class RogueliteSystem extends ScriptableSystem {
       return;
     }
     let door = this.m_doors[index];
+    RLRewards.NoteDoorPicked(this.m_run, this.m_doors, index);
     RLTelemetry.Record(this.m_run, "PICK", RLTelemetry.Field("screen", "doors") + RLTelemetry.IntField("depth", this.m_run.Depth())
       + RLTelemetry.Field("offered", this.DoorsText()) + RLTelemetry.IntField("idx", index) + this.ThinkField());
     let arena = RLArenas.Get(door.arena);

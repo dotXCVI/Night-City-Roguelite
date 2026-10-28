@@ -11,6 +11,7 @@ more players and prints what happened: run by run, or summed up across runs.
     python3 tools/runreport.py <...> --csv out/                  # runs, floors, picks
     python3 tools/runreport.py <...> --log 80                    # last 80 log lines
     python3 tools/runreport.py <...> --marks                     # every bug mark with its snapshot
+    python3 tools/runreport.py <...> --scout                     # arena scout results, best first
 
 Filters (any mode): --kit Brawler, --who Jon, --ver v0.0.19, --last 5 (runs),
 --tests (include test runs, left out by default).
@@ -159,7 +160,7 @@ class Player:
             if not parsed:
                 continue
             run_id, kind, fields = parsed
-            if run_id == '0' and kind in ('META', 'SESSION'):
+            if run_id == '0' and kind in ('META', 'SESSION', 'SCOUT'):
                 self.meta.append((kind, fields))
                 continue
             self.runs.setdefault(run_id, Run(run_id, who)).records.append((kind, fields))
@@ -540,6 +541,22 @@ def write_csv(runs, out):
     print(f'Wrote runs.csv, floors.csv and picks.csv to {out}')
 
 
+def print_scout(players):
+    """The arena scout's candidates, the most walkable first (the latest scout of each)."""
+    latest = OrderedDict()
+    for player in players:
+        for kind, f in player.meta:
+            if kind == 'SCOUT':
+                latest[f.get('id')] = f
+    rows = sorted(latest.values(), key=lambda f: (-number(f.get('cover40'), -1), -number(f.get('cover30'), -1)))
+    headers = ['id', 'kind', 'district', 'place', 'cover30', 'cover40', 'rise', 'roof', 'pin', 'at']
+    table = [[f.get(h, '') if f.get('result') == 'ok' or h in ('id', 'kind', 'district', 'place') else (f.get('result') if h == 'cover30' else '')
+              for h in headers] for f in rows]
+    print_summary(f"{len(rows)} candidate(s) scouted. cover30/cover40: % of a 30/40 m circle V can walk to; "
+                  "rise: height range (m); roof: inside; pin: start's distance from the map pin.",
+                  [('Arena scout', '', headers, table)])
+
+
 def print_marks(player):
     showing = False
     for line in player.log:
@@ -562,6 +579,7 @@ def main():
     parser.add_argument('--csv', help='write CSV files to this folder')
     parser.add_argument('--log', type=int, default=0, help='print the last N log lines')
     parser.add_argument('--marks', action='store_true', help='print every bug mark with its snapshot')
+    parser.add_argument('--scout', action='store_true', help='arena scout results, best first')
     parser.add_argument('--kit', help='only runs with this kit')
     parser.add_argument('--who', help="only this player's runs")
     parser.add_argument('--ver', help='only runs on this build (v0.0.19, dev, old)')
@@ -584,6 +602,8 @@ def main():
     elif args.marks:
         for player in players:
             print_marks(player)
+    elif args.scout:
+        print_scout(players)
     elif args.csv:
         write_csv(runs, args.csv)
     elif args.summary or args.html or args.effects:

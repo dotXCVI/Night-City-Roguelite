@@ -48,6 +48,9 @@ short version; [TESTING.md](../TESTING.md) is the tester guide.
    | CRED | No fight reward card: Cred for the meta, now and then (from floor 3) |
    | ? | An event instead of a fight (from floor 2) |
 
+   A door you keep passing over comes back less often (2/3 as likely after
+   one screen, 1/2 after two) until you take it.
+
    Regular doors are all the same fight; the danger lives on **HOT** doors
    (see Hot doors). From floor 3 some fights come with an **objective** (see
    Objectives). Before a boss floor there is a single boss door; the Act 1
@@ -310,7 +313,7 @@ when its upload lands, and each has a role:
 | Role | Quickhacks |
 | --- | --- |
 | Damage | Overheat (BURN), Short Circuit (SHOCK), Contagion (its poison counts as BLEED), Synapse Burnout, Detonate Grenade (a BLAST) |
-| Control | Ping (MARK), Weapon Glitch (GLITCH), Cyberware Malfunction (GLITCH), Cripple Movement, Reboot Optics, Memory Wipe, Cyberpsychosis |
+| Control | Ping (MARK), Weapon Glitch (GLITCH), Cyberware Malfunction (GLITCH), Cripple Movement, Reboot Optics, Cyberpsychosis |
 | Ultimate | Suicide, System Collapse |
 
 With the deck as the main weapon:
@@ -318,8 +321,12 @@ With the deck as the main weapon:
 - **Your hacks run at the deck's quality.** Every Tune-Up, act step, the
   Act 1 boss's step and the evolution take them up with the deck.
 - **The Netrunner starts** with one damage hack (Overheat, Short Circuit or
-  Contagion) and one control hack. The Wireman's deck brings Ping, Weapon
-  Glitch or Cyberware Malfunction to set up the wire.
+  Contagion) and one control hack. The Wireman's deck brings Weapon Glitch
+  or Cyberware Malfunction to set up the wire.
+- **Only hacks that fight:** every quickhack card is one of the families above,
+  each as likely as any other; stealth and distraction hacks never come up.
+  Ping (it only MARKS) is dealt only once something you hold uses MARK.
+  DAEMONS doors only show up while you have a cyberdeck.
 - **Shaping the loadout:** the Armory deals a quickhack your deck doesn't run
   in place of a trade, and DAEMONS doors deal only those - at the deck's
   quality, about which hack and never a step down (a hot door or a spike
@@ -616,6 +623,7 @@ Drive-In, Junkyard, Wind Farm and The Crater. Each has a gang that fits the
 location, and the door says what the ground is like (OPEN GROUND, MIXED or
 CLOSE QUARTERS): long guns like the open ones, shotguns and blades the tight
 ones. Edit `Combat/Arenas.reds` to change radii, start points or disable one.
+New ones are vetted with the arena scout (developers, see DEVELOPER_NOTES).
 
 The walls are built from the game's own holo-tape hologram and a "Player
 Blocker" collider. They stop V (and gunfire through them). An enemy that ends

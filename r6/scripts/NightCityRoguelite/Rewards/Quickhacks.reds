@@ -8,8 +8,13 @@
 //   damage    Overheat BURN, Short Circuit SHOCK, Contagion BLEED (its poison
 //             counts as BLEED), Synapse Burnout, Detonate Grenade BLAST
 //   control   Ping MARK, Weapon Glitch GLITCH, Cyberware Malfunction GLITCH,
-//             Cripple Movement, Reboot Optics, Memory Wipe, Cyberpsychosis
+//             Cripple Movement, Reboot Optics, Cyberpsychosis
 //   ultimate  Suicide, System Collapse
+//
+// Every quickhack card is one of these families, each as likely as the next.
+// The rest of the game's quickhacks (stealth and distraction ones, Memory
+// Wipe) never come up: a wave arena has no use for them. Ping only MARKS, so
+// it's dealt only to a build that uses MARK, and never starts a deck.
 //
 // The loadout is what's slotted in the deck. With the deck as the main weapon
 // (Rewards/ArmChrome.reds) the slotted quickhacks run at the deck's quality:
@@ -57,7 +62,6 @@ public abstract class RLHacks {
     RLHacks.Add(list, n"CyberwareMalfunction", "Cyberware Malfunction", "DisableCyberware", "CyberwareMalfunction", control, n"GLITCH", "Shuts their chrome down.");
     RLHacks.Add(list, n"CrippleMovement", "Cripple Movement", "LocomotionMalfunction", "LocomotionMalfunction", control, n"", "Locks their legs.");
     RLHacks.Add(list, n"RebootOptics", "Reboot Optics", "Blind", "Blind", control, n"", "Blinds them.");
-    RLHacks.Add(list, n"MemoryWipe", "Memory Wipe", "MemoryWipe", "MemoryWipe", control, n"", "They forget you were ever there.");
     RLHacks.Add(list, n"Cyberpsychosis", "Cyberpsychosis", "Madness", "Madness", control, n"", "Turns them on their own crew.");
     RLHacks.Add(list, n"Suicide", "Suicide", "Suicide", "Suicide", RLHacks.Ultimate(), n"", "They pull the trigger on themselves.");
     RLHacks.Add(list, n"SystemCollapse", "System Collapse", "SystemCollapse", "SystemCollapse", RLHacks.Ultimate(), n"", "Drops them where they stand.");
@@ -327,7 +331,7 @@ public abstract class RLHacks {
   public static func Starters(step: Int32) -> array<TweakDBID> {
     let starters: array<TweakDBID>;
     let damage = RLHacks.Pick(RLHacks.Damage(), step, [n"SynapseBurnout", n"DetonateGrenade"]);
-    let control = RLHacks.Pick(RLHacks.Control(), step, [n"MemoryWipe", n"Cyberpsychosis"]);
+    let control = RLHacks.Pick(RLHacks.Control(), step, [n"Ping", n"Cyberpsychosis"]);
     if TDBID.IsValid(damage) {
       ArrayPush(starters, damage);
     }
@@ -337,16 +341,17 @@ public abstract class RLHacks {
     return starters;
   }
 
-  // A quickhack card for a deck in the main slot: a family it doesn't run,
-  // at the deck's quality. A spike lets in the big hacks up to two qualities
-  // early.
-  public static func DeckOffer(player: ref<PlayerPuppet>, run: ref<RLRunState>, exclude: array<CName>, spike: Bool) -> ref<RLOffer> {
+  // A quickhack card: a family V's deck doesn't run, at `step` (a deck in
+  // the main slot: the deck's quality). Every family is as likely as the next,
+  // however many versions of it the game has. A spike lets in the big hacks
+  // up to two qualities early.
+  public static func DeckOffer(player: ref<PlayerPuppet>, run: ref<RLRunState>, exclude: array<CName>, spike: Bool, step: Int32) -> ref<RLOffer> {
     let slotted = RLHacks.SlottedFamilies(player);
-    let reach = run.mainStep + (spike ? 2 : 0);
+    let reach = step + (spike ? 2 : 0);
     let candidates: array<ref<RLHackFamily>>;
     for family in RLHacks.Families() {
-      if !ArrayContains(slotted, family.id) && !ArrayContains(exclude, family.id) && RLHacks.LowestStep(family) <= reach {
-        let record = RLHacks.RecordAt(family, run.mainStep);
+      if !ArrayContains(slotted, family.id) && !ArrayContains(exclude, family.id) && RLHacks.LowestStep(family) <= reach && RLHacks.Wanted(run, family) {
+        let record = RLHacks.RecordAt(family, step);
         if TDBID.IsValid(record) && !ArrayContains(run.banished, "item:" + RLRewards.ItemName(record)) {
           ArrayPush(candidates, family);
         }
@@ -356,10 +361,32 @@ public abstract class RLHacks {
       return null;
     }
     let family = candidates[RandRange(0, ArraySize(candidates))];
-    let offer = RLHacks.Offer(RLHacks.RecordAt(family, run.mainStep));
+    let offer = RLHacks.Offer(RLHacks.RecordAt(family, step));
     offer.links = RLHacks.Links(run, offer.makes);
     offer.excitement = family.role == RLHacks.Ultimate() ? 2 : (ArraySize(offer.links) > 0 ? 1 : 0);
     return offer;
+  }
+
+  // Ping only MARKS (the reveal is moot in an arena), so it's dealt only to a
+  // build that does something with a MARK.
+  public static func Wanted(run: ref<RLRunState>, family: ref<RLHackFamily>) -> Bool {
+    return NotEquals(family.id, n"Ping") || RLHacks.UsesMark(run);
+  }
+
+  public static func UsesMark(run: ref<RLRunState>) -> Bool {
+    for state in run.boons {
+      let effect = RLBoons.Get(state.id);
+      if IsDefined(effect) && ArrayContains(effect.uses, n"MARK") {
+        return true;
+      }
+    }
+    for state in run.armMods {
+      let mod = RLArmMods.Get(state.id);
+      if IsDefined(mod) && ArrayContains(mod.uses, n"MARK") {
+        return true;
+      }
+    }
+    return false;
   }
 
   // Effects V holds that use what a quickhack makes (BUILDS ON).

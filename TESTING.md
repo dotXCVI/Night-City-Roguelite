@@ -146,8 +146,10 @@ Tell me how these feel:
   Sweatshop and the rest). Does one start a gig, ring your phone, play a
   scene or show a quest marker? Press F8 and say which. Is any too cramped,
   too big, or full of spots enemies can't reach?
-- **Boss arenas:** Act 2's boss is at the Grand Imperial Mall now. Does the
-  boss floor feel like an occasion?
+- **Boss arenas:** bosses fight at story landmarks now - the All Foods
+  plant, Konpeki Plaza, the Black Sapphire, Arasaka Tower's roof, Mikoshi
+  and more. Does the boss floor feel like an occasion? Any landmark where
+  enemies spawn somewhere odd, or something from the story plays? F8.
 - **Arenas with rooms:** locked, sealed and keypad doors inside an arena
   should be open when you arrive. Any objective marker or enemy you still
   can't reach? Press F8 right there.
@@ -167,8 +169,9 @@ Tell me how these feel:
   a lot? (The log counts both, so send it.)
 
 **The terminal**
-- **DATABASE** (home, the door picker, and F7 in a fight): can you find what
-  any word on a card means? Does it look like the cards do in a run?
+- **DATABASE** (home, the door picker, and F7 in a fight): hover a name to
+  read it, click to keep it up. Can you find what any word on a card means,
+  and what makes a keyword?
 - **UPGRADES:** switch a row's take and buy a rank. Does it read well? Did
   your old unlocks carry over?
 - **Favors:** beat a boss and a fixer owes you one - spend it on a kit at the

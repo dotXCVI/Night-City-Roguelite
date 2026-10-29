@@ -21,8 +21,8 @@
 //
 // Landmarks are story-mission fight sites, kept for boss floors: each names
 // the acts it can host, and the act's boss door picks among them (any
-// arena when none is enabled for the act). They are off until the scout
-// shows the open world streams them in with ground and navmesh.
+// arena when none is enabled for the act). The scout found ground and
+// navmesh at every one - the open world streams even the story interiors.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -116,47 +116,50 @@ public abstract class RLArenas {
       [gamedataAffiliation.Maelstrom, gamedataAffiliation.Scavengers], "MIXED"));
 
     // Landmarks (boss floors). Act 1 plays Royce's music, act 2 the mall's,
-    // act 3 Smasher's.
-    RLArenas.Landmark(list, n"allfoods", "All Foods Plant", "Watson", Vector4(-820.0, 2196.0, 52.0, 1.0), 30.0,
-      [gamedataAffiliation.Maelstrom], "CLOSE QUARTERS", [1], false);
-    RLArenas.Landmark(list, n"totentanz", "Totentanz", "Watson", Vector4(-1721.0, 2199.1, 86.2, 1.0), 25.0,
-      [gamedataAffiliation.Maelstrom], "CLOSE QUARTERS", [1], false);
-    RLArenas.Landmark(list, n"ghosttown", "Ghost Town", "Badlands", Vector4(2575.0, -39.0, 80.0, 1.0), 40.0,
-      [gamedataAffiliation.Wraiths], "MIXED", [1], false);
-    RLArenas.Landmark(list, n"konpekiroof", "Konpeki Plaza Roof", "Watson", Vector4(-2222.0, 1763.0, 320.0, 1.0), 30.0,
-      [gamedataAffiliation.Arasaka], "MIXED", [1], false);
-    RLArenas.Landmark(list, n"konpekiplaza", "Konpeki Plaza", "Watson", Vector4(-2228.0, 1737.0, 19.0, 1.0), 35.0,
-      [gamedataAffiliation.Arasaka], "MIXED", [1], false);
+    // act 3 Smasher's. Start points are the scout's; interiors get small
+    // radii (the scout's 30 m circle runs through their walls). Off: the
+    // ones too cramped for a boss wave where the scout stood.
+    RLArenas.Landmark(list, n"allfoods", "All Foods Plant", "Watson", Vector4(-820.0, 2196.0, 53.6, 1.0), 25.0,
+      [gamedataAffiliation.Maelstrom], "CLOSE QUARTERS", [1], true);
+    RLArenas.Landmark(list, n"totentanz", "Totentanz", "Watson", Vector4(-1721.0, 2199.0, 86.6, 1.0), 25.0,
+      [gamedataAffiliation.Maelstrom], "CLOSE QUARTERS", [1], true);
+    RLArenas.Landmark(list, n"ghosttown", "Ghost Town", "Badlands", Vector4(2575.0, -39.0, 81.6, 1.0), 40.0,
+      [gamedataAffiliation.Wraiths], "OPEN GROUND", [1], true);
+    RLArenas.Landmark(list, n"konpekiplaza", "Konpeki Plaza", "Watson", Vector4(-2228.0, 1736.0, 19.6, 1.0), 35.0,
+      [gamedataAffiliation.Arasaka], "MIXED", [1], true);
+    RLArenas.Landmark(list, n"konpekiroof", "Konpeki Plaza Roof", "Watson", Vector4(-2222.0, 1763.0, 320.6, 1.0), 22.0,
+      [gamedataAffiliation.Arasaka], "MIXED", [1], true);
     // Proven in the open world (it was a regular arena first).
     RLArenas.Landmark(list, n"mall", "Grand Imperial Mall", "Pacifica", Vector4(-2278.2095, -1992.3286, 20.57, 1.0), 35.0,
       [gamedataAffiliation.Animals, gamedataAffiliation.VoodooBoys], "CLOSE QUARTERS", [2], true);
     list[ArraySize(list) - 1].yaw = -157.14;
-    RLArenas.Landmark(list, n"batty", "Batty's Hotel", "Pacifica", Vector4(-1899.0, -1889.0, 59.0, 1.0), 25.0,
-      [gamedataAffiliation.VoodooBoys], "CLOSE QUARTERS", [2], false);
-    RLArenas.Landmark(list, n"parade", "Dashi Parade Rooftops", "Westbrook", Vector4(-514.0, 717.0, 117.0, 1.0), 30.0,
-      [gamedataAffiliation.TygerClaws, gamedataAffiliation.Arasaka], "MIXED", [2], false);
-    RLArenas.Landmark(list, n"embers", "Embers", "Heywood", Vector4(-1795.8, -527.0, 74.2, 1.0), 25.0,
-      [gamedataAffiliation.Arasaka], "CLOSE QUARTERS", [2, 3], false);
-    RLArenas.Landmark(list, n"estate", "Arasaka Estate", "North Oak", Vector4(301.0, 1039.0, 226.0, 1.0), 35.0,
-      [gamedataAffiliation.Arasaka], "MIXED", [2, 3], false);
-    RLArenas.Landmark(list, n"stadium", "Dogtown Stadium", "Dogtown", Vector4(-1384.0, -2109.0, 70.0, 1.0), 35.0,
-      [gamedataAffiliation.Barghest], "MIXED", [2], false);
-    RLArenas.Landmark(list, n"stadiumroof", "Stadium Roof", "Dogtown", Vector4(-1374.0, -2209.0, 156.0, 1.0), 30.0,
-      [gamedataAffiliation.Barghest], "OPEN GROUND", [2], false);
-    RLArenas.Landmark(list, n"sapphire", "Black Sapphire", "Dogtown", Vector4(-1872.2, -2258.9, 439.8, 1.0), 25.0,
-      [gamedataAffiliation.Barghest], "CLOSE QUARTERS", [2, 3], false);
-    RLArenas.Landmark(list, n"toweratrium", "Arasaka Tower Atrium", "City Center", Vector4(-1407.0, 102.0, 326.0, 1.0), 30.0,
+    RLArenas.Landmark(list, n"batty", "Batty's Hotel", "Pacifica", Vector4(-1899.0, -1888.0, 58.6, 1.0), 22.0,
+      [gamedataAffiliation.VoodooBoys], "CLOSE QUARTERS", [2], true);
+    RLArenas.Landmark(list, n"embers", "Embers", "Heywood", Vector4(-1795.0, -527.0, 74.6, 1.0), 20.0,
+      [gamedataAffiliation.Arasaka], "CLOSE QUARTERS", [2, 3], true);
+    RLArenas.Landmark(list, n"estate", "Arasaka Estate", "North Oak", Vector4(301.0, 1039.0, 226.6, 1.0), 35.0,
+      [gamedataAffiliation.Arasaka], "MIXED", [2, 3], true);
+    RLArenas.Landmark(list, n"stadium", "Dogtown Stadium", "Dogtown", Vector4(-1384.0, -2109.0, 70.6, 1.0), 28.0,
+      [gamedataAffiliation.Barghest], "MIXED", [2], true);
+    RLArenas.Landmark(list, n"sapphire", "Black Sapphire", "Dogtown", Vector4(-1872.0, -2258.0, 440.6, 1.0), 25.0,
+      [gamedataAffiliation.Barghest], "CLOSE QUARTERS", [2, 3], true);
+    RLArenas.Landmark(list, n"towerceo", "Arasaka Tower CEO Floor", "City Center", Vector4(-1444.0, 152.0, 565.6, 1.0), 25.0,
+      [gamedataAffiliation.Arasaka], "CLOSE QUARTERS", [3], true);
+    RLArenas.Landmark(list, n"towerroof", "Arasaka Tower Roof", "City Center", Vector4(-1453.0, 179.0, 616.6, 1.0), 25.0,
+      [gamedataAffiliation.Arasaka], "OPEN GROUND", [3], true);
+    RLArenas.Landmark(list, n"mikoshi", "Mikoshi", "City Center", Vector4(-1443.0, 147.0, -26.4, 1.0), 28.0,
+      [gamedataAffiliation.Arasaka], "CLOSE QUARTERS", [3], true);
+    RLArenas.Landmark(list, n"spaceport", "Spaceport Roof", "Pacifica", Vector4(-3617.0, 353.0, 85.6, 1.0), 28.0,
+      [gamedataAffiliation.Militech, gamedataAffiliation.Barghest], "MIXED", [3], true);
+    // Too cramped where the scout stood; a better start point could open them.
+    RLArenas.Landmark(list, n"toweratrium", "Arasaka Tower Atrium", "City Center", Vector4(-1407.0, 102.0, 326.6, 1.0), 20.0,
       [gamedataAffiliation.Arasaka], "MIXED", [3], false);
-    RLArenas.Landmark(list, n"towerceo", "Arasaka Tower CEO Floor", "City Center", Vector4(-1444.0, 152.0, 565.0, 1.0), 25.0,
-      [gamedataAffiliation.Arasaka], "CLOSE QUARTERS", [3], false);
-    RLArenas.Landmark(list, n"towerroof", "Arasaka Tower Roof", "City Center", Vector4(-1453.0, 179.0, 616.0, 1.0), 30.0,
-      [gamedataAffiliation.Arasaka], "OPEN GROUND", [3], false);
-    RLArenas.Landmark(list, n"mikoshi", "Mikoshi", "City Center", Vector4(-1443.0, 147.7, -27.7, 1.0), 25.0,
-      [gamedataAffiliation.Arasaka], "CLOSE QUARTERS", [3], false);
-    RLArenas.Landmark(list, n"spaceport", "Spaceport Roof", "Pacifica", Vector4(-3617.0, 353.0, 86.0, 1.0), 30.0,
-      [gamedataAffiliation.Militech, gamedataAffiliation.Barghest], "MIXED", [3], false);
-    RLArenas.Landmark(list, n"cynosure", "Cynosure", "Dogtown", Vector4(-2070.0, -2212.0, -197.0, 1.0), 30.0,
+    RLArenas.Landmark(list, n"parade", "Dashi Parade Rooftops", "Westbrook", Vector4(-514.0, 717.0, 116.6, 1.0), 20.0,
+      [gamedataAffiliation.TygerClaws, gamedataAffiliation.Arasaka], "MIXED", [2], false);
+    RLArenas.Landmark(list, n"cynosure", "Cynosure", "Dogtown", Vector4(-2067.0, -2212.0, -196.4, 1.0), 20.0,
       [gamedataAffiliation.Militech, gamedataAffiliation.Barghest], "CLOSE QUARTERS", [3], false);
+    RLArenas.Landmark(list, n"stadiumroof", "Stadium Roof", "Dogtown", Vector4(-1374.0, -2209.0, 154.6, 1.0), 25.0,
+      [gamedataAffiliation.Barghest], "OPEN GROUND", [2], false);
     return list;
   }
 

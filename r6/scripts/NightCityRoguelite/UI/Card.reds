@@ -402,9 +402,33 @@ public class RLCard extends CustomButton {
 
   // A line led by a small icon from an atlas (a faction logo).
   public func AddIconLine(atlas: ResRef, part: CName, const text: String, color: CName, size: Int32) {
+    RLCard.IconLabel(atlas, part, text, color, size).Reparent(this.m_lines);
+  }
+
+  // Icon lines side by side, `columns` to a row, in columns that line up.
+  public func AddIconGrid(atlases: array<ResRef>, parts: array<CName>, texts: array<String>, colors: array<CName>, size: Int32, columns: Int32) {
+    let gap = 20.0;
+    let cellWidth = (this.m_width - 56.0 - gap * Cast<Float>(columns - 1)) / Cast<Float>(columns);
+    let row: ref<inkHorizontalPanel>;
+    let i = 0;
+    while i < ArraySize(texts) {
+      if i % columns == 0 {
+        row = new inkHorizontalPanel();
+        row.SetFitToContent(true);
+        row.Reparent(this.m_lines);
+      }
+      let cell = new inkCanvas();
+      cell.SetSize(Vector2(cellWidth, Cast<Float>(size) + 10.0));
+      cell.SetMargin(inkMargin(0.0, 0.0, i % columns < columns - 1 ? gap : 0.0, 0.0));
+      cell.Reparent(row);
+      RLCard.IconLabel(atlases[i], parts[i], texts[i], colors[i], size).Reparent(cell);
+      i += 1;
+    }
+  }
+
+  private static func IconLabel(atlas: ResRef, part: CName, const text: String, color: CName, size: Int32) -> ref<inkHorizontalPanel> {
     let row = RLUI.HPanel(0.0);
     row.SetChildMargin(inkMargin(0.0, 0.0, 10.0, 0.0));
-    row.Reparent(this.m_lines);
     let icon = new inkImage();
     icon.SetAtlasResource(atlas);
     icon.SetTexturePart(part);
@@ -417,6 +441,7 @@ public class RLCard extends CustomButton {
     let label = RLUI.Text(text, size, color);
     label.SetVAlign(inkEVerticalAlign.Center);
     label.Reparent(row);
+    return row;
   }
 
   public func AddSpacer(height: Float) {

@@ -342,10 +342,11 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 - **Landmarks** (`kind` landmark in the TSV) are story-mission fight sites
   from the main quests' map pins and Appearance Menu Mod's locations, for
   boss floors. SCOUT LANDMARKS visits only those (holding V at each one
-  until it streams, since many are high up or underground). Many story
-  interiors only stream in during their quest; a landmark goes live by
-  setting its `enabled` in `RLArenas.Landmark` once the scout finds ground
-  and navmesh there. `RLRewards.PickBossArena` picks among the act's.
+  until it streams, since many are high up or underground). The open world
+  streams the story interiors too (the first scout found ground and navmesh
+  at all eighteen); interiors get small radii, since the scout's 30 m
+  circle runs through their walls. `RLRewards.PickBossArena` picks among the
+  act's enabled landmarks.
 - **Bug marks:** F8 (`RLConfig.BugKey()`) logs
   `===== BUG MARK #n =====` with the state machine, popup/countdown flags,
   arena, run and the spawner's view of every enemy (`RLWaveSpawner.Describe`).

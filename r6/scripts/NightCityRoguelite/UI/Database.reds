@@ -5,8 +5,11 @@
 // UI/TerminalPopup.reds): the keywords, the run's terms, every patron's
 // effects, the duos, each main-weapon chrome's evolution and mods, and the
 // quickhacks. Entries are read from the same catalogues the cards are dealt
-// from, so the database never says something a card doesn't - and it looks
-// like the cards: the same accents, keyword chips and overclock lines.
+// from, so the database never says something a card doesn't.
+//
+// The view reads like Hades' Codex: tabs on the left, the open tab's entries
+// as a list of names (in groups), and the entry under the cursor in full on
+// the right - one thing at a time, in large type.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -17,22 +20,39 @@ public class RLDbTab {
   // BASICS, PATRONS or CHROME: the tab column's sections.
   public let group: String;
   public let accent: CName;
-  public let columns: Int32;
+  // A line under the tab's name: what's in it.
+  public let intro: String;
 }
 
 public class RLDbEntry {
+  // The list's group heading (EFFECTS, LEGENDARY, ARASAKA...).
+  public let group: String;
   public let kicker: String;
   public let title: String;
   public let accent: CName;
-  public let lines: array<String>;
-  public let lineColors: array<CName>;
+  public let text: String;
+  // Labelled paragraphs under the text (OVERCLOCK, ON A LAUNCHER, MADE BY...).
+  public let sectionLabels: array<String>;
+  public let sectionTexts: array<String>;
+  public let sectionColors: array<CName>;
   public let chips: array<String>;
   public let chipColors: array<CName>;
 
-  public func Line(const text: String, color: CName) {
+  public static func Make(const group: String, const kicker: String, const title: String, accent: CName, const text: String) -> ref<RLDbEntry> {
+    let entry = new RLDbEntry();
+    entry.group = group;
+    entry.kicker = kicker;
+    entry.title = title;
+    entry.accent = accent;
+    entry.text = text;
+    return entry;
+  }
+
+  public func Section(const label: String, const text: String, color: CName) {
     if StrLen(text) > 0 {
-      ArrayPush(this.lines, text);
-      ArrayPush(this.lineColors, color);
+      ArrayPush(this.sectionLabels, label);
+      ArrayPush(this.sectionTexts, text);
+      ArrayPush(this.sectionColors, color);
     }
   }
 
@@ -59,26 +79,32 @@ public abstract class RLDatabase {
 
   public static func Tabs() -> array<ref<RLDbTab>> {
     let tabs: array<ref<RLDbTab>>;
-    RLDatabase.Tab(tabs, n"keywords", "KEYWORDS", "BASICS", n"MainColors.ActiveWhite", 3);
-    RLDatabase.Tab(tabs, n"terms", "THE RUN", "BASICS", n"MainColors.ActiveWhite", 3);
+    RLDatabase.Tab(tabs, n"keywords", "KEYWORDS", "BASICS", n"MainColors.ActiveWhite",
+      "The words effects speak. One effect's keyword sets off another's - that's a combo.");
+    RLDatabase.Tab(tabs, n"terms", "THE RUN", "BASICS", n"MainColors.ActiveWhite",
+      "What the doors, cards and screens mean.");
     for patron in RLPatrons.All() {
-      RLDatabase.Tab(tabs, patron.id, patron.name, "PATRONS", patron.accent, 2);
+      RLDatabase.Tab(tabs, patron.id, patron.name, "PATRONS", patron.accent,
+        patron.tagline + " Speaks " + RLDatabase.KeywordList(RLPatrons.Keywords(patron.id)) + ".");
     }
-    RLDatabase.Tab(tabs, n"duos", "DUOS", "PATRONS", n"MainColors.Purple", 3);
+    RLDatabase.Tab(tabs, n"duos", "DUOS", "PATRONS", n"MainColors.Purple",
+      "Two patrons in one card. Offered once you hold an effect from each.");
     for family in ["StrongArms", "MantisBlades", "NanoWires", "ProjectileLauncher", "Deck"] {
-      RLDatabase.Tab(tabs, StringToName(family), RLArmMods.FamilyName(family), "CHROME", n"MainColors.ActiveYellow", 2);
+      RLDatabase.Tab(tabs, StringToName(family), RLArmMods.FamilyName(family), "CHROME", n"MainColors.ActiveYellow",
+        "What it learns when it evolves, and its mods. Mods come from Tune-Up doors.");
     }
-    RLDatabase.Tab(tabs, n"hacks", "QUICKHACKS", "CHROME", n"MainColors.Green", 3);
+    RLDatabase.Tab(tabs, n"hacks", "QUICKHACKS", "CHROME", n"MainColors.Green",
+      "Every hack a deck can be dealt, and the keyword it makes.");
     return tabs;
   }
 
-  private static func Tab(out tabs: array<ref<RLDbTab>>, id: CName, const label: String, const group: String, accent: CName, columns: Int32) {
+  private static func Tab(out tabs: array<ref<RLDbTab>>, id: CName, const label: String, const group: String, accent: CName, const intro: String) {
     let tab = new RLDbTab();
     tab.id = id;
     tab.label = label;
     tab.group = group;
     tab.accent = accent;
-    tab.columns = columns;
+    tab.intro = intro;
     ArrayPush(tabs, tab);
   }
 
@@ -104,13 +130,31 @@ public abstract class RLDatabase {
     return RLDatabase.Chrome(NameToString(id));
   }
 
+  // "MARK and FOCUS"
+  private static func KeywordList(keywords: array<CName>) -> String {
+    let text = "";
+    let i = 0;
+    while i < ArraySize(keywords) {
+      if i > 0 {
+        text += i == ArraySize(keywords) - 1 ? " and " : ", ";
+      }
+      text += NameToString(keywords[i]);
+      i += 1;
+    }
+    return text;
+  }
+
   // --- Keywords -------------------------------------------------------------------------
 
+  // Grouped by the patron who speaks them.
   private static func Keywords() -> array<ref<RLDbEntry>> {
     let list: array<ref<RLDbEntry>>;
     RLDatabase.Keyword(list, n"MARK", "The game's ping outline on an enemy. MARK effects pay off on it: more damage, executions, missiles that find it.");
     RLDatabase.Keyword(list, n"FOCUS", "Time slows for a moment. You don't.");
     RLDatabase.Keyword(list, n"BLAST", "An explosion. Grenades and launcher shells count.");
+    if RLConfig.DroneEscort() {
+      RLDatabase.Keyword(list, n"DRONE", "A Militech drone fighting on your side.");
+    }
     RLDatabase.Keyword(list, n"SHOCK", "Electrocuted: sparks, damage and a stagger.");
     RLDatabase.Keyword(list, n"GLITCH", "Their chrome shuts down for 6 s: no dodging, no Sandevistan, no healing.");
     RLDatabase.Keyword(list, n"BURN", "On fire, burning down over time.");
@@ -119,24 +163,20 @@ public abstract class RLDatabase {
     RLDatabase.Keyword(list, n"SHIELD", "One hit absorbed.");
     RLDatabase.Keyword(list, n"LUCK", "Chance effects, rolling your way.");
     RLDatabase.Keyword(list, n"DEAL", "A price now for a payoff later.");
-    if RLConfig.DroneEscort() {
-      RLDatabase.Keyword(list, n"DRONE", "A Militech drone fighting on your side.");
-    }
     return list;
   }
 
   private static func Keyword(out list: array<ref<RLDbEntry>>, keyword: CName, const text: String) {
-    let entry = new RLDbEntry();
-    entry.kicker = RLDatabase.MadeBy(keyword);
-    entry.title = NameToString(keyword);
-    entry.accent = RLKeywords.Color(keyword);
-    entry.Line(text, n"MainColors.ActiveWhite");
+    let patron = RLDatabase.SpokenBy(keyword);
+    let entry = RLDbEntry.Make(patron, patron + " KEYWORD", NameToString(keyword), RLKeywords.Color(keyword), text);
+    entry.Section("MADE BY", RLDatabase.Speakers(keyword, true), n"MainColors.ActiveWhite");
+    entry.Section("PAID OFF BY", RLDatabase.Speakers(keyword, false), n"MainColors.ActiveWhite");
     entry.Chip(NameToString(keyword), keyword);
     ArrayPush(list, entry);
   }
 
   // "ARASAKA" - the patron who speaks a keyword.
-  private static func MadeBy(keyword: CName) -> String {
+  private static func SpokenBy(keyword: CName) -> String {
     for patron in RLPatrons.All() {
       let keywords = RLPatrons.Keywords(patron.id);
       if ArrayContains(keywords, keyword) {
@@ -144,6 +184,36 @@ public abstract class RLDatabase {
       }
     }
     return "KEYWORD";
+  }
+
+  // Every effect, mod and quickhack that makes a keyword (or pays off on
+  // it), by name - where to look for it in a run.
+  private static func Speakers(keyword: CName, makes: Bool) -> String {
+    let names: array<String>;
+    for def in RLBoons.All() {
+      let said = makes ? def.makes : def.uses;
+      if ArrayContains(said, keyword) && !ArrayContains(names, def.name) {
+        ArrayPush(names, def.name);
+      }
+    }
+    for mod in RLArmMods.All() {
+      let said = makes ? mod.makes : mod.uses;
+      if ArrayContains(said, keyword) && !ArrayContains(names, mod.name) {
+        ArrayPush(names, mod.name);
+      }
+    }
+    if makes {
+      for family in RLHacks.Families() {
+        if Equals(family.keyword, keyword) && !ArrayContains(names, family.name) {
+          ArrayPush(names, family.name);
+        }
+      }
+    }
+    let text = "";
+    for name in names {
+      text += (StrLen(text) > 0 ? ", " : "") + name;
+    }
+    return text;
   }
 
   // --- The run --------------------------------------------------------------------------
@@ -172,13 +242,8 @@ public abstract class RLDatabase {
     return list;
   }
 
-  private static func Term(out list: array<ref<RLDbEntry>>, const kicker: String, const title: String, accent: CName, const text: String) {
-    let entry = new RLDbEntry();
-    entry.kicker = kicker;
-    entry.title = title;
-    entry.accent = accent;
-    entry.Line(text, n"MainColors.ActiveWhite");
-    ArrayPush(list, entry);
+  private static func Term(out list: array<ref<RLDbEntry>>, const group: String, const title: String, accent: CName, const text: String) {
+    ArrayPush(list, RLDbEntry.Make(group, group, title, accent, text));
   }
 
   // --- Patrons --------------------------------------------------------------------------
@@ -209,64 +274,66 @@ public abstract class RLDatabase {
   }
 
   private static func Effect(def: ref<RLBoonDef>, accent: CName) -> ref<RLDbEntry> {
-    let entry = new RLDbEntry();
-    entry.title = def.name;
-    entry.accent = accent;
-    entry.kicker = Equals(def.kind, RLBoonKind.Duo)
-      ? "DUO - " + RLPatrons.Name(def.patron) + " + " + RLPatrons.Name(def.partner)
-      : RLBoons.KindName(def.kind);
+    let kind = RLBoons.KindName(def.kind);
+    let duo = Equals(def.kind, RLBoonKind.Duo);
+    // Duos are grouped by their first patron; the rest by kind ("EFFECTS").
+    let group = duo ? RLPatrons.Name(def.patron) : (Equals(def.kind, RLBoonKind.Effect) ? "EFFECTS" : kind);
+    let kicker = duo ? "DUO - " + RLPatrons.Name(def.patron) + " + " + RLPatrons.Name(def.partner) : RLPatrons.Name(def.patron) + " - " + kind;
+    let entry: ref<RLDbEntry>;
     if Equals(def.kind, RLBoonKind.Weapon) {
       // Every reading, so a launcher or a deck build can plan too.
-      entry.Line("HITS   " + def.text, n"MainColors.ActiveWhite");
-      entry.Line("SHELLS   " + RLWeaponActions.ShellText(def.id, false), n"MainColors.ActiveWhite");
-      entry.Line("UPLOADS   " + RLWeaponActions.UploadText(def.id, false), n"MainColors.ActiveWhite");
+      entry = RLDbEntry.Make(group, kicker, def.name, accent, def.text);
+      entry.Section("ON A LAUNCHER", RLWeaponActions.ShellText(def.id, false), n"MainColors.ActiveWhite");
+      entry.Section("ON A CYBERDECK", RLWeaponActions.UploadText(def.id, false), n"MainColors.ActiveWhite");
     } else {
-      entry.Line(def.text, n"MainColors.ActiveWhite");
-      if StrLen(def.overclock) > 0 {
-        entry.Line("OVERCLOCK   " + def.overclock, n"MainColors.Purple");
-      }
+      entry = RLDbEntry.Make(group, kicker, def.name, accent, def.text);
     }
+    entry.Section("OVERCLOCK", def.overclock, n"MainColors.Purple");
     entry.Speaks(def.makes, def.uses);
     return entry;
   }
 
   // --- Chrome ---------------------------------------------------------------------------
 
-  // A main-weapon chrome: what it learns when it evolves, then its mods.
+  // A main-weapon chrome: what it learns when it evolves, then its mods by
+  // slot.
   private static func Chrome(const family: String) -> array<ref<RLDbEntry>> {
     let list: array<ref<RLDbEntry>>;
-    let signature = new RLDbEntry();
-    signature.kicker = "EVOLUTION";
-    signature.title = RLSignatures.Name(family);
-    signature.accent = n"MainColors.Gold";
     let what = RLSignatures.What(family);
-    signature.Line(StrUpper(StrLeft(what, 1)) + StrMid(what, 1), n"MainColors.ActiveWhite");
-    signature.Line("With Legendary++ and a third weapon effect slot.", n"MainColors.Grey");
+    let signature = RLDbEntry.Make("EVOLUTION", "EVOLUTION - " + RLArmMods.FamilyName(family), RLSignatures.Name(family), n"MainColors.Gold",
+      StrUpper(StrLeft(what, 1)) + StrMid(what, 1));
+    signature.Section("ALSO", "Legendary++ and a third weapon effect slot.", n"MainColors.Grey");
     ArrayPush(list, signature);
+    let slots: array<String>;
     for def in RLArmMods.All() {
-      if Equals(def.family, family) {
-        let entry = new RLDbEntry();
-        entry.kicker = def.slot + " MOD";
-        entry.title = def.name;
-        entry.accent = n"MainColors.ActiveYellow";
-        entry.Line(def.text, n"MainColors.ActiveWhite");
-        entry.Line("OVERCLOCK   " + def.overclock, n"MainColors.Purple");
+      if Equals(def.family, family) && !ArrayContains(slots, def.slot) {
+        ArrayPush(slots, def.slot);
+      }
+    }
+    for slot in slots {
+      RLDatabase.Mods(list, family, slot);
+    }
+    return list;
+  }
+
+  private static func Mods(out list: array<ref<RLDbEntry>>, const family: String, const slot: String) {
+    for def in RLArmMods.All() {
+      if Equals(def.family, family) && Equals(def.slot, slot) {
+        let entry = RLDbEntry.Make(def.slot + " MODS", def.slot + " MOD - " + RLArmMods.FamilyName(family), def.name, n"MainColors.ActiveYellow", def.text);
+        entry.Section("OVERCLOCK", def.overclock, n"MainColors.Purple");
         entry.Speaks(def.makes, def.uses);
         ArrayPush(list, entry);
       }
     }
-    return list;
   }
 
   private static func Quickhacks() -> array<ref<RLDbEntry>> {
     let list: array<ref<RLDbEntry>>;
     for family in RLHacks.Families() {
-      let entry = new RLDbEntry();
       let record = RLHacks.RecordAt(family, 0);
-      entry.kicker = RLHacks.RoleName(family.role) + " QUICKHACK";
-      entry.title = TDBID.IsValid(record) ? RLRewards.ItemName(record) : family.name;
-      entry.accent = IsNameValid(family.keyword) ? RLKeywords.Color(family.keyword) : n"MainColors.Green";
-      entry.Line(family.line, n"MainColors.ActiveWhite");
+      let role = RLHacks.RoleName(family.role);
+      let entry = RLDbEntry.Make(role, role + " QUICKHACK", TDBID.IsValid(record) ? RLRewards.ItemName(record) : family.name,
+        IsNameValid(family.keyword) ? RLKeywords.Color(family.keyword) : n"MainColors.Green", family.line);
       if IsNameValid(family.keyword) {
         entry.Chip("MAKES " + NameToString(family.keyword), family.keyword);
       }

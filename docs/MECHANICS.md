@@ -604,10 +604,13 @@ you're dealing with (Misty deals real tarot cards). Hovering lifts a card and
 lights its frame - the text never sits on a colour fill.
 
 The terminal's **DATABASE** (at home, on the door picker and in a fight) is
-everything a run talks about, dressed the way the cards are: the keywords in
-their colours, the run's terms, every patron's effects with their overclocks
-and keyword chips (weapon effects with all three readings), the duos, each
-chrome's evolution and mods, and the quickhacks. It reads the same
+everything a run talks about, read like Hades' Codex: tabs on the left, the
+tab's entries as a list of names in groups, and the entry under the cursor in
+full on the right (a click keeps it there). It has the keywords - each with
+what makes it and what pays off on it - the run's terms, every patron's
+effects with their overclocks and keyword chips (weapon effects with their
+launcher and deck readings), the duos, each chrome's evolution and mods, and
+the quickhacks. It reads the same
 catalogues the cards are dealt from, so it never disagrees with them.
 
 ### Arenas
@@ -629,12 +632,12 @@ New ones are vetted with the arena scout (developers, see DEVELOPER_NOTES).
 
 **Boss floors** are fought at story landmarks: each landmark names the acts
 it can host, and the boss door picks one of them (any arena when an act has
-none yet). The Grand Imperial Mall hosts Act 2. The other landmarks - the All
-Foods plant, Totentanz, Ghost Town, Konpeki Plaza and its roof, Batty's
-Hotel, the Dashi parade rooftops, Embers, the Arasaka estate, Dogtown's
-stadium and its roof, the Black Sapphire, Arasaka Tower's atrium, CEO floor
-and roof, Mikoshi, the spaceport roof and Cynosure - are listed but off until
-the scout shows the open world loads them with ground and navmesh.
+none). Act 1: the All Foods plant, Totentanz, Ghost Town, Konpeki Plaza and
+its roof. Act 2: the Grand Imperial Mall, Batty's Hotel, Embers, the Arasaka
+estate, Dogtown's stadium, the Black Sapphire. Act 3: Arasaka Tower's CEO
+floor and roof, Mikoshi, the spaceport roof, plus the estate, Embers and the
+Black Sapphire. Arasaka Tower's atrium, the Dashi parade rooftops, Cynosure
+and the stadium roof are listed but off: too cramped where the scout stood.
 
 The walls are built from the game's own holo-tape hologram and a "Player
 Blocker" collider. They stop V (and gunfire through them). An enemy that ends

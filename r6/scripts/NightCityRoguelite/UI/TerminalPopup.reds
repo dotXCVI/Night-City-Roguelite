@@ -44,6 +44,13 @@ public class RLTerminalPopup extends InGamePopup {
   // The database: the open tab, and the view BACK returns to.
   private let m_dbTab: CName;
   private let m_dbReturn: RLTerminalView;
+  // The open tab's entries, their rows in the list, the one clicked (shown
+  // when the cursor isn't on a row) and the panel the entry is read in.
+  private let m_dbEntries: array<ref<RLDbEntry>>;
+  private let m_dbRows: array<wref<RLCard>>;
+  private let m_dbPinned: Int32;
+  private let m_dbHover: Int32;
+  private let m_dbDetail: wref<inkCanvas>;
 
   public static func OpenHub(system: ref<RogueliteSystem>) -> ref<RLTerminalPopup> {
     let none: array<ref<RLDoor>>;
@@ -383,27 +390,37 @@ public class RLTerminalPopup extends InGamePopup {
     let tall = 660.0;
 
     let kit = service.GetSelectedKit();
-    let start = RLCard.Create(n"start", dev ? 740.0 : 860.0, tall, n"MainColors.Red");
+    // The banner art is 16:9 at the card's width, so the card's width sets
+    // how much room is left under it: the line-up goes two to a row.
+    let start = RLCard.Create(n"start", 700.0, tall, n"MainColors.Red");
     start.SetCompact();
     start.SetBanner(RLArts.City());
     start.SetKicker("THREE ACTS - EIGHTEEN FIGHTS");
     start.SetTitle("START RUN");
-    start.SetTitleSize(60);
+    start.SetTitleSize(54);
     if IsDefined(this.m_system) {
-      start.AddLine("IN TOWN THIS RUN", n"MainColors.Grey", 22);
+      start.AddLine("IN TOWN THIS RUN", n"MainColors.Grey", 20);
+      let atlases: array<ResRef>;
+      let parts: array<CName>;
+      let texts: array<String>;
+      let colors: array<CName>;
       for id in this.m_system.GetLineup() {
         let patron = RLPatrons.Get(id);
         if IsDefined(patron) {
-          start.AddIconLine(patron.isLogo ? RLIcons.LogoAtlas() : RLIcons.HubAtlas(), patron.iconPart, patron.name + "   " + RLTerminalPopup.KeywordLine(id), patron.accent, 24);
+          ArrayPush(atlases, patron.isLogo ? RLIcons.LogoAtlas() : RLIcons.HubAtlas());
+          ArrayPush(parts, patron.iconPart);
+          ArrayPush(texts, patron.name + "  " + RLTerminalPopup.KeywordLine(id));
+          ArrayPush(colors, patron.accent);
         }
       }
+      start.AddIconGrid(atlases, parts, texts, colors, 20, 2);
     }
     this.Hook(start, main);
     this.Intro(start, 0);
 
     // Kits are picked at the armory stash; the card opens the same screen.
     let reachable = IsDefined(this.m_system) && this.m_system.IsArmoryReachable();
-    let kitCard = RLCard.Create(n"kit", dev ? 500.0 : 700.0, tall, n"MainColors.ActiveYellow");
+    let kitCard = RLCard.Create(n"kit", dev ? 540.0 : 700.0, tall, n"MainColors.ActiveYellow");
     kitCard.SetCompact();
     kitCard.SetBanner(RLArts.Kit(kit));
     kitCard.SetBadge(RLIcons.CommonAtlas(), RLIcons.KitPart(kit));
@@ -419,7 +436,7 @@ public class RLTerminalPopup extends InGamePopup {
     // The column beside them fills the same height with four cards.
     let gap = 12.0;
     let height = (tall - gap * 3.0) / 4.0;
-    let width = dev ? 400.0 : 510.0;
+    let width = dev ? 400.0 : 668.0;
     let side = RLUI.VPanel(gap);
     side.Reparent(main);
     // Assist mode (Hades' God Mode): less damage taken, a little more with
@@ -461,27 +478,27 @@ public class RLTerminalPopup extends InGamePopup {
     this.SwitchView(RLTerminalView.Database);
   }
 
-  // The tab column on the left, the open tab's entries as cards on the right.
+  // Like Hades' Codex: the tabs on the left, the open tab's entries as a
+  // list of names in the middle, and the one under the cursor (or the one
+  // clicked) in full on the right.
   private func BuildDatabase(body: ref<inkCompoundWidget>) {
-    let split = RLUI.HPanel(24.0);
+    let height = 1360.0;
+    let split = RLUI.HPanel(12.0);
     split.Reparent(body);
 
-    let column = RLUI.VPanel(6.0);
+    let column = RLUI.VPanel(4.0);
     column.Reparent(split);
-    let back = this.AddActionCard(column, n"back", "BACK", "", n"MainColors.Blue", 80.0);
+    let back = this.AddActionCard(column, n"back", "BACK", "", n"MainColors.Blue", 76.0, 300.0);
     back.HideKicker();
     let group = "";
     let i = 1;
     for tab in RLDatabase.Tabs() {
       if NotEquals(tab.group, group) {
         group = tab.group;
-        let label = RLUI.Text(group, 22, n"MainColors.Grey", true);
-        label.SetLetterCase(textLetterCase.UpperCase);
-        label.SetMargin(inkMargin(4.0, 10.0, 0.0, 0.0));
-        label.Reparent(column);
+        RLTerminalPopup.DbGroupLabel(group, 300.0).Reparent(column);
       }
       let on = Equals(tab.id, this.m_dbTab);
-      let card = RLCard.Create(StringToName("db_" + NameToString(tab.id)), 300.0, 70.0, on ? tab.accent : n"MainColors.Grey");
+      let card = RLCard.Create(StringToName("db_" + NameToString(tab.id)), 300.0, 56.0, on ? tab.accent : n"MainColors.Grey");
       card.SetCompact();
       card.HideKicker();
       card.SetTitle(tab.label);
@@ -496,45 +513,151 @@ public class RLTerminalPopup extends InGamePopup {
     if !IsDefined(tab) {
       return;
     }
-    let entries = RLDatabase.Entries(tab.id);
-    let columns = Max(1, tab.columns);
-    let rows = (ArraySize(entries) + columns - 1) / columns;
-    let gap = 12.0;
-    let width = (1720.0 - gap * Cast<Float>(columns - 1)) / Cast<Float>(columns);
-    let height = MinF(330.0, (1400.0 - gap * Cast<Float>(Max(rows - 1, 0))) / Cast<Float>(Max(rows, 1)));
-    let grid = RLUI.VPanel(gap);
-    grid.Reparent(split);
-    let row: ref<inkHorizontalPanel>;
-    let n = 0;
-    for entry in entries {
-      if n % columns == 0 {
-        row = RLUI.HPanel(gap);
-        row.Reparent(grid);
+    this.m_dbEntries = RLDatabase.Entries(tab.id);
+    ArrayClear(this.m_dbRows);
+    this.m_dbPinned = Clamp(this.m_dbPinned, 0, Max(ArraySize(this.m_dbEntries) - 1, 0));
+
+    // The list: the tab's name and what's in it, then the entries by group.
+    let listWidth = 560.0;
+    let list = RLUI.VPanel(3.0);
+    list.Reparent(split);
+    RLUI.Text(tab.label, 40, tab.accent, true).Reparent(list);
+    RLUI.WrappedText(tab.intro, 22, n"MainColors.Grey", listWidth).Reparent(list);
+    let groups = 0;
+    group = "";
+    for entry in this.m_dbEntries {
+      if NotEquals(entry.group, group) {
+        group = entry.group;
+        groups += 1;
       }
-      let card = RLTerminalPopup.EntryCard(entry, n, width, height);
-      card.Reparent(row);
-      this.Intro(card, n);
+    }
+    // Rows share what's left of the height with the group headings.
+    let count = Max(ArraySize(this.m_dbEntries), 1);
+    let rowHeight = ClampF((height - 130.0 - 40.0 * Cast<Float>(groups)) / Cast<Float>(count) - 6.0, 52.0, 64.0);
+    this.m_dbHover = -1;
+    group = "";
+    let n = 0;
+    for entry in this.m_dbEntries {
+      if NotEquals(entry.group, group) {
+        group = entry.group;
+        RLTerminalPopup.DbGroupLabel(group, listWidth).Reparent(list);
+      }
+      let row = RLCard.Create(StringToName("dbrow_" + IntToString(n)), listWidth, rowHeight, entry.accent);
+      row.SetCompact();
+      row.HideKicker();
+      row.SetTitle(entry.title);
+      row.SetTitleSize(rowHeight < 58.0 ? 24 : 26);
+      row.SetSelected(n == this.m_dbPinned);
+      row.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
+      row.RegisterToCallback(n"OnCardHoverOn", this, n"OnDbRowHoverOn");
+      row.RegisterToCallback(n"OnCardHoverOff", this, n"OnDbRowHoverOff");
+      row.Reparent(list);
+      if !this.m_introPlayed {
+        row.PlayIntro(0.03 * Cast<Float>(n));
+      }
+      ArrayPush(this.m_dbRows, row);
       n += 1;
     }
+
+    // The entry, read in full.
+    let detail = new inkCanvas();
+    detail.SetSize(Vector2(2124.0 - 300.0 - listWidth - 72.0, height));
+    detail.Reparent(split);
+    this.m_dbDetail = detail;
+    this.ShowDbEntry(this.m_dbPinned);
   }
 
-  // One database entry, dressed the way its cards are in a run.
-  private static func EntryCard(entry: ref<RLDbEntry>, index: Int32, width: Float, height: Float) -> ref<RLCard> {
-    let card = RLCard.Create(StringToName("entry_" + IntToString(index)), width, height, entry.accent);
-    card.SetCompact();
+  private static func DbGroupLabel(const label: String, width: Float) -> ref<inkWidget> {
+    let panel = new inkVerticalPanel();
+    panel.SetFitToContent(true);
+    panel.SetMargin(inkMargin(4.0, 12.0, 0.0, 2.0));
+    let text = RLUI.Text(label, 20, n"MainColors.Grey", true);
+    text.SetLetterCase(textLetterCase.UpperCase);
+    text.Reparent(panel);
+    let rule = new inkRectangle();
+    rule.SetSize(Vector2(width - 4.0, 2.0));
+    rule.SetOpacity(0.2);
+    rule.SetStyle(RLUI.Style());
+    rule.BindProperty(n"tintColor", n"MainColors.Grey");
+    rule.SetMargin(inkMargin(0.0, 2.0, 0.0, 0.0));
+    rule.Reparent(panel);
+    return panel;
+  }
+
+  // Rebuilds the reading panel for entry `index`.
+  private func ShowDbEntry(index: Int32) {
+    let detail = this.m_dbDetail;
+    if !IsDefined(detail) || index < 0 || index >= ArraySize(this.m_dbEntries) {
+      return;
+    }
+    detail.RemoveAllChildren();
+    let entry = this.m_dbEntries[index];
+    let size = detail.GetSize();
+    let card = RLCard.Create(n"db_detail", size.X, size.Y, entry.accent);
     card.SetKicker(entry.kicker);
     card.SetTitle(entry.title);
-    card.SetTitleSize(32);
+    card.SetTitleSize(56);
+    card.AddSpacer(10.0);
+    card.AddLine(entry.text, n"MainColors.ActiveWhite", 32);
     let i = 0;
-    while i < ArraySize(entry.lines) {
-      card.AddLine(entry.lines[i], entry.lineColors[i], 22);
+    while i < ArraySize(entry.sectionLabels) {
+      card.AddSpacer(22.0);
+      let label = card.AddLine(entry.sectionLabels[i], n"MainColors.Grey", 22);
+      label.SetFontStyle(n"Semi-Bold");
+      label.SetLetterCase(textLetterCase.UpperCase);
+      card.AddLine(entry.sectionTexts[i], entry.sectionColors[i], 28);
       i += 1;
     }
     if ArraySize(entry.chips) > 0 {
+      card.AddSpacer(22.0);
       card.AddChips(entry.chips, entry.chipColors);
     }
     card.SetStatic();
-    return card;
+    card.Reparent(detail);
+  }
+
+  private func DbRowIndex(widget: wref<inkWidget>) -> Int32 {
+    let button = widget.GetController() as CustomButton;
+    if !IsDefined(button) {
+      return -1;
+    }
+    let name = NameToString(button.GetName());
+    if !StrBeginsWith(name, "dbrow_") {
+      return -1;
+    }
+    return StringToInt(StrAfterFirst(name, "_"));
+  }
+
+  protected cb func OnDbRowHoverOn(widget: wref<inkWidget>) -> Bool {
+    let index = this.DbRowIndex(widget);
+    if index >= 0 {
+      this.m_dbHover = index;
+      this.ShowDbEntry(index);
+    }
+    return true;
+  }
+
+  // Back to the clicked entry - unless the cursor has already moved on to
+  // another row (its hover can arrive first).
+  protected cb func OnDbRowHoverOff(widget: wref<inkWidget>) -> Bool {
+    if this.m_dbHover == this.DbRowIndex(widget) {
+      this.m_dbHover = -1;
+      this.ShowDbEntry(this.m_dbPinned);
+    }
+    return true;
+  }
+
+  // A click keeps an entry up when the cursor leaves the list.
+  private func PinDbEntry(index: Int32) {
+    this.m_dbPinned = index;
+    let i = 0;
+    while i < ArraySize(this.m_dbRows) {
+      if IsDefined(this.m_dbRows[i]) {
+        this.m_dbRows[i].SetSelected(i == index);
+      }
+      i += 1;
+    }
+    this.ShowDbEntry(index);
   }
 
   // --- Upgrades view ---------------------------------------------------------------------------
@@ -677,10 +800,14 @@ public class RLTerminalPopup extends InGamePopup {
       this.SwitchView(RLTerminalView.Upgrades);
     } else if Equals(name, "database") {
       this.OpenDatabase();
+    } else if StrBeginsWith(name, "dbrow_") {
+      this.PlaySound(n"Button", n"OnPress");
+      this.PinDbEntry(StringToInt(StrAfterFirst(name, "_")));
     } else if StrBeginsWith(name, "db_") {
       let tab = StringToName(StrAfterFirst(name, "_"));
       if NotEquals(tab, this.m_dbTab) {
         this.m_dbTab = tab;
+        this.m_dbPinned = 0;
         this.PlaySound(n"Button", n"OnPress");
         this.SwitchView(RLTerminalView.Database);
       }

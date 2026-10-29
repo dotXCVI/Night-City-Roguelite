@@ -8,12 +8,13 @@ release on GitHub with its ZIP attached.
 **Arenas**
 
 - **Thirteen new arenas** across the city: Rocky Ridge, Jackson Plains, Coronado Hideout, East Coronado, West Wind Estate, Longshore Stacks, Dogtown Back Streets, Japantown Backlot, Tyger Sweatshop, Charter Hill, Wellsprings, West Downtown and Northside Yards - gang outposts, cyberpsycho spots and gig sites picked by an arena scout that measured how much of each is walkable. Gig sites that started their gig, a call or a scene when V showed up were left out.
-- **Bosses fight at landmarks.** A boss floor's door takes you to one of the act's story locations - the Grand Imperial Mall hosts Act 2's boss now. More are lined up (the All Foods plant, Konpeki Plaza, Arasaka Tower's atrium, CEO floor and roof, Mikoshi, the Arasaka estate, Embers, Totentanz, Batty's Hotel, Dogtown's stadium, the Black Sapphire, Cynosure, the spaceport) and switch on once they're scouted.
+- **Bosses fight at landmarks.** A boss floor's door takes you to one of the act's story locations. Act 1: the All Foods plant, Totentanz, Ghost Town, Konpeki Plaza and its roof. Act 2: the Grand Imperial Mall, Batty's Hotel, Embers, the Arasaka estate, Dogtown's stadium, the Black Sapphire. Act 3: Arasaka Tower's CEO floor and roof, Mikoshi, the spaceport roof (and the estate, Embers and the Black Sapphire again).
 - **Arenas up high:** V is held at the start while an arena streams in, so a rooftop arena doesn't load under a V who fell to the street.
 
 **Terminal**
 
-- **The hub and the upgrades screen fit the screen:** the stats row and the cards no longer run past the panel, and the upgrades header isn't cut off. The ON tag is gone - the lit take is the one that's on.
+- **A database you can read:** tabs on the left, the tab's entries as a list of names in groups, and the one under your cursor in full on the right, in big type - click one to keep it up. Overclocks, launcher and deck readings get their own labelled lines, and every keyword lists what makes it and what pays off on it.
+- **The hub and the upgrades screen fit the screen:** the stats row and the cards no longer run past the panel (the run's line-up sits two to a row), and the upgrades header isn't cut off. The ON tag is gone - the lit take is the one that's on.
 
 **Fixes**
 

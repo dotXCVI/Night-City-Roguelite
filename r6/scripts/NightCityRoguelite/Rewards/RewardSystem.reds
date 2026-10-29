@@ -78,6 +78,12 @@ public class RLDoor {
   public let event: CName;
   // The fight's objective (Run/Objectives.reds); none = clear the waves.
   public let objective: RLObjectiveKind;
+  // An act's first floor: the route this door takes (Run/Routes.reds) and
+  // the landmark where its boss waits.
+  public let route: CName;
+  public let routeBoss: CName;
+  // A nemesis waiting in this fight (Run/Nemesis.reds); 0 none.
+  public let nemesis: Int32;
 }
 
 public class RLOffer {
@@ -238,12 +244,31 @@ public abstract class RLRewards {
     let usedArenas: array<CName>;
     ArrayPush(usedArenas, lastArena);
     run.workshopShown = false;
+    ArrayClear(run.nemesesOffered);
+    // An act that started without picking a route (a test run that starts
+    // mid-act, an event door on the first floor) gets one now.
+    if run.floor > 1 && !IsNameValid(run.route) {
+      RLRoutes.PickAny(run);
+    }
     if run.IsBossFloor() {
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, run.act == 1 && !run.overdriveUnlocked ? RLRewardCategory.System : RLRewardCategory.Chrome, true, usedArenas));
       return doors;
     }
     if run.floorsCleared == 0 && !run.isTest {
+      // The run's first door is a patron's; with two routes open there are
+      // two, so the first pick is also where the run goes.
       ArrayPush(doors, RLRewards.MakeDoor(pools, run, RLRewardCategory.Boons, false, usedArenas));
+      let open = RLRoutes.Open(run);
+      if ArraySize(open) > 1 {
+        let second = RLRewards.MakeDoor(pools, run, RLRewardCategory.Boons, false, usedArenas);
+        let tries = 0;
+        while Equals(second.patron, doors[0].patron) && tries < 8 {
+          second.patron = RLPatrons.PickForDoor(run);
+          tries += 1;
+        }
+        ArrayPush(doors, second);
+      }
+      RLRewards.RouteDoors(pools, run, doors);
       return doors;
     }
     let used: array<RLRewardCategory>;
@@ -296,7 +321,39 @@ public abstract class RLRewards {
     if run.floor == 1 && run.act > 1 && RLTerminal.Has(n"InsideMan", 2) {
       RLRewards.PlacePatronDoor(pools, run, doors, usedArenas);
     }
+    if run.floor == 1 {
+      RLRewards.RouteDoors(pools, run, doors);
+    }
     return doors;
+  }
+
+  // An act's first doors each lead into a route (Run/Routes.reds): its fight
+  // moves to one of the route's arenas, against that arena's gangs.
+  private static func RouteDoors(pools: ref<RLTweakPools>, run: ref<RLRunState>, doors: array<ref<RLDoor>>) {
+    RLRoutes.Assign(run, doors);
+    let used: array<CName>;
+    for door in doors {
+      if IsNameValid(door.route) && IsNameValid(door.arena) {
+        let route = RLRoutes.Get(door.route);
+        let candidates: array<CName>;
+        for arena in RLArenas.Regular() {
+          if RLRoutes.Covers(route, arena) && !ArrayContains(used, arena.id) {
+            ArrayPush(candidates, arena.id);
+          }
+        }
+        if ArraySize(candidates) > 0 {
+          door.arena = candidates[RandRange(0, ArraySize(candidates))];
+          let arena = RLArenas.Get(door.arena);
+          door.faction = pools.PickFactionPreferred(arena.factions, run.act >= 3);
+          door.objective = Equals(door.category, RLRewardCategory.Bounty) || door.boss ? RLObjectiveKind.None : RLObjectives.RollForDoor(run, arena);
+          if door.hot {
+            door.objective = RLObjectiveKind.None;
+          }
+        }
+        ArrayPush(used, door.arena);
+      }
+      door.nemesis = RLNemeses.ForDoor(run, door);
+    }
   }
 
   // The Director's door: the family V's build lacks most - the Armory when
@@ -417,7 +474,15 @@ public abstract class RLRewards {
         door.event = RLEvents.Pick(run);
         return door;
     }
-    door.arena = boss ? RLRewards.PickBossArena(run.act, usedArenas) : RLRewards.PickArena(usedArenas);
+    if boss {
+      door.arena = IsNameValid(run.routeBoss) && IsDefined(RLArenas.Get(run.routeBoss)) ? run.routeBoss : RLRewards.PickBossArena(run.act, usedArenas);
+    } else {
+      // The act's route first; any arena once it runs out.
+      door.arena = RLRoutes.PickArena(run, usedArenas);
+      if !IsNameValid(door.arena) {
+        door.arena = RLRewards.PickArena(usedArenas);
+      }
+    }
     ArrayPush(usedArenas, door.arena);
     let arena = RLArenas.Get(door.arena);
     if IsDefined(arena) {
@@ -425,6 +490,9 @@ public abstract class RLRewards {
     }
     if !boss && NotEquals(category, RLRewardCategory.Bounty) {
       door.objective = RLObjectives.RollForDoor(run, arena);
+    }
+    if !boss {
+      door.nemesis = RLNemeses.ForDoor(run, door);
     }
     return door;
   }

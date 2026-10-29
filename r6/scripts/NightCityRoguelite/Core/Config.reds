@@ -136,6 +136,10 @@ public abstract class RLConfig {
 
   // Developer tools on the terminal: test runs that start on any floor.
   public static func DevTools() -> Bool = false
+  // Developers: run the city survey unattended (Dev/CitySurvey.reds). The
+  // main menu continues the last save and the survey picks up where it left
+  // off, until every point is done. Needs DevTools.
+  public static func AutoSurvey() -> Bool = false
 
   // --- Bosses and elites (Combat/Bosses.reds, Combat/Affixes.reds) --------------
 

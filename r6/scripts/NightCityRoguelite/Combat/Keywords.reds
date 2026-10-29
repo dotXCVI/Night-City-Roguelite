@@ -103,6 +103,9 @@ public abstract class RLKeywords {
     if !IsDefined(foe) {
       return;
     }
+    if RLKeywords.Resists(fx, foe, n"MARK") {
+      return;
+    }
     let fresh = foe.markUntil <= fx.now;
     let until = fx.Has(n"DeathSentence") ? fx.now + 100000.0 : fx.now + seconds;
     foe.markUntil = MaxF(foe.markUntil, until);
@@ -151,6 +154,9 @@ public abstract class RLKeywords {
     if !IsDefined(foe) || fx.now - foe.shockedAt < 0.5 {
       return;
     }
+    if RLKeywords.Resists(fx, foe, n"SHOCK") {
+      return;
+    }
     foe.shockedAt = fx.now;
     RLKeywords.Claim(fx, foe.shockSource);
     StatusEffectHelper.ApplyStatusEffect(target, t"BaseStatusEffect.Electrocuted", fx.player.GetEntityID());
@@ -182,6 +188,9 @@ public abstract class RLKeywords {
   public static func Glitch(fx: ref<RLFx>, target: ref<ScriptedPuppet>) {
     let foe = RLKeywords.Living(fx, target);
     if !IsDefined(foe) {
+      return;
+    }
+    if RLKeywords.Resists(fx, foe, n"GLITCH") {
       return;
     }
     let fresh = foe.glitchUntil <= fx.now;
@@ -218,6 +227,9 @@ public abstract class RLKeywords {
     if !IsDefined(foe) {
       return;
     }
+    if RLKeywords.Resists(fx, foe, n"BURN") {
+      return;
+    }
     let fresh = !RLKeywords.IsBurning(target);
     RLKeywords.Claim(fx, foe.burnSource);
     StatusEffectHelper.ApplyStatusEffect(target, t"BaseStatusEffect.Burning", fx.player.GetEntityID());
@@ -245,6 +257,9 @@ public abstract class RLKeywords {
     if !IsDefined(foe) || stacks <= 0 {
       return;
     }
+    if RLKeywords.Resists(fx, foe, n"BLEED") {
+      return;
+    }
     let fresh = !fx.combat.IsBleeding(foe, fx.now);
     if fresh {
       foe.bleedStacks = 0;
@@ -260,6 +275,47 @@ public abstract class RLKeywords {
     let owner = fx.combat.source;
     RLKeywords.CheckCocktail(fx, foe, target);
     fx.combat.source = owner;
+  }
+
+  // --- Resistance (nemeses) -------------------------------------------------------------------
+
+  // A nemesis that learned to shrug off `keyword` (Run/Nemesis.reds): it
+  // doesn't stick, and V sees why - RESISTED, now and then.
+  public static func Resists(fx: ref<RLFx>, foe: ref<RLFoe>, keyword: CName) -> Bool {
+    if !Equals(foe.immune, keyword) {
+      return false;
+    }
+    if fx.now - foe.resistedAt > 3.0 {
+      foe.resistedAt = fx.now;
+      RLKeywords.Tag(fx, NameToString(keyword) + " RESISTED", n"MainColors.Grey");
+    }
+    return true;
+  }
+
+  // Takes the game's own statuses for a nemesis's resisted keyword off it
+  // (an incendiary round's burning, a shock trap), once a second.
+  public static func Cleanse(target: ref<ScriptedPuppet>, foe: ref<RLFoe>) {
+    if !IsDefined(foe) || !IsNameValid(foe.immune) {
+      return;
+    }
+    switch foe.immune {
+      case n"BURN":
+        StatusEffectHelper.RemoveStatusEffect(target, t"BaseStatusEffect.Burning");
+        break;
+      case n"SHOCK":
+        StatusEffectHelper.RemoveStatusEffect(target, t"BaseStatusEffect.Electrocuted");
+        break;
+      case n"BLEED":
+        StatusEffectHelper.RemoveStatusEffect(target, t"BaseStatusEffect.Bleeding");
+        StatusEffectHelper.RemoveStatusEffect(target, t"BaseStatusEffect.Poisoned");
+        break;
+      case n"GLITCH":
+        StatusEffectHelper.RemoveStatusEffect(target, t"BaseStatusEffect.DisableCyberware");
+        break;
+      case n"MARK":
+        StatusEffectHelper.RemoveStatusEffect(target, t"BaseStatusEffect.PingMarkStatusEffect");
+        break;
+    }
   }
 
   // --- FOCUS and knockdowns ------------------------------------------------------------------

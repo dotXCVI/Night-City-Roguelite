@@ -291,6 +291,16 @@ public class RLTerminalPopup extends InGamePopup {
     if NotEquals(door.objective, RLObjectiveKind.None) {
       card.AddLine(RLObjectives.Name(door.objective) + " - " + RLObjectives.Description(door.objective), n"MainColors.Yellow", 24);
     }
+    let nemesis = RLNemeses.Get(door.nemesis);
+    if IsDefined(nemesis) {
+      card.AddLine(nemesis.RankTitle() + ": " + nemesis.FullName() + ". " + nemesis.Threat(), n"MainColors.Red", 24);
+    }
+    // An act's first doors: where the act goes, and where it ends.
+    let route = RLRoutes.Get(door.route);
+    if IsDefined(route) {
+      let landmark = RLArenas.Get(door.routeBoss);
+      card.AddLine("ROUTE: " + route.name + (IsDefined(landmark) ? ". The boss waits at " + landmark.name + "." : "."), n"MainColors.Blue", 24);
+    }
     let arena = RLArenas.Get(door.arena);
     if IsDefined(arena) {
       card.AddDivider();
@@ -461,9 +471,9 @@ public class RLTerminalPopup extends InGamePopup {
       this.AddActionCard(tools, n"test_floor", s"FLOOR \(service.GetTestFloor())", "TEST RUN STARTS ON", n"MainColors.Grey", devHeight, width);
       this.AddActionCard(tools, n"test_start", "TEST RUN", "NO CRED, NO STATS", n"MainColors.Grey", devHeight, width);
       let landmarks = RLArenaScout.List(true);
-      let candidates = RLArenaScout.List(false);
       this.AddActionCard(tools, n"scout_landmarks", "SCOUT LANDMARKS", s"\(ArraySize(landmarks)) STORY SITES", n"MainColors.Grey", devHeight, width);
-      this.AddActionCard(tools, n"scout", "SCOUT ARENAS", s"\(ArraySize(candidates)) CANDIDATES", n"MainColors.Grey", devHeight, width);
+      let surveyed = service.IsSurveyDone() ? "ALL" : IntToString(service.GetSurveyNext());
+      this.AddActionCard(tools, n"survey", "SURVEY CITY", s"\(surveyed) OF \(RLCitySurvey.Total()) DONE", n"MainColors.Grey", devHeight, width);
     }
   }
 
@@ -533,7 +543,7 @@ public class RLTerminalPopup extends InGamePopup {
     }
     // Rows share what's left of the height with the group headings.
     let count = Max(ArraySize(this.m_dbEntries), 1);
-    let rowHeight = ClampF((height - 130.0 - 40.0 * Cast<Float>(groups)) / Cast<Float>(count) - 6.0, 52.0, 64.0);
+    let rowHeight = ClampF((height - 130.0 - 40.0 * Cast<Float>(groups)) / Cast<Float>(count) - 6.0, 46.0, 64.0);
     this.m_dbHover = -1;
     group = "";
     let n = 0;
@@ -543,10 +553,10 @@ public class RLTerminalPopup extends InGamePopup {
         RLTerminalPopup.DbGroupLabel(group, listWidth).Reparent(list);
       }
       let row = RLCard.Create(StringToName("dbrow_" + IntToString(n)), listWidth, rowHeight, entry.accent);
-      row.SetCompact();
+      row.SetTight();
       row.HideKicker();
       row.SetTitle(entry.title);
-      row.SetTitleSize(rowHeight < 58.0 ? 24 : 26);
+      row.SetTitleSize(rowHeight < 52.0 ? 22 : (rowHeight < 58.0 ? 24 : 26));
       row.SetSelected(n == this.m_dbPinned);
       row.RegisterToCallback(n"OnBtnClick", this, n"OnButtonClick");
       row.RegisterToCallback(n"OnCardHoverOn", this, n"OnDbRowHoverOn");
@@ -784,9 +794,12 @@ public class RLTerminalPopup extends InGamePopup {
     } else if Equals(name, "test_start") {
       this.Close();
       this.m_system.StartRun(service.GetSelectedKit(), service.GetTestFloor());
-    } else if Equals(name, "scout") || Equals(name, "scout_landmarks") {
+    } else if Equals(name, "scout_landmarks") {
       this.Close();
-      this.m_system.StartScout(Equals(name, "scout_landmarks"));
+      this.m_system.StartScout(true);
+    } else if Equals(name, "survey") {
+      this.Close();
+      this.m_system.StartSurvey();
     } else if Equals(name, "assist") {
       service.SetAssist(!service.IsAssistOn());
       this.Rebuild();

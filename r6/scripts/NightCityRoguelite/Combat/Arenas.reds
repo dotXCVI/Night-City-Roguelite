@@ -56,7 +56,7 @@ public abstract class RLArenas {
     ArrayPush(list, RLArenas.Def(n"industrial", "Industrial Park", "Santo Domingo",
       Vector4(-235.5454, -1428.8181, 10.4, 1.0), 55.0, 40.0,
       [gamedataAffiliation.SixthStreet, gamedataAffiliation.Maelstrom], "MIXED"));
-    ArrayPush(list, RLArenas.Def(n"oilfields", "Oil Fields", "Northside",
+    ArrayPush(list, RLArenas.Def(n"oilfields", "Oil Fields", "Watson",
       Vector4(-1818.8236, 3858.0295, 7.1613, 1.0), 142.58, 45.0,
       [gamedataAffiliation.Wraiths, gamedataAffiliation.Scavengers], "OPEN GROUND"));
     ArrayPush(list, RLArenas.Def(n"drivein", "Old Drive-In", "Badlands",
@@ -114,6 +114,9 @@ public abstract class RLArenas {
     ArrayPush(list, RLArenas.Def(n"northsideyards", "Northside Yards", "Watson",
       Vector4(-1816.0, 2551.0, 26.6, 1.0), 0.0, 35.0,
       [gamedataAffiliation.Maelstrom, gamedataAffiliation.Scavengers], "MIXED"));
+
+    // The rest of the city, from the city survey (Data/CityArenas.reds).
+    RLCityArenas.Add(list);
 
     // Landmarks (boss floors). Act 1 plays Royce's music, act 2 the mall's,
     // act 3 Smasher's. Start points are the scout's; interiors get small
@@ -200,6 +203,11 @@ public abstract class RLArenas {
     def.acts = acts;
     def.enabled = enabled;
     ArrayPush(list, def);
+  }
+
+  // For generated arena lists (Data/CityArenas.reds).
+  public static func Make(id: CName, const name: String, const area: String, position: Vector4, yaw: Float, radius: Float, factions: array<gamedataAffiliation>, const terrain: String) -> ref<RLArenaDef> {
+    return RLArenas.Def(id, name, area, position, yaw, radius, factions, terrain);
   }
 
   private static func Def(id: CName, name: String, area: String, position: Vector4, yaw: Float, radius: Float, factions: array<gamedataAffiliation>, const terrain: String) -> ref<RLArenaDef> {

@@ -530,14 +530,59 @@ doors, elite floors and bosses get the storms. The same look never comes
 twice in a row. A few seconds in, the mod checks what the game is actually
 showing and asks again if something overrode it (both go in the log).
 
+### Routes
+
+Every act is a journey through one part of the city, ending at one of its
+landmarks. The doors on an act's first floor each lead into a different
+**route** - the run's very first screen has two patron doors for that - and
+the door says where the act's boss waits. The route you take holds for the
+act: its fights are in the route's districts (any arena once it runs out of
+new ones), against their gangs, and its patron's doors come up more often
+when they work the city this run. A run never takes a route twice:
+
+| Route | Patron | Acts it can end |
+|---|---|---|
+| Watson | Maelstrom | 1 (All Foods plant, Totentanz, Konpeki Plaza and roof) |
+| The Badlands | Aldecaldos | 1 (Ghost Town) |
+| Pacifica | Voodoo Boys | 2 (Grand Imperial Mall, Batty's Hotel), 3 (spaceport roof) |
+| Dogtown | Militech | 2 (stadium, Black Sapphire), 3 (Black Sapphire) |
+| Heywood | The Afterlife | 2 and 3 (Embers) |
+| Westbrook | Arasaka | 2 and 3 (Arasaka estate) |
+| Arasaka Tower | Arasaka | 3 (CEO floor, roof) |
+
+The travel screen names the route over the floor.
+
+### Nemeses
+
+Whoever flatlines you remembers. The enemy that lands the killing blow (never
+a boss) becomes a **nemesis**: a name and a handle from how it fights
+("Buckshot", "Longshot", "Static"), its own face, its gang and its affixes,
+kept from run to run. In a later run a door against its gang can say
+NEMESIS: it waits in that fight's last wave, an elite a couple of levels up,
+with a health bar and its name. Every time it kills you again it ranks up
+(NEMESIS, LIEUTENANT, WARLORD - a warlord brings two elite bodyguards) and
+picks up another affix. And it studies you: whenever it lives through a fight
+you lost, it learns to shrug off the keyword your build puts on enemies most -
+MARK, SHOCK, GLITCH, BURN or BLEED won't stick (RESISTED). Take it down for
+Cred (more for a higher rank and every time it killed you) and, from
+lieutenant up, a favor. Three can be at large at once; the database's
+NEMESES tab keeps their stories. Test runs show nemeses but never change them.
+
 ### Enemies
 
 Enemies are roguelite versions of the game's own open-world combat NPCs for
 each faction (`r6/tweaks/NightCityRoguelite/enemies.yaml`, made from the list
 in `Data/EnemyRoster.reds`): hostile to V from the start, on combat alert
-instead of relaxed, all on one side, with the loot described above. They spawn
-inside the arena on spots you can reach on foot, at the run's level, and
-an enemy that hangs back is sent running at you. If 40 seconds pass without a
+instead of relaxed, all on one side, with the loot described above. Every
+arena's ground is read while the screen is black on the way in: floor points
+you can walk to (and which have cover beside them) and perches - balconies,
+catwalks, container stacks - that look down on the floor. Each enemy spawns
+where its kind fights best: snipers and netrunners up on a perch, shotgunners
+and blades close in, riflemen behind cover at mid range, heavies and bosses
+out in the open ahead. Each wave comes in from one side: the first from where
+you're looking, the next from a flank or behind. A sniper stays on its perch
+until the fight is nearly over. They spawn at the run's level, and an enemy
+that hangs back is sent running at you. If 40 seconds pass without a
 kill, the enemies left are brought to you (twice), and after that removed, so
 an enemy stuck behind a locked door can never softlock a run.
 Without TweakXL the game's original records are used.

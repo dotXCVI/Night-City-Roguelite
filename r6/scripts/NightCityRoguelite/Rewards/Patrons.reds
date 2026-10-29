@@ -122,8 +122,13 @@ public abstract class RLPatrons {
     }
     let total = 0;
     let weights: array<Int32>;
+    // The act's route favours its patron (Run/Routes.reds).
+    let route = RLRoutes.Get(run.route);
     for patron in patrons {
       let weight = RLBoons.CountForPatron(run, patron) > 0 ? 2 : 1;
+      if IsDefined(route) && Equals(route.patron, patron) {
+        weight *= 2;
+      }
       ArrayPush(weights, weight);
       total += weight;
     }

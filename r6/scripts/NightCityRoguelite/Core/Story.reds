@@ -264,6 +264,9 @@ private final func OnTriggerCall(request: ref<questTriggerCallRequest>) {
     let caller = NameToString(request.caller);
     if Equals(request.callPhase, questPhoneCallPhase.IncomingCall) {
       let system = RogueliteSystem.Get(game);
+      if IsDefined(system) {
+        system.NoteStory("call:" + caller);
+      }
       if IsDefined(system) && system.IsHomeTerminalActive() && IsNameValid(request.caller) {
         this.SetPhoneFact(false, request.caller, questPhoneTalkingState.Rejected);
         RLLog(s"Declined an incoming call (\(caller), rejectable \(request.isRejectable)).");

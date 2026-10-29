@@ -69,6 +69,20 @@ public abstract class RLEncounters {
       w += 1;
     }
 
+    // A nemesis waits in the last wave (Run/Nemesis.reds); a warlord brings
+    // two of its gang's elites.
+    let nemesis = IsDefined(run.door) ? RLNemeses.Get(run.door.nemesis) : null;
+    if IsDefined(nemesis) && nemesis.alive && !run.IsBossFloor() {
+      plan.Add(nemesis.record, false, baseLevel + RLNemeses.LevelBonus(nemesis), true);
+      plan.nemesisSlot = ArraySize(plan.records);
+      plan.nemesisId = nemesis.id;
+      plan.nemesisAppearance = nemesis.appearance;
+      if nemesis.rank >= 3 {
+        plan.Add(faction.Pick(2), false, baseLevel + 2, true);
+        plan.Add(faction.Pick(2), false, baseLevel + 2, true);
+      }
+    }
+
     if run.IsBossFloor() {
       plan.BeginWave();
       let bosses = RLEncounters.BossRecords(run.act, faction.faction);

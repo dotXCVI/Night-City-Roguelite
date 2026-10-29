@@ -18,8 +18,13 @@
 // cycle, the next one arriving when one enemy is left, until the run system
 // releases the hold; then the fight ends with the last enemy.
 //
-// Spawn points are on the navmesh, inside the arena, near V's floor level and
-// reachable from V on foot (a path is calculated before spawning).
+// Where enemies appear comes from the arena's ground, read as V arrives
+// (Combat/ArenaSite.reds): each enemy fights from the kind of spot its role
+// wants - snipers and netrunners on a perch, blades and shotguns close in,
+// riflemen behind cover, heavies and bosses out ahead - and each wave comes in
+// from one side of V: the first from ahead, the next from a flank or behind.
+// Without a reading (or nothing that fits) a spawn point is any navmesh point
+// inside the arena, near V's floor level and reachable from V on foot.
 // -----------------------------------------------------------------------------
 
 module NightCityRoguelite
@@ -53,6 +58,10 @@ public class RLTrackedEnemy {
   // teleport doesn't take behind some doors) is removed.
   public let recallFrom: Vector4;
   public let recallCheckAt: Float;
+  // Spawned on a perch (a sniper's balcony): allowed off V's floor.
+  public let perched: Bool;
+  // A nemesis (Run/Nemesis.reds): its id, 0 for everyone else.
+  public let nemesis: Int32;
 }
 
 public class RLEncounterPlan {
@@ -68,6 +77,11 @@ public class RLEncounterPlan {
   public let reinforceLevel: Int32;
   // Hot doors: the lieutenant's place in the records (1-based; 0 = none).
   public let lieutenant: Int32;
+  // A nemesis: its place in the records (1-based; 0 = none), its id and the
+  // face it keeps.
+  public let nemesisSlot: Int32;
+  public let nemesisId: Int32;
+  public let nemesisAppearance: CName;
 
   public func WaveCount() -> Int32 = ArraySize(this.waveStarts)
 
@@ -117,6 +131,10 @@ public class RLWaveSpawner extends RLDelayTarget {
   // ends with the last enemy.
   private let m_holdOpen: Bool;
   private let m_finishing: Bool;
+  // The arena's ground (RLArenaSite), and the side the current wave comes
+  // in from (a heading in degrees).
+  private let m_site: ref<RLArenaSite>;
+  private let m_waveHeading: Float;
 
   public static func Tag() -> CName = n"NightCityRoguelite.Enemy"
 
@@ -127,6 +145,11 @@ public class RLWaveSpawner extends RLDelayTarget {
   }
 
   // --- Public API ----------------------------------------------------------------------
+
+  // The arena's ground, read when V arrived; used by the next Start.
+  public func SetSite(site: ref<RLArenaSite>) {
+    this.m_site = site;
+  }
 
   public func Start(arena: ref<RLArenaDef>, plan: ref<RLEncounterPlan>, holdOpen: Bool) {
     this.Abort();
@@ -231,6 +254,27 @@ public class RLWaveSpawner extends RLDelayTarget {
     return result;
   }
 
+  // The tracked enemy with this entity id, or none.
+  public func Tracked(id: EntityID) -> ref<RLTrackedEnemy> {
+    for enemy in this.m_tracked {
+      if enemy.id == id {
+        return enemy;
+      }
+    }
+    return null;
+  }
+
+  // Nemeses in this fight still standing.
+  public func LivingNemeses() -> array<Int32> {
+    let result: array<Int32>;
+    for enemy in this.m_tracked {
+      if enemy.nemesis > 0 && !enemy.dead {
+        ArrayPush(result, enemy.nemesis);
+      }
+    }
+    return result;
+  }
+
   public func GetAliveCount() -> Int32 {
     let count = 0;
     for enemy in this.m_tracked {
@@ -262,6 +306,7 @@ public class RLWaveSpawner extends RLDelayTarget {
       return;
     }
     let player = GetPlayer(GetGameInstance());
+    this.m_waveHeading = this.WaveHeading(player);
     let first = this.m_plan.waveStarts[this.m_wave];
     let last = this.m_plan.WaveEnd(this.m_wave);
     // Relax phase: drop the last (never a boss) enemies of this wave.
@@ -276,7 +321,7 @@ public class RLWaveSpawner extends RLDelayTarget {
       if this.GetAliveCount() >= RLConfig.MaxAlive() {
         break;
       }
-      if this.SpawnRecord(player, this.m_plan.records[i], this.m_plan.bossFlags[i], this.m_plan.eliteFlags[i], this.m_plan.levels[i], this.m_plan.lieutenant == i + 1) {
+      if this.SpawnRecord(player, this.m_plan.records[i], this.m_plan.bossFlags[i], this.m_plan.eliteFlags[i], this.m_plan.levels[i], this.m_plan.lieutenant == i + 1, this.m_plan.nemesisSlot == i + 1) {
         spawned += 1;
       }
       i += 1;
@@ -292,9 +337,32 @@ public class RLWaveSpawner extends RLDelayTarget {
     }
   }
 
-  private func SpawnRecord(player: ref<PlayerPuppet>, record: TweakDBID, isBoss: Bool, isElite: Bool, level: Int32, opt isLieutenant: Bool) -> Bool {
+  // The side a wave comes in from: the first (and a boss's) from where V is
+  // looking, the next ones from a flank or from behind.
+  private func WaveHeading(player: ref<PlayerPuppet>) -> Float {
+    let ahead = IsDefined(player) ? Vector4.Heading(player.GetWorldForward()) : 0.0;
+    if this.m_wave == 0 || this.IsBossWave(this.m_wave) {
+      return ahead;
+    }
+    let turns = [90.0, -90.0, 180.0];
+    return ahead + turns[RandRange(0, ArraySize(turns))];
+  }
+
+  private func IsBossWave(wave: Int32) -> Bool {
+    let i = this.m_plan.waveStarts[wave];
+    while i < this.m_plan.WaveEnd(wave) {
+      if this.m_plan.bossFlags[i] {
+        return true;
+      }
+      i += 1;
+    }
+    return false;
+  }
+
+  private func SpawnRecord(player: ref<PlayerPuppet>, record: TweakDBID, isBoss: Bool, isElite: Bool, level: Int32, opt isLieutenant: Bool, opt isNemesis: Bool) -> Bool {
     let position: Vector4;
-    if !this.FindSpawnPoint(player, position) {
+    let perched = false;
+    if !this.FindRoleSpot(player, RLArenaSite.RoleOf(record, isBoss), position, perched) && !this.FindSpawnPoint(player, position) {
       RLLog("No spawn point found for an enemy.");
       return false;
     }
@@ -308,6 +376,9 @@ public class RLWaveSpawner extends RLDelayTarget {
     spec.persistState = false;
     spec.persistSpawn = false;
     spec.tags = [RLWaveSpawner.Tag()];
+    if isNemesis && IsNameValid(this.m_plan.nemesisAppearance) {
+      spec.appearanceName = this.m_plan.nemesisAppearance;
+    }
     let id = GameInstance.GetDynamicEntitySystem().CreateEntity(spec);
     if !EntityID.IsDefined(id) {
       RLLog(s"CreateEntity failed for \(TDBID.ToStringDEBUG(record))");
@@ -322,12 +393,36 @@ public class RLWaveSpawner extends RLDelayTarget {
     enemy.level = level;
     enemy.spawnTime = this.m_time;
     enemy.bestDistance = 9999.0;
+    enemy.perched = perched;
+    enemy.nemesis = isNemesis ? this.m_plan.nemesisId : 0;
     ArrayPush(this.m_tracked, enemy);
     if IsDefined(this.m_system) {
       this.m_system.OnEnemySpawned(enemy);
     }
     RLDebug(s"Spawned \(TDBID.ToStringDEBUG(record)) at (\(position.X), \(position.Y), \(position.Z)).");
     return true;
+  }
+
+  // A spot from the arena's ground for the enemy's role, on the wave's side.
+  private func FindRoleSpot(player: ref<PlayerPuppet>, role: RLSpawnRole, out result: Vector4, out perched: Bool) -> Bool {
+    if !IsDefined(this.m_site) || !IsDefined(player) {
+      return false;
+    }
+    let from = player.GetWorldPosition();
+    let attempt = 0;
+    while attempt < 3 {
+      let point: Vector4;
+      if this.m_site.Pick(role, from, this.m_waveHeading, 12.0, point) && !this.IsAvoided(point)
+        && Vector4.Distance2D(point, this.m_center) <= this.m_radius {
+        result = point;
+        perched = point.Z - from.Z > 3.0;
+        this.m_lastSpawnPoint = point;
+        this.m_hasLastSpawnPoint = true;
+        return true;
+      }
+      attempt += 1;
+    }
+    return false;
   }
 
   // A navmesh point inside the arena, near V's floor level, that V can reach on
@@ -570,6 +665,14 @@ public class RLWaveSpawner extends RLDelayTarget {
     RLAffixes.OnTick(puppet, enemy.affixes, glitched);
     if enemy.isBoss {
       this.UpdateBoss(enemy, puppet, player);
+    } else if enemy.nemesis > 0 && IsDefined(this.m_system) {
+      // A nemesis gets the boss bar, and shrugs off its keyword's own
+      // statuses the game applies (an incendiary round, a shock trap).
+      let health = GameInstance.GetStatPoolsSystem(puppet.GetGame()).GetStatPoolValue(Cast<StatsObjectID>(puppet.GetEntityID()), gamedataStatPoolType.Health, true);
+      this.m_system.OnBossHealth(enemy, health);
+      if IsDefined(combat) {
+        RLKeywords.Cleanse(puppet, combat.Foe(enemy.id));
+      }
     }
 
     // Not placed yet: right after spawning the position reads as the world
@@ -623,9 +726,12 @@ public class RLWaveSpawner extends RLDelayTarget {
       this.Recall(enemy, puppet, player, "below the arena");
       return false;
     }
-    if AbsF(position.Z - playerPosition.Z) > 8.0 && distance > 12.0 {
+    // A sniper placed on a perch stays up there until the end of the fight
+    // is near; then it comes down like anyone else.
+    let offFloorLimit = enemy.perched && this.GetAliveCount() > 2 ? 9999.0 : (enemy.perched ? 20.0 : 8.0);
+    if AbsF(position.Z - playerPosition.Z) > (enemy.perched ? 16.0 : 8.0) && distance > 12.0 {
       enemy.offFloorTime += 1.0;
-      if enemy.offFloorTime >= 8.0 {
+      if enemy.offFloorTime >= offFloorLimit {
         this.Recall(enemy, puppet, player, "on another level");
         return false;
       }
@@ -642,8 +748,11 @@ public class RLWaveSpawner extends RLDelayTarget {
       enemy.farTime = 0.0;
     }
 
-    // Keep the pressure on: an enemy that stays back without closing in runs at V.
-    if distance > RLConfig.ChaseDistance() {
+    // Keep the pressure on: an enemy that stays back without closing in runs at
+    // V - except a sniper on its perch while the fight is still on.
+    if enemy.perched && this.GetAliveCount() > 2 {
+      enemy.idleTime = 0.0;
+    } else if distance > RLConfig.ChaseDistance() {
       if distance < enemy.bestDistance - 1.5 {
         enemy.bestDistance = distance;
         enemy.idleTime = 0.0;

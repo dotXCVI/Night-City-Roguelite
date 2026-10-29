@@ -83,6 +83,8 @@ public abstract class RLDatabase {
       "The words effects speak. One effect's keyword sets off another's - that's a combo.");
     RLDatabase.Tab(tabs, n"terms", "THE RUN", "BASICS", n"MainColors.ActiveWhite",
       "What the doors, cards and screens mean.");
+    RLDatabase.Tab(tabs, n"nemeses", "NEMESES", "BASICS", n"MainColors.Red",
+      "Everyone who flatlined you. They remember, they learn, and they're out there.");
     for patron in RLPatrons.All() {
       RLDatabase.Tab(tabs, patron.id, patron.name, "PATRONS", patron.accent,
         patron.tagline + " Speaks " + RLDatabase.KeywordList(RLPatrons.Keywords(patron.id)) + ".");
@@ -121,6 +123,7 @@ public abstract class RLDatabase {
     switch id {
       case n"keywords": return RLDatabase.Keywords();
       case n"terms": return RLDatabase.Terms();
+      case n"nemeses": return RLDatabase.Nemeses();
       case n"duos": return RLDatabase.Duos();
       case n"hacks": return RLDatabase.Quickhacks();
     }
@@ -232,6 +235,8 @@ public abstract class RLDatabase {
     RLDatabase.Term(list, "WEAPONS", "EVOLVE", n"MainColors.Gold", "Legendary with two weapon effects: a gun becomes an iconic, chrome learns its signature. A third effect slot either way.");
     RLDatabase.Term(list, "WEAPONS", "STYLES", n"MainColors.Gold", "Points for how you fight. Ranks at 3, 6 and 9 add damage; rank III adds a signature.");
     RLDatabase.Term(list, "DOORS", "HOT DOOR", n"MainColors.Red", "Elites every wave and a lieutenant at the end. The reward comes two steps up, with a card more and +50% eddies.");
+    RLDatabase.Term(list, "DOORS", "ROUTE", n"MainColors.Blue", "An act's first doors each lead somewhere in the city. The one you take is where the act's fights are, who you fight, and the landmark where its boss waits.");
+    RLDatabase.Term(list, "DOORS", "NEMESIS", n"MainColors.Red", "Whoever flatlines you remembers. They come back on doors against their gang, rank up when they kill you again, and learn to shrug off your favourite keyword.");
     RLDatabase.Term(list, "DOORS", "BANISH", white, "Takes a card out of the run for good. One an act.");
     RLDatabase.Term(list, "DOORS", "REROLL", n"MainColors.Blue", "Deals a screen or the doors again. Charges refill every act.");
     RLDatabase.Term(list, "SURVIVAL", "COVER", n"MainColors.Green", "Trauma Team. A lethal hit with cover left gets you back up, once per cover.");
@@ -244,6 +249,46 @@ public abstract class RLDatabase {
 
   private static func Term(out list: array<ref<RLDbEntry>>, const group: String, const title: String, accent: CName, const text: String) {
     ArrayPush(list, RLDbEntry.Make(group, group, title, accent, text));
+  }
+
+  // --- Nemeses --------------------------------------------------------------------------
+
+  // At large first, then the fallen; their story under each.
+  private static func Nemeses() -> array<ref<RLDbEntry>> {
+    let list: array<ref<RLDbEntry>>;
+    let all = RogueliteService.Get().GetNemeses();
+    for alive in [true, false] {
+      let i = ArraySize(all) - 1;
+      while i >= 0 {
+        let nemesis = all[i];
+        if Equals(nemesis.alive, alive) {
+          ArrayPush(list, RLDatabase.Nemesis(nemesis));
+        }
+        i -= 1;
+      }
+    }
+    if ArraySize(list) == 0 {
+      ArrayPush(list, RLDbEntry.Make("AT LARGE", "NOBODY YET", "No one", n"MainColors.Grey",
+        "Nobody's flatlined you yet. The first one who does will remember."));
+    }
+    return list;
+  }
+
+  private static func Nemesis(nemesis: ref<RLNemesis>) -> ref<RLDbEntry> {
+    let faction = RLEncounters.FactionName(nemesis.Affiliation());
+    let entry = RLDbEntry.Make(nemesis.alive ? "AT LARGE" : "TAKEN DOWN", nemesis.RankTitle() + " - " + faction, nemesis.FullName(),
+      nemesis.alive ? n"MainColors.Red" : n"MainColors.Grey",
+      nemesis.Threat() + (nemesis.meetings > 1 ? s" Met \(nemesis.meetings) times." : ""));
+    entry.Section("TRICKS", RLAffixes.Names(nemesis.affixes), n"MainColors.ActiveWhite");
+    let story = "";
+    for line in nemesis.story {
+      story += (StrLen(story) > 0 ? " " : "") + NameToString(line);
+    }
+    entry.Section("THE STORY SO FAR", story, n"MainColors.ActiveWhite");
+    if IsNameValid(nemesis.immune) {
+      entry.Chip("RESISTS " + NameToString(nemesis.immune), nemesis.immune);
+    }
+    return entry;
   }
 
   // --- Patrons --------------------------------------------------------------------------

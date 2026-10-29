@@ -105,3 +105,19 @@ protected cb func OnAccept() -> Bool {
   }
   return wrappedMethod();
 }
+
+// Developers (RLConfig.AutoSurvey): with the city survey unfinished, the main
+// menu continues the last save as soon as the saves are listed, and the
+// survey picks up after the load (Dev/CitySurvey.reds).
+@wrapMethod(SingleplayerMenuGameController)
+protected cb func OnSavesForLoadReady(saves: array<String>) -> Bool {
+  let result = wrappedMethod(saves);
+  let service = RogueliteService.Get();
+  if RLConfig.DevTools() && RLConfig.AutoSurvey() && IsDefined(service) && !service.IsSurveyDone() && ArraySize(saves) > 0 {
+    let data = new PauseMenuListItemData();
+    data.action = PauseMenuAction.QuickLoad;
+    RLLog("City survey: continuing the last save.");
+    this.HandleMenuItemActivate(data);
+  }
+  return result;
+}

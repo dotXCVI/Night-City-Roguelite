@@ -103,6 +103,17 @@ public class RLRunState {
   // it and V went elsewhere. The more often a door is passed over, the less
   // it comes back (RLRewards.RollCategory).
   public let doorsPassed: array<Int32>;
+  // The act's route (Run/Routes.reds): where it goes, the landmark its boss
+  // waits at, the routes the run has taken and the route arenas this act
+  // has used.
+  public let route: CName;
+  public let routeBoss: CName;
+  public let routesTaken: array<CName>;
+  public let routeArenas: array<CName>;
+  // Nemeses (Run/Nemesis.reds) met this run, so each shows up once.
+  public let nemesesMet: array<Int32>;
+  // Offered on a door of the screen being rolled (reset every screen).
+  public let nemesesOffered: array<Int32>;
   public let banishes: Int32;
   public let banishesPerAct: Int32;
   // Terminal upgrades that fire once: the first patron screen (Open Line),
@@ -171,6 +182,10 @@ public class RLRunState {
     }
     this.floor = 1;
     this.act += 1;
+    // A new act picks its own route on its first floor.
+    this.route = n"";
+    this.routeBoss = n"";
+    ArrayClear(this.routeArenas);
     this.rerolls = Max(this.rerolls, this.rerollsPerAct);
     this.banishes = Max(this.banishes, this.banishesPerAct);
     this.hotLeft = RLRewardDirector.HotDoorsPerAct(this.act);

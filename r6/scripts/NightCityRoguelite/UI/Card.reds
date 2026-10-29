@@ -46,6 +46,8 @@ public class RLCard extends CustomButton {
   protected let m_badgeIcon: wref<inkImage>;
   protected let m_bannerHeight: Float;
   protected let m_compact: Bool;
+  // A one-line row (the database's lists): less padding still.
+  protected let m_tight: Bool;
   // The card is (being) lifted by a hover.
   protected let m_lifted: Bool;
   protected let m_lift: wref<inkCanvas>;
@@ -352,6 +354,14 @@ public class RLCard extends CustomButton {
     this.Layout();
   }
 
+  // A slim one-line row: the title sits close under the accent bar.
+  public func SetTight() {
+    this.m_compact = true;
+    this.m_tight = true;
+    this.m_body.SetChildMargin(inkMargin(0.0, 0.0, 0.0, 0.0));
+    this.Layout();
+  }
+
   // Codex art across the top of the card, at the art's own 16:9.
   public func SetBanner(art: RLArt) {
     if !RLArts.IsValid(art) {
@@ -377,7 +387,10 @@ public class RLCard extends CustomButton {
   // Body and accent bar sit under the banner when there is one.
   private func Layout() {
     let top = this.m_bannerHeight > 0.0 ? this.m_bannerHeight + 6.0 : 0.0;
-    if this.m_compact {
+    if this.m_tight {
+      this.m_body.SetMargin(inkMargin(24.0, top + 14.0, 24.0, 4.0));
+      this.m_bar.SetMargin(inkMargin(24.0, top + 6.0, 60.0, 0.0));
+    } else if this.m_compact {
       this.m_body.SetMargin(inkMargin(24.0, top + 22.0, 24.0, 10.0));
       this.m_bar.SetMargin(inkMargin(24.0, top + 10.0, 60.0, 0.0));
     } else {

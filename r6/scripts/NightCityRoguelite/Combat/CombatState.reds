@@ -132,6 +132,10 @@ public class RLFoe {
   public let kineticUntil: Float;
   // Last time V saw it burning (the game clears Burning when it dies).
   public let burnSeenAt: Float;
+  // A nemesis's learned resistance: this keyword won't stick to it
+  // (Run/Nemesis.reds); when V last saw it shrug one off.
+  public let immune: CName;
+  public let resistedAt: Float;
 }
 
 public class RLCombatState {
@@ -139,8 +143,10 @@ public class RLCombatState {
   // V's own blasts (effects, objectives) don't hurt V: hits from V until then
   // are ignored.
   public let selfBlastUntil: Float;
-  // The last enemy to hit V (telemetry: what killed V).
+  // The last enemy to hit V (telemetry: what killed V; a nemesis is born
+  // from it).
   public let lastAttacker: String;
+  public let lastAttackerId: EntityID;
   // Boosted hits logged this arena (the first few, to check effects apply).
   public let loggedHits: Int32;
   // The weapon of the killing hit (TakeHitFlags).
@@ -246,6 +252,7 @@ public class RLCombatState {
     this.kills = 0;
     this.loggedHits = 0;
     this.lastAttacker = "";
+    this.lastAttackerId = EntityID();
     this.killWeapon = ItemID.None();
     this.rampageUntil = 0.0;
     this.psychoUntil = 0.0;

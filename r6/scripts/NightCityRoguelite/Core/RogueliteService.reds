@@ -55,6 +55,17 @@ public class RogueliteService extends ScriptableService {
   // Run telemetry records (Core/Telemetry.reds), oldest first.
   private persistent let m_telemetry: array<CName>;
   private persistent let m_telemetrySeq: Int32;
+  // Nemeses (Run/Nemesis.reds): everyone who ever flatlined V, at large or
+  // fallen, and the last id handed out.
+  private persistent let m_nemeses: array<ref<RLNemesis>>;
+  private persistent let m_nemesisSeq: Int32;
+  // The city survey (developers, Dev/CitySurvey.reds): one record a point,
+  // the next point to visit, and whether every point has been visited. Kept
+  // apart from the telemetry so a survey doesn't push run records out.
+  private persistent let m_survey: array<CName>;
+  private persistent let m_surveySeq: Int32;
+  private persistent let m_surveyNext: Int32;
+  private persistent let m_surveyDone: Bool;
 
   // Content pools and the perk card catalog, built once per game process.
   private let m_pools: ref<RLTweakPools>;
@@ -97,6 +108,45 @@ public class RogueliteService extends ScriptableService {
     while ArraySize(this.m_telemetry) > 4000 {
       ArrayErase(this.m_telemetry, 0);
     }
+  }
+
+  public func AppendSurvey(const record: String) {
+    this.m_surveySeq += 1;
+    let pieces = RogueliteService.Pieces(record);
+    let i = 0;
+    while i < ArraySize(pieces) {
+      ArrayPush(this.m_survey, StringToName((i > 0 ? "S1+|" : "S1|") + IntToString(this.m_surveySeq) + "|" + pieces[i]));
+      i += 1;
+    }
+  }
+
+  public func GetNemeses() -> array<ref<RLNemesis>> = this.m_nemeses
+
+  public func NextNemesisId() -> Int32 {
+    this.m_nemesisSeq += 1;
+    return this.m_nemesisSeq;
+  }
+
+  // Newest last; the fallen beyond a dozen are forgotten.
+  public func AddNemesis(nemesis: ref<RLNemesis>) {
+    ArrayPush(this.m_nemeses, nemesis);
+    let i = 0;
+    while ArraySize(this.m_nemeses) > 12 && i < ArraySize(this.m_nemeses) {
+      if !this.m_nemeses[i].alive {
+        ArrayErase(this.m_nemeses, i);
+      } else {
+        i += 1;
+      }
+    }
+  }
+
+  public func GetSurveyNext() -> Int32 = this.m_surveyNext
+  public func SetSurveyNext(index: Int32) {
+    this.m_surveyNext = index;
+  }
+  public func IsSurveyDone() -> Bool = this.m_surveyDone
+  public func SetSurveyDone(done: Bool) {
+    this.m_surveyDone = done;
   }
 
   // A saved name holds 255 bytes, so a longer line is saved in pieces: every

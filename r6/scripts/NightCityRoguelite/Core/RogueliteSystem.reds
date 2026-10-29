@@ -68,8 +68,10 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_hud: ref<RLHud>;
   private let m_apartment: ref<RLApartmentHub>;
   private let m_music: ref<RLMusic>;
-  // Dev tools: the arena scout (Combat/ArenaScout.reds).
+  // Dev tools: the arena scout (Combat/ArenaScout.reds) and the city survey
+  // (Dev/CitySurvey.reds).
   private let m_scout: ref<RLArenaScout>;
+  private let m_survey: ref<RLCitySurvey>;
   private let m_pacing: ref<RLPacing>;
   private let m_transition: ref<RLTransition>;
   private let m_journalGuard: ref<RLJournalGuard>;
@@ -114,8 +116,10 @@ public class RogueliteSystem extends ScriptableSystem {
   private let m_endSubtitle: String;
   private let m_lastSummary: String;
 
-  // Death sequence (Player/Death.reds).
+  // Death sequence (Player/Death.reds), and what the nemesis system made of
+  // it ("... will remember you").
   private let m_dying: Bool;
+  private let m_nemesisLine: String;
   private let m_sawDeath: Bool;
   private let m_deathElapsed: Float;
   private let m_deathMenuFact: Int32;
@@ -495,6 +499,9 @@ public class RogueliteSystem extends ScriptableSystem {
 
   public func OnDelayed(action: CName) {
     switch action {
+      case n"autoSurvey":
+        this.StartSurvey();
+        break;
       case n"countdown":
         this.m_hasTimer = false;
         this.m_countdown -= 1;
@@ -746,7 +753,26 @@ public class RogueliteSystem extends ScriptableSystem {
 
   // --- Arena scout (dev tools) ----------------------------------------------------------------
 
-  public func IsScouting() -> Bool = IsDefined(this.m_scout) && this.m_scout.IsActive()
+  public func IsScouting() -> Bool = (IsDefined(this.m_scout) && this.m_scout.IsActive()) || (IsDefined(this.m_survey) && this.m_survey.IsActive())
+
+  // From the terminal's SURVEY CITY card, or on its own after a load with
+  // RLConfig.AutoSurvey(): the city survey, from where it left off.
+  public func StartSurvey() {
+    if !RLConfig.DevTools() || !Equals(this.m_state, RLState.Hub) || IsDefined(this.m_run) || this.IsScouting() || RogueliteService.Get().IsSurveyDone() {
+      return;
+    }
+    this.m_apartment.StopLeash();
+    this.m_survey = new RLCitySurvey();
+    this.m_survey.Start(this);
+  }
+
+  // A call or a story scene while the scout or the survey is out: noted
+  // against the spot (the survey leaves out spots that wake the story).
+  public func NoteStory(const what: String) {
+    if IsDefined(this.m_survey) && this.m_survey.IsActive() {
+      this.m_survey.NoteStory(what);
+    }
+  }
 
   // From the terminal's SCOUT cards: off to every open-world arena candidate
   // (or every story landmark) and back home (Combat/ArenaScout.reds).
@@ -787,6 +813,9 @@ public class RogueliteSystem extends ScriptableSystem {
     if IsDefined(player) && (!RogueliteSystem.IsStoryBusy(player) || this.m_settleTries > 60) {
       this.ReturnToHub(player);
       this.m_apartment.StartLeash();
+      if RLConfig.DevTools() && RLConfig.AutoSurvey() && !RogueliteService.Get().IsSurveyDone() {
+        this.After(n"autoSurvey", 10.0);
+      }
       return;
     }
     this.After(n"settleHome", 1.0);
@@ -1109,6 +1138,7 @@ public class RogueliteSystem extends ScriptableSystem {
     RLBoons.ClearBuffs(player);
     this.ApplyDifficulty();
     let isTest = testFloor > 0;
+    this.m_nemesisLine = "";
     this.m_run = RLRunState.Create(isTest ? 0 : service.BeginRunToken(), kit);
     if isTest {
       this.m_run.isTest = true;
@@ -1294,6 +1324,16 @@ public class RogueliteSystem extends ScriptableSystem {
     }
     this.m_run.door = door;
     this.m_faction = door.faction;
+    // The act's first door sets its route (Run/Routes.reds).
+    if IsNameValid(door.route) {
+      RLRoutes.Take(this.m_run, door.route, door.routeBoss);
+      RLTelemetry.Record(this.m_run, "ROUTE", RLTelemetry.IntField("act", this.m_run.act) + RLTelemetry.Field("route", NameToString(door.route))
+        + RLTelemetry.Field("boss", NameToString(door.routeBoss)));
+    }
+    ArrayPush(this.m_run.routeArenas, door.arena);
+    if door.nemesis > 0 {
+      ArrayPush(this.m_run.nemesesMet, door.nemesis);
+    }
     ArrayClear(this.m_doors);
     this.TravelToArena(arena);
   }
@@ -1326,7 +1366,8 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(arena) || !IsDefined(this.m_run) || !Equals(this.m_state, RLState.Traveling) {
       return;
     }
-    this.m_transition.FadeOut(arena.name, this.m_run.FloorLabel() + " - " + this.FightLabel(), RLConfig.FadeSeconds());
+    let route = RLRoutes.Name(this.m_run.route);
+    this.m_transition.FadeOut(arena.name, (StrLen(route) > 0 ? route + " - " : "") + this.m_run.FloorLabel() + " - " + this.FightLabel(), RLConfig.FadeSeconds());
     this.After(n"travelBlack", RLConfig.FadeSeconds() + 0.1);
   }
 
@@ -1393,6 +1434,10 @@ public class RogueliteSystem extends ScriptableSystem {
     if IsDefined(player) {
       RLArenaDirector.TeleportToPoint(player, arena.position, arena.yaw);
     }
+    // Read the ground for the waves (Combat/ArenaSite.reds) while it's dark.
+    let site = RLArenaSite.Read(game, arena.position, MaxF(12.0, arena.radius - 2.0));
+    this.m_spawner.SetSite(site);
+    RLLog(s"Arena ground: \(site.Coverage())% floor, \(site.covered) of \(ArraySize(site.ground)) points in cover, \(ArraySize(site.perches)) perches.");
     this.m_arenas.StartWalls();
     // The arena glitches in as the black lifts.
     if IsDefined(player) {
@@ -1598,17 +1643,29 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(this.m_run) {
       return;
     }
-    if enemy.isElite || enemy.isBoss {
+    let nemesis = RLNemeses.Get(enemy.nemesis);
+    if IsDefined(nemesis) {
+      // A nemesis keeps its tricks from run to run.
+      enemy.affixes = nemesis.affixes;
+      RLNemeses.OnMet(this.m_run, nemesis);
+    } else if enemy.isElite || enemy.isBoss {
       enemy.affixes = RLAffixes.Roll(this.m_run, enemy.isBoss, enemy.isLieutenant);
     }
     this.m_combat.RegisterEnemy(enemy.id, enemy.isBoss, enemy.isElite, enemy.affixes, enemy.record);
+    if IsDefined(nemesis) {
+      this.m_combat.Foe(enemy.id).immune = nemesis.immune;
+    }
   }
 
   // First sighting: bosses and elites with affixes are announced.
   public func OnEnemySighted(enemy: ref<RLTrackedEnemy>, puppet: ref<ScriptedPuppet>) {
     let game = this.GetGameInstance();
     let affixes = RLAffixes.Names(enemy.affixes);
-    if enemy.isBoss {
+    let nemesis = RLNemeses.Get(enemy.nemesis);
+    if IsDefined(nemesis) {
+      enemy.name = nemesis.FullName();
+      RLNotify(game, nemesis.RankTitle() + ": " + enemy.name + ". " + nemesis.Threat() + (StrLen(affixes) > 0 ? " " + affixes : ""), 6.0);
+    } else if enemy.isBoss {
       let name = puppet.GetDisplayName();
       enemy.name = StrLen(name) > 0 ? name : "BOSS";
       RLNotify(game, StrLen(affixes) > 0 ? enemy.name + " - " + affixes : enemy.name, 4.0);
@@ -1687,6 +1744,16 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_run.kills += 1;
     this.m_pacing.OnKill();
     this.RefreshHud();
+    let nemesis = RLNemeses.Get(enemy.nemesis);
+    if IsDefined(nemesis) && !removed {
+      let arena = this.m_arenas.GetArena();
+      let cred = RLNemeses.OnKilled(this.m_run, nemesis, IsDefined(arena) ? arena.name : "");
+      RLNotify(this.GetGameInstance(), "NEMESIS DOWN: " + nemesis.FullName() + (cred > 0 ? s". +\(cred) CRED" + (nemesis.rank >= 2 ? ", +1 FAVOR" : "") : ""), 6.0);
+    }
+    if IsDefined(nemesis) && this.m_bossFocus == enemy.id {
+      this.m_bossFocus = EntityID();
+      this.m_hud.ClearBoss();
+    }
     if isBoss {
       this.m_run.bossesKilled += 1;
       if this.m_bossFocus == enemy.id {
@@ -1784,6 +1851,7 @@ public class RogueliteSystem extends ScriptableSystem {
       let affixes = RLAffixes.Names(this.m_combat.Affixes(id));
       let foe = this.m_combat.Foe(id);
       this.m_combat.lastAttacker = attacker.GetDisplayName() + " (" + (IsDefined(foe) ? foe.kind : role) + (StrLen(affixes) > 0 ? ", " + affixes : "") + ")";
+      this.m_combat.lastAttackerId = id;
     }
     if IsDefined(attacker) {
       this.m_combat.Hurt(attacker.GetEntityID(), scale * hitEvent.attackComputed.GetTotalAttackValue(gamedataStatPoolType.Health));
@@ -2326,6 +2394,12 @@ public class RogueliteSystem extends ScriptableSystem {
     this.m_spawner.Halt();
     this.m_music.Stop();
     this.m_pacing.EndArena(false, this.m_run);
+    // Whoever did it remembers (Run/Nemesis.reds).
+    let killer = this.m_spawner.Tracked(this.m_combat.lastAttackerId);
+    let killerPuppet = GameInstance.FindEntityByID(this.GetGameInstance(), this.m_combat.lastAttackerId) as ScriptedPuppet;
+    let arena = this.m_arenas.GetArena();
+    let gang = IsDefined(this.m_faction) ? this.m_faction.faction : gamedataAffiliation.Unaffiliated;
+    this.m_nemesisLine = RLNemeses.OnVKilled(this.m_run, killer, killerPuppet, this.m_spawner.LivingNemeses(), IsDefined(arena) ? arena.name : "", gang);
     this.RecordFloor("lost");
     RLTelemetry.Record(this.m_run, "DEATH", RLTelemetry.IntField("depth", this.m_run.Depth()) + RLTelemetry.IntField("wave", this.m_wave)
       + RLTelemetry.Field("by", this.m_combat.lastAttacker));
@@ -2556,7 +2630,8 @@ public class RogueliteSystem extends ScriptableSystem {
     if !IsDefined(this.m_run) {
       return "";
     }
-    return s"FLOORS CLEARED \(this.m_run.floorsCleared)   KILLS \(this.m_run.kills)";
+    let summary = s"FLOORS CLEARED \(this.m_run.floorsCleared)   KILLS \(this.m_run.kills)";
+    return StrLen(this.m_nemesisLine) > 0 ? summary + "   " + StrUpper(this.m_nemesisLine) : summary;
   }
 
   private func ArenaSummary() -> String {

@@ -161,7 +161,7 @@ public class RLArenaScout extends RLDelayTarget {
 
   // The share (0-100) of sample points in a circle around `start`, on its
   // floor, that V can walk to from the start.
-  private static func Coverage(game: GameInstance, start: Vector4, radius: Float, out low: Float, out high: Float) -> Int32 {
+  public static func Coverage(game: GameInstance, start: Vector4, radius: Float, out low: Float, out high: Float) -> Int32 {
     let navigation = GameInstance.GetNavigationSystem(game);
     let rings = [0.35, 0.6, 0.85];
     let samples = 0;
@@ -185,7 +185,7 @@ public class RLArenaScout extends RLDelayTarget {
   }
 
   // Something solid overhead: the start is inside a building.
-  private static func HasRoof(game: GameInstance, start: Vector4) -> Bool {
+  public static func HasRoof(game: GameInstance, start: Vector4) -> Bool {
     let filter: QueryFilter;
     QueryFilter.AddGroup(filter, n"Static");
     let result: TraceResult;
@@ -195,7 +195,7 @@ public class RLArenaScout extends RLDelayTarget {
   }
 
   // The location name the minimap shows.
-  private static func PlaceName(game: GameInstance) -> String {
+  public static func PlaceName(game: GameInstance) -> String {
     let board = GameInstance.GetBlackboardSystem(game).Get(GetAllBlackboardDefs().UI_Map);
     return IsDefined(board) ? board.GetString(GetAllBlackboardDefs().UI_Map.currentLocation) : "";
   }

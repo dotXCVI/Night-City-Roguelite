@@ -112,9 +112,9 @@ Every file starts with a header comment explaining its design - read it.
 | --- | --- |
 | Core | `Config.reds` (all tunables), `Runtime.reds` (RLLog/RLDebug/RLNotify, RLDelay timers, RLDelayTarget), `RogueliteService.reds` (meta progression persisted outside saves, F7 key, session hooks), `RogueliteSystem.reds` (per-save state machine - the orchestrator), `RunState.reds`, `Story.reds` (quiet story) |
 | Meta | `MetaProgression.reds` (kits for favors, favor payouts, Cred payouts), `Terminal.reds` (the ten upgrade rows; `RLTerminal.Has(take, rank)` is how code asks for an upgrade) |
-| Run | `Difficulty.reds` (act levels, act damage scale, incoming damage hook), `Encounters.reds` (wave plans, bosses, bounties), `Pacing.reds` (L4D director), `Fixer.reds` (+ buy-backs), `Objectives.reds` (survive / uplink / sabotage), `Events.reds` ("?" doors), `Overdrive.reds` (the ultimate, overclock episodes), `Gigs.reds` |
+| Run | `Routes.reds` (`RLRoutes`: the act's route, its arenas and boss landmark), `Nemesis.reds` (`RLNemeses`: persistent nemeses - born, met, ranked, resisted, fallen), `Difficulty.reds` (act levels, act damage scale, incoming damage hook), `Encounters.reds` (wave plans, bosses, bounties, the nemesis slot), `Pacing.reds` (L4D director), `Fixer.reds` (+ buy-backs), `Objectives.reds` (survive / uplink / sabotage), `Events.reds` ("?" doors), `Overdrive.reds` (the ultimate, overclock episodes), `Gigs.reds` |
 | Rewards | `RewardSystem.reds` (doors, offers, granting, skip/banish), `Director.reds` (quality rolls, pity, spikes), `BuildProfile.reds`, `PerkCatalog.reds` + generated `PerkCatalogData.reds`, `Patrons.reds` (keywords, the run's line-up), `Boons.reds` (the effect catalogue: effects, weapon effects, duos, legendaries, favours; stat effects), `BoonEffects.reds` (every effect's rule: hit/kill/dash/tick/fight hooks), `Styles.reds`, `Weapons.reds` (main + sidearm slots, Tune-Ups, trades, evolution, DPS previews), `ArmChrome.reds` (arms and decks as the main: records, REWIRE, evolution and `RLSignatures`, Heal, TakeOverMain), `ArmMods.reds` (the main chrome's two mod slots, `RLArmModEffects`), `WeaponActions.reds` (hits / shells / uploads: each weapon effect's reading per action), `Quickhacks.reds` (`RLHacks`: families, keywords, the deck's loadout and its quality) |
-| Combat | `Arenas.reds` (8 arenas), `ArenaDirector.reds` (teleport, walls tick, bounds), `ArenaWalls.reds`, `ArenaCleaner.reds`, `WaveSpawner.reds` (+ boss phases, objective hold-open), `Affixes.reds` (elite affixes, plating, `RLExplosions`), `DamageHooks.reds` (outgoing hit + NPC death hooks), `CombatState.reds` (`RLCombatState`: per-fight foes, keyword timers, MOMENTUM/SHIELD, the effect ledger), `Keywords.reds` (`RLKeywords`: the only place keywords are applied and shown; `RLLuck`; `RLEffectStep` chain beats), `Loot.reds` |
+| Combat | `Arenas.reds` (hand-made arenas, landmarks; `Data/CityArenas.reds` adds the survey's), `ArenaSite.reds` (`RLArenaSite`: an arena's ground and perches, spawn spots by role), `ArenaScout.reds` (dev), `ArenaDirector.reds` (teleport, walls tick, bounds), `ArenaWalls.reds`, `ArenaCleaner.reds`, `WaveSpawner.reds` (+ boss phases, objective hold-open, role spawns, wave headings), `Affixes.reds` (elite affixes, plating, `RLExplosions`), `DamageHooks.reds` (outgoing hit + NPC death hooks), `CombatState.reds` (`RLCombatState`: per-fight foes, keyword timers, MOMENTUM/SHIELD, the effect ledger), `Keywords.reds` (`RLKeywords`: the only place keywords are applied and shown; `RLLuck`; `RLEffectStep` chain beats), `Loot.reds` |
 | Player | `CharacterReset.reds`, `Kits.reds`, `Perks.reds`, `Consumables.reds` (quality steps, MaxDoc ladder, grenades), `DeathGuard.reds`, `Death.reds`, `OSHooks.reds` (OS activation -> Overdrive) |
 | Hub/Menu/Audio | `ApartmentHub.reds`, `HomeDevices.reds` (front door, computer, armory door and stash), `MainMenuEntry.reds`, `Music.reds` |
 | UI | `Card.reds` (the one card widget everything uses - banner art, badge, hover lift; `RLIcons` incl. the gang logo atlas), `Art.reds` (codex pictures), `Widgets.reds`, `Hud.reds` (+ boss bar), `Transition.reds`, `TerminalPopup.reds`, `ArmoryPopup.reds` (kits), `GuidePopup.reds` (first-run guide), `RewardPopup.reds`, `EventPopup.reds`, `FixerPopup.reds` |
@@ -347,6 +347,24 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   at all eighteen); interiors get small radii, since the scout's 30 m
   circle runs through their walls. `RLRewards.PickBossArena` picks among the
   act's enabled landmarks.
+- **The city survey** (`Dev/CitySurvey.reds`, SURVEY CITY) is the scout at
+  city scale: `source/arenas/gen_survey_points.py` thins every quest pin
+  (plus AMM's locations) to one per 70 m and floor into
+  `Data/SurveyPoints.reds` (663 points). Each visit records walkable cover at
+  20/30/40 m, rise, ground with cover, perches (`RLArenaSite.Read`), roof,
+  and `story`: journal entries it woke and calls (`RogueliteSystem.NoteStory`).
+  Records go to the service's own store (`AppendSurvey`, `S1|seq|...`), not
+  the telemetry. With `RLConfig.AutoSurvey()` (and DevTools) it starts after
+  a load, exits to the main menu every 100 points so Codeware writes the
+  store, and the main menu continues the last save
+  (`SingleplayerMenuGameController.OnSavesForLoadReady`) - a crash loses one
+  batch. Turn AutoSurvey off afterwards: it makes the main menu continue on
+  its own. `tools/survey.py <dat> --places places.json --write` rates the
+  spots (no story, enough floor, flat enough, 120 m from other arenas) and
+  writes `Data/CityArenas.reds`; places.json maps LocKey numbers to text
+  (the localization's onscreens; the fast-travel names give "Arasaka Tower:
+  Jungle"-style names). Once the survey has run, `Data/SurveyPoints.reds`
+  can go.
 - **Bug marks:** F8 (`RLConfig.BugKey()`) logs
   `===== BUG MARK #n =====` with the state machine, popup/countdown flags,
   arena, run and the spawner's view of every enemy (`RLWaveSpawner.Describe`).
@@ -356,6 +374,38 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   `V came to after Xs.`
 
 ## 10. Status and what's next
+
+- **Next (dev, not released, untested in game):** routes, nemeses, the
+  ground-reading spawner and the city survey (CHANGELOG Unreleased). Least
+  certain - check first:
+  1. `RLArenaSite.Read` cost and results: the "Arena ground: N% floor, C of
+     G points in cover, P perches" line per arena; snipers actually up on
+     perches (`perched`) and not recalled.
+  2. A nemesis's face: `spec.appearanceName` from
+     `GetCurrentAppearanceName()` on the killer's body; its door, its boss
+     bar, RESISTED tags, and the NEMESES tab after a death.
+  3. Route doors on an act's first floor: two patron doors at a run's
+     start, the ROUTE line, the act's arenas staying in the route.
+  4. The survey's unattended loop (GotoMainMenu -> continue -> resume).
+- **Researched, not built:** driving between fights and the game's own
+  voice lines reacting to a run.
+  - *Driving:* the game's own chase AI is reachable from scripts
+    (`AIVehicleChaseCommand` on a vehicle's `AICommandEvent`, the way
+    `PreventionSystem.ChasePlayer` and `DynamicSpawnSystem.SpawnCallback`
+    set up police and gang chases). A ROAD fight would spawn a car for V and
+    gang cars with crews (Codeware's DynamicEntitySystem; passengers mounted
+    with `AIMountCommand`) that chase and shoot; the act break (one route to
+    the next) is where it fits best. It needs in-game iteration (mounting,
+    whether passengers shoot, despawn distance), so it waits for a session
+    with the game running.
+  - *Voice lines:* scripts can only play voiceset barks
+    (`GameObject.PlayVoiceOver(obj, context)`, contexts like
+    `sniper_warning`); a quest's spoken lines play from scenes. Reusing them
+    means authoring small `.scene` resources whose lines point at existing
+    localized string ids (their audio comes with them) and a quest phase that
+    plays one when a fact is set - the quest-patch pipeline
+    (`source/quest-patch`) can carry that. First experiment: one Johnny line
+    on entering Arasaka Tower.
 
 - **v0.0.20 (released, untested in game)** spreads the fights: thirteen
   scouted open-world arenas and boss floors at story landmarks

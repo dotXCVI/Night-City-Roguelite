@@ -3,6 +3,21 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
+## Unreleased
+
+**The city**
+
+- **Every act is a journey.** The doors on an act's first floor each lead into a different part of Night City - Watson or the Badlands, then Pacifica, Dogtown, Heywood or Westbrook, then Arasaka Tower or whatever's left - and say which landmark the act's boss waits at. The act's fights stay in that route's districts, against its gangs, and the route's patron shows up more. A run never goes the same way twice.
+- **Arenas read their ground.** Snipers and netrunners spawn up on balconies and catwalks, shotguns and blades close in, riflemen behind cover, heavies and bosses out in the open ahead - and each wave comes from one side: the first from where you're looking, the next from a flank or behind.
+
+**Nemeses**
+
+- **Whoever flatlines you remembers.** Your killer gets a name, a handle from how it fights and its own face, and comes back in later runs on doors against its gang. It ranks up every time it kills you again, keeps its affixes and gains more, and studies your build: the keyword you lean on stops sticking to it. Take it down for Cred and, from lieutenant up, a favor. The database's new NEMESES tab tells their stories.
+
+**Developers**
+
+- **The city survey** (SURVEY CITY on the dev terminal) reads 663 spots across the city - every quest and gig pin - for room to fight and anything that wakes the story, resuming where it left off; with `AutoSurvey` it runs unattended. `tools/survey.py` turns the results into arenas (`Data/CityArenas.reds`).
+
 ## v0.0.20 - Landmarks (2026-10-29)
 
 Landmarks: the fights spread across the city, and bosses meet you where the

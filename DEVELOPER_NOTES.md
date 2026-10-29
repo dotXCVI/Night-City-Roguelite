@@ -1,4 +1,4 @@
-# Night City Roguelite - developer handoff (v0.0.19)
+# Night City Roguelite - developer handoff (v0.0.20)
 
 You are picking up an in-progress Cyberpunk 2077 mod from another AI. Read this
 whole file before changing anything. The mod's source is the attached ZIP; the
@@ -35,7 +35,7 @@ built only from the game's own assets and systems (no new art, no new models).
 - Code must read like it was written by a very talented human engineer:
   clean, consistent, industry-standard, well-commented (comments explain *why*).
 - Versioning: alpha builds are **v0.0.X**. Bump X for every build you hand over
-  (next is v0.0.20). The README is a product page: no version or status line
+  (next is v0.0.21). The README is a product page: no version or status line
   in it - versions live in CHANGELOG.md.
 - Deliver: a ZIP of the full mod folder (README.md, r6/, archive/, source/),
   plus a plain summary of what changed and what is least certain. Every
@@ -357,6 +357,21 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
 
 ## 10. Status and what's next
 
+- **v0.0.20 (released, untested in game)** spreads the fights: thirteen
+  scouted open-world arenas and boss floors at story landmarks
+  (`RLArenas.Landmark`, `RLRewards.PickBossArena`), the arena scout and
+  SCOUT LANDMARKS, a Codex-style DATABASE (`UI/Database.reds`,
+  `RLTerminalPopup.BuildDatabase`), quickhack cards by family with Ping
+  gated on MARK, door freshness (`run.doorsPassed`), unreachable-marker and
+  locked-door fixes, dropped weapons cleared, and richer telemetry
+  (`tools/runreport.py`). Least certain - check first:
+  1. Landmark arenas in a real boss fight: enemies spawning inside the
+     walls of small interiors (Embers, Batty's, the CEO floor), and any
+     story scene or call a landmark sets off.
+  2. The database's hover: `OnDbRowHoverOn/Off` swapping the reading panel
+     without flicker, and the list fitting on THE RUN tab (18 rows).
+  3. The hub's START RUN card fitting at 700 wide (two-to-a-row line-up).
+  4. Door unlocks (`DoorControllerPS` quest actions) on keypad doors.
 - **v0.0.19 (released, untested in game)** is the effects overhaul below plus
   every kit fighting with its main weapon: chrome and decks in the main slot
   (records, REWIRE, signatures, 30 mods on Tune-Up doors), weapon effects

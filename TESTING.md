@@ -125,86 +125,64 @@ The five framework mods are safe to keep, since lots of other mods use them.
 
 ## Things to keep an eye on in this build
 
-A big one: the patrons are rebuilt around effects that combine, every kit now
-fights with its main weapon (chrome and decks included), kits cost favors,
-and the terminal is new. Start a **new** roguelite character for this build.
-Tell me how these feel:
+v0.0.20 takes the fights across the city: thirteen new arenas, and bosses
+now fight at the story's landmarks. The database is rebuilt, and quickhack
+cards are cleaned up. Your v0.0.19 character carries over - no need to start
+a new one. Tell me how these feel:
 
-**Kits and their main weapon**
-- Try the **Brawler** (Gorilla Arms), **Wireman** (Monowire),
-  **Demolitions** (Projectile Launcher) and **Netrunner** (cyberdeck). Is the
-  chrome installed from the first arena? Send the log if a line says "Chrome
-  refused".
-- **Chrome mods** come from TUNE-UP doors (floors 4, 10, 16). Do they change
-  how the weapon fights? Take Mantis Blades from a Chrome door on a gun kit -
-  they have their own mods now.
-- **Weapon effects read your weapon:** on a launcher they count shells, on a
-  deck they count quickhacks. Do Payload, Hot Barrel, Lucky Round and the
-  rest fire about as often as their cards say? On Gorilla Arms especially:
-  in the last log Hot Barrel never went off in five floors.
-- **New arenas:** thirteen of them (Rocky Ridge, Longshore Stacks, Tyger
-  Sweatshop and the rest). Does one start a gig, ring your phone, play a
-  scene or show a quest marker? Press F8 and say which. Is any too cramped,
-  too big, or full of spots enemies can't reach?
-- **Boss arenas:** bosses fight at story landmarks now - the All Foods
-  plant, Konpeki Plaza, the Black Sapphire, Arasaka Tower's roof, Mikoshi
-  and more. Does the boss floor feel like an occasion? Any landmark where
-  enemies spawn somewhere odd, or something from the story plays? F8.
-- **Arenas with rooms:** locked, sealed and keypad doors inside an arena
-  should be open when you arrive. Any objective marker or enemy you still
-  can't reach? Press F8 right there.
-- **Evolution:** chrome that evolves (Legendary with two weapon effects)
-  learns a trick - SHOCKWAVE, BLOOD RUSH, LIVE WIRE, BELT FEED, CASCADE.
-  Can you see it happen? The stranger (a ? door from Act 2) sells it early.
+**Arenas**
+- **New arenas:** thirteen of them - Rocky Ridge, Jackson Plains, Coronado
+  Hideout, East Coronado, West Wind Estate, Longshore Stacks, Dogtown Back
+  Streets, Japantown Backlot, Tyger Sweatshop, Charter Hill, Wellsprings,
+  West Downtown and Northside Yards. Does one start a gig, ring your phone,
+  play a scene or show a quest marker? Press F8 there and tell me which. Is
+  any too cramped, too big, or full of spots enemies can't reach?
+- **Boss arenas:** every boss fights at a story landmark now. Act 1: the All
+  Foods plant, Totentanz, Ghost Town, Konpeki Plaza and its roof. Act 2: the
+  Grand Imperial Mall, Batty's Hotel, Embers, the Arasaka estate, Dogtown's
+  stadium, the Black Sapphire. Act 3: Arasaka Tower's CEO floor and roof,
+  Mikoshi, the spaceport roof. Does the boss floor feel like an occasion?
+  Any enemy spawning inside a wall, or something from the story playing?
+  F8.
+- **Rooftops:** arriving at a high arena (Konpeki's roof, the tower), do
+  you ever land on the street or fall?
+- **Locked rooms:** locked, sealed and keypad doors inside an arena should
+  be open when you arrive. Any objective marker or enemy you still can't
+  reach? Press F8 right there.
+- **Dropped weapons:** the legendary hammer at the mall (or any weapon an
+  enemy loses) should never land on the floor now.
 
-**Netrunner**
-- Do you start with one hack that kills and one that controls?
-- After a Tune-Up or a boss, are your hacks still slotted, and a quality
-  higher?
-- Pick a quickhack with a full deck: does it ask which one to swap out, and
-  does BACK work?
-- Do your hacks set off your effects (Overheat BURNS, Ping MARKS, Short
-  Circuit SHOCKS)?
-- Does a Netrunner run keep up with a gun run by Act 2? Do you run out of RAM
-  a lot? (The log counts both, so send it.)
+**Cards and doors**
+- **Quickhacks:** only hacks that fight should come up - no stealth or
+  distraction hacks, no Memory Wipe. Ping only shows up once you hold
+  something that uses MARK, and DAEMONS doors only while you have a deck.
+- **Doors:** a door type you keep passing over should show up less until
+  you take it. Do the door screens feel more varied?
 
 **The terminal**
 - **DATABASE** (home, the door picker, and F7 in a fight): hover a name to
   read it, click to keep it up. Can you find what any word on a card means,
-  and what makes a keyword?
-- **UPGRADES:** switch a row's take and buy a rank. Does it read well? Did
-  your old unlocks carry over?
-- **Favors:** beat a boss and a fixer owes you one - spend it on a kit at the
-  armory.
+  and what makes a keyword? Does anything run off the screen?
+- **Hub and UPGRADES:** does everything fit inside the panel now - the stats
+  row, the START RUN card's line-up, the upgrades header?
 
-**Trips**
-- Going to a fight, the world should glitch, then the screen goes black with
-  the arena's name tearing in red and blue, then the arena glitches back in.
-  Do you see all three? Does the black hide the loading pop-in?
-- Music: one track per arena, never two at once. Start a run with your pocket
-  radio on - it should go quiet for the run and come back when you get home.
+**Still worth a look from v0.0.19**
+- **Kits and their main weapon:** is the Brawler's, Wireman's, Demolitions'
+  or Netrunner's chrome installed from the first arena? Do chrome mods (from
+  TUNE-UP doors, floors 4, 10, 16) change how the weapon fights?
+- **Weapon effects:** do Payload, Hot Barrel, Lucky Round and the rest fire
+  about as often as their cards say? On Gorilla Arms especially.
+- **Netrunner:** do your hacks set off your effects (Overheat BURNS, Short
+  Circuit SHOCKS)? Does a Netrunner run keep up with a gun run by Act 2?
+- **Combos:** did two effects from different patrons set each other off?
+  Which combo felt best, and which effect did nothing you could notice?
+- **Run shape:** did your build come together by the Act 2 boss? Were HOT
+  doors worth it? Did Trauma Team cover save a run?
+- **Trips and music:** the glitch, the black with the arena's name, the
+  glitch back in - and one track per arena, never two at once.
+- **The basics:** does dying play out properly (V goes down, fade, you come
+  to at home)? Did any story phone call get through during a run?
 
-**Effects and combos**
-- Every effect speaks in keywords (MARK, SHOCK, BURN, BLAST, MOMENTUM...).
-  When one lands, a word flashes on the HUD. Do you see them? Do the enemies
-  show it (outline for MARK, sparks for SHOCK, fire for BURN)?
-- Did two effects from different patrons ever set each other off? Which
-  combo felt best, and which effect did nothing you could notice?
-- Hover a card on a patron screen: the effects it BUILDS ON light up in the
-  YOUR BUILD strip. Does that help you plan?
-- Did you get a duo, a legendary or a favour (three effects from one patron)?
-
-**Run shape**
-- **HOT doors** (pulsing): one in Act 1, two later, harder, and they pay
-  double. Did they show up at good moments? Were they worth it?
-- **Trauma Team:** you start every fight at full health and have one cover a
-  run. Did it save a run? Did it make dying feel fair?
-- Did Tune-Ups feel worth it (the card shows DPS before and after)? Did you
-  trade guns, and did your weapon effects come along?
-- **Overall:** did your build come together by the Act 2 boss? Was Act 3
-  harder in a good way?
-
-**The basics**
-- Does dying play out properly: V goes down, the screen fades, and you come to
-  at home?
-- Did any story phone call (for example from Judy) get through during a run?
+The more runs I get logs from, the better: the run reports now compare
+testers side by side, so send your logs even from a run where nothing went
+wrong.

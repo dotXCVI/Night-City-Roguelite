@@ -3,7 +3,13 @@
 Every build of Night City Roguelite, newest first. Each version is a tagged
 release on GitHub with its ZIP attached.
 
-## Unreleased
+## v0.0.20 - Landmarks (2026-10-29)
+
+Landmarks: the fights spread across the city, and bosses meet you where the
+story's big fights happened - the All Foods plant, Konpeki Plaza, the Black
+Sapphire, Arasaka Tower's roof, Mikoshi. The database is rebuilt to be read,
+and quickhack cards only deal hacks that fight. Your v0.0.19 character
+carries over.
 
 **Arenas**
 

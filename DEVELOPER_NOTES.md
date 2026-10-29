@@ -481,8 +481,9 @@ Final floor cleared --> Cleared (5 s) --> Ending --> Hub
   licensed - see LICENSE). One commit per version, oldest v0.0.3 (v0.0.3-v0.0.7
   were first released as v0.3.0-v0.7.0). `CHANGELOG.md` has every version,
   newest first.
-- **A version commit is any commit on main whose message starts with
-  `vX.Y.Z: <title>`.** The Release workflow (`.github/workflows/release.yml`
+- **A version commit is a commit on main whose message starts with
+  `vX.Y.Z: <title>`** (a `vX.Y.Z update: <what>` commit refreshes one; any
+  other message, even one starting with a version, is ordinary). The Release workflow (`.github/workflows/release.yml`
   running `tools/publish-releases.sh`) tags each version commit that has no
   release yet, builds the ZIP from that commit's files, takes the notes from
   that version's CHANGELOG.md section, and publishes the release with the ZIP
